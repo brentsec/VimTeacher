@@ -16,6 +16,7 @@ TESTS=(
   "test_validate.lua"
   "test_stats.lua"
   "test_basic_movement.lua"
+  "test_word_movement.lua"
 )
 
 FAILED=0

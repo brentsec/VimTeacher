@@ -6,6 +6,7 @@ local M = {}
 -- Ordered list of lesson module names (add new lessons here)
 M.order = {
   "basic_movement",
+  "word_movement",
 }
 
 -- Cache of loaded lesson modules
