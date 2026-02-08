@@ -1,0 +1,39 @@
+# Runtime user data
+data/stats.json
+
+# Environment / secrets
+.env
+.env.*
+
+# OS generated
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+Session.vim
+.netrwhist
+
+# Lua / LuaRocks
+luarocks/
+lua_modules/
+*.rock
+
+# Docker
+.docker-env
+
+# Logs
+*.log
+logs/
+
+# Temp / cache
+.tmp/
+.cache/
+*.bak
+*.orig

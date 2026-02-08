@@ -1,0 +1,76 @@
+-- tests/test_stats.lua
+-- Tests for stats calculations
+
+local stats = require("vimteacher.stats")
+
+local pass_count = 0
+local fail_count = 0
+
+local function assert_test(condition, msg)
+  if condition then
+    pass_count = pass_count + 1
+  else
+    fail_count = fail_count + 1
+    print("  FAIL: " .. msg)
+  end
+end
+
+print("test_stats: running...")
+
+-- Test 1: calc_accuracy_pct — perfect path
+local acc = stats.calc_accuracy_pct(5, 5)
+assert_test(acc == 100, "Perfect path should be 100%, got " .. acc)
+
+-- Test 2: calc_accuracy_pct — took double the moves
+local acc2 = stats.calc_accuracy_pct(5, 10)
+assert_test(acc2 == 50, "Double moves should be 50%, got " .. acc2)
+
+-- Test 3: calc_accuracy_pct — zero actual moves
+local acc3 = stats.calc_accuracy_pct(5, 0)
+assert_test(acc3 == 100, "Zero moves should return 100%, got " .. acc3)
+
+-- Test 4: calc_accuracy_pct — caps at 100%
+local acc4 = stats.calc_accuracy_pct(10, 5)
+assert_test(acc4 == 100, "Better than optimal should cap at 100%, got " .. acc4)
+
+-- Test 5: calc_speed_pct — at average
+local spd = stats.calc_speed_pct(2.0, 2.0)
+assert_test(spd == 100, "At average should be 100%, got " .. spd)
+
+-- Test 6: calc_speed_pct — twice as fast
+local spd2 = stats.calc_speed_pct(2.0, 1.0)
+assert_test(spd2 == 200, "Twice as fast should be 200%, got " .. spd2)
+
+-- Test 7: calc_speed_pct — half as fast
+local spd3 = stats.calc_speed_pct(2.0, 4.0)
+assert_test(spd3 == 50, "Half as fast should be 50%, got " .. spd3)
+
+-- Test 8: calc_speed_pct — no average yet
+local spd4 = stats.calc_speed_pct(nil, 2.0)
+assert_test(spd4 == 100, "No average should return 100%, got " .. spd4)
+
+-- Test 9: record_session — first session
+local all = {}
+local ls = stats.record_session(all, "test_lesson", 25.0, 80)
+assert_test(ls.total_sessions == 1, "Expected 1 session, got " .. ls.total_sessions)
+assert_test(ls.best_time == 25.0, "Expected best_time 25.0, got " .. tostring(ls.best_time))
+assert_test(ls.avg_time == 25.0, "Expected avg_time 25.0, got " .. tostring(ls.avg_time))
+assert_test(ls.best_accuracy == 80, "Expected best_accuracy 80, got " .. ls.best_accuracy)
+
+-- Test 10: record_session — second session (faster)
+local ls2 = stats.record_session(all, "test_lesson", 20.0, 90)
+assert_test(ls2.total_sessions == 2, "Expected 2 sessions, got " .. ls2.total_sessions)
+assert_test(ls2.best_time == 20.0, "Expected best_time 20.0, got " .. tostring(ls2.best_time))
+assert_test(ls2.avg_time == 22.5, "Expected avg_time 22.5, got " .. tostring(ls2.avg_time))
+assert_test(ls2.best_accuracy == 90, "Expected best_accuracy 90, got " .. ls2.best_accuracy)
+
+-- Test 11: record_session — third session (slower, lower accuracy)
+local ls3 = stats.record_session(all, "test_lesson", 30.0, 70)
+assert_test(ls3.total_sessions == 3, "Expected 3 sessions, got " .. ls3.total_sessions)
+assert_test(ls3.best_time == 20.0, "Best time should stay 20.0, got " .. tostring(ls3.best_time))
+assert_test(ls3.best_accuracy == 90, "Best accuracy should stay 90, got " .. ls3.best_accuracy)
+
+print(string.format("test_stats: %d passed, %d failed", pass_count, fail_count))
+if fail_count > 0 then
+  vim.cmd("cquit! 1")
+end

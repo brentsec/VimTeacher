@@ -1,0 +1,114 @@
+-- vimteacher/stats.lua
+-- Persistent stats: load/save JSON, speed%, accuracy%
+
+local M = {}
+
+-- Resolve the data directory relative to this plugin
+local function get_data_dir()
+  local info = debug.getinfo(1, "S")
+  local script_path = info.source:sub(2) -- remove leading @
+  -- script_path = .../lua/vimteacher/stats.lua
+  -- plugin_root = .../
+  local lua_dir = vim.fn.fnamemodify(script_path, ":h:h:h") -- up 3 levels
+  return lua_dir .. "/data"
+end
+
+local function get_stats_path()
+  return get_data_dir() .. "/stats.json"
+end
+
+--- Load stats from disk. Returns a table (empty if file doesn't exist).
+--- @return table Stats table keyed by lesson name
+function M.load()
+  local path = get_stats_path()
+  local f = io.open(path, "r")
+  if not f then
+    return {}
+  end
+  local content = f:read("*a")
+  f:close()
+  if not content or content == "" then
+    return {}
+  end
+  local ok, data = pcall(vim.fn.json_decode, content)
+  if ok and type(data) == "table" then
+    return data
+  end
+  return {}
+end
+
+--- Save stats to disk.
+--- @param data table Stats table to save
+function M.save(data)
+  local dir = get_data_dir()
+  vim.fn.mkdir(dir, "p")
+  local path = get_stats_path()
+  local json = vim.fn.json_encode(data)
+  local f = io.open(path, "w")
+  if f then
+    f:write(json)
+    f:close()
+  end
+end
+
+--- Record a completed session and update running stats.
+--- @param all_stats table Full stats table
+--- @param lesson_name string Lesson identifier
+--- @param total_time number Total time for the session (all challenges combined)
+--- @param accuracy number Overall accuracy percentage (0-100)
+--- @return table Updated lesson stats
+function M.record_session(all_stats, lesson_name, total_time, accuracy)
+  local ls = all_stats[lesson_name] or {
+    best_time = nil,
+    avg_time = nil,
+    total_sessions = 0,
+    total_time = 0,
+    best_accuracy = 0,
+  }
+
+  ls.total_sessions = ls.total_sessions + 1
+  ls.total_time = ls.total_time + total_time
+  ls.avg_time = ls.total_time / ls.total_sessions
+
+  if not ls.best_time or total_time < ls.best_time then
+    ls.best_time = total_time
+  end
+
+  if accuracy > ls.best_accuracy then
+    ls.best_accuracy = accuracy
+  end
+
+  all_stats[lesson_name] = ls
+  return ls
+end
+
+--- Calculate speed percentage.
+--- 100% means at or better than running average.
+--- @param avg_time number|nil Running average time
+--- @param current_time number Current challenge time
+--- @return number Speed percentage (0-999, capped)
+function M.calc_speed_pct(avg_time, current_time)
+  if not avg_time or avg_time <= 0 or current_time <= 0 then
+    return 100
+  end
+  local pct = math.floor((avg_time / current_time) * 100)
+  return math.min(pct, 999) -- cap display at 999%
+end
+
+--- Calculate accuracy percentage.
+--- 100% means optimal path (minimum moves).
+--- @param optimal_moves number Minimum moves required
+--- @param actual_moves number Actual moves taken
+--- @return number Accuracy percentage (0-100)
+function M.calc_accuracy_pct(optimal_moves, actual_moves)
+  if actual_moves <= 0 then
+    return 100
+  end
+  if optimal_moves <= 0 then
+    return 100
+  end
+  local pct = math.floor((optimal_moves / actual_moves) * 100)
+  return math.min(pct, 100)
+end
+
+return M
