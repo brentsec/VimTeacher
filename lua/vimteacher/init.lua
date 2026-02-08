@@ -90,6 +90,18 @@ local function block_insert_keys()
   for _, key in ipairs(visual_keys) do
     vim.keymap.set("n", key, "<Nop>", opts)
   end
+
+  -- Block mouse clicks (prevent bypassing keyboard navigation)
+  local mouse_keys = {
+    "<LeftMouse>", "<2-LeftMouse>", "<3-LeftMouse>", "<4-LeftMouse>",
+    "<RightMouse>", "<2-RightMouse>",
+    "<MiddleMouse>",
+    "<ScrollWheelUp>", "<ScrollWheelDown>",
+    "<ScrollWheelLeft>", "<ScrollWheelRight>",
+  }
+  for _, key in ipairs(mouse_keys) do
+    vim.keymap.set("n", key, "<Nop>", opts)
+  end
 end
 
 -- ─── Menu mode ─────────────────────────────────────────────────────────────
