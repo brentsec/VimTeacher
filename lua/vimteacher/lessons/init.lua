@@ -7,6 +7,7 @@ local M = {}
 M.order = {
   "basic_movement",
   "word_movement",
+  "insert_mode",
 }
 
 -- Cache of loaded lesson modules

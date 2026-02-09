@@ -30,6 +30,8 @@ M.hint_lines = {
   "[w] Next word  [e] End of word  [b] Back a word — Move to the green target",
 }
 
+M.dwell_time = 200 -- ms; longer than basic_movement to prevent w/b spam-through
+
 -- Module-level snippet storage so compute_optimal can access the current snippet
 local current_snippet = nil
 

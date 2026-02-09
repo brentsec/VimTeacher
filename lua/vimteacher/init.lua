@@ -34,6 +34,7 @@ local state = {
   current_challenge = nil, -- stores current challenge data for stats
   session_challenges = {}, -- list of {time, accuracy_pct, moves, optimal} per challenge
   dwell_pending = false,   -- true while a dwell timer is running
+  original_snippet = nil,  -- stored for restore on failed insert edit
 }
 
 -- ─── Cleanup ───────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ local function cleanup()
   state.current_challenge = nil
   state.session_challenges = {}
   state.dwell_pending = false
+  state.original_snippet = nil
 end
 
 -- ─── Key blocking ──────────────────────────────────────────────────────────
@@ -92,6 +94,56 @@ local function block_insert_keys()
   end
 
   -- Block mouse clicks (prevent bypassing keyboard navigation)
+  local mouse_keys = {
+    "<LeftMouse>", "<2-LeftMouse>", "<3-LeftMouse>", "<4-LeftMouse>",
+    "<RightMouse>", "<2-RightMouse>",
+    "<MiddleMouse>",
+    "<ScrollWheelUp>", "<ScrollWheelDown>",
+    "<ScrollWheelLeft>", "<ScrollWheelRight>",
+  }
+  for _, key in ipairs(mouse_keys) do
+    vim.keymap.set("n", key, "<Nop>", opts)
+  end
+end
+
+--- Block keys for insert-type lessons: allows specified insert keys, blocks the rest.
+--- @param allowed string[] Keys to leave unblocked (e.g., {"i", "a"})
+local function block_keys_for_insert_lesson(allowed)
+  local buf = state.buf
+  local opts = { buffer = buf, noremap = true, silent = true }
+
+  -- Build lookup of allowed keys
+  local allowed_set = {}
+  for _, key in ipairs(allowed) do
+    allowed_set[key] = true
+  end
+
+  -- Block insert-mode entry keys that are NOT allowed
+  local insert_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" }
+  for _, key in ipairs(insert_keys) do
+    if not allowed_set[key] then
+      vim.keymap.set("n", key, function()
+        vim.notify("VimTeacher: Use " .. table.concat(allowed, " or ") .. " for this lesson", vim.log.levels.WARN)
+      end, opts)
+    else
+      -- Remove any previous blocking keymap so the key works natively
+      pcall(vim.keymap.del, "n", key, { buffer = buf })
+    end
+  end
+
+  -- Block text-modifying keys silently
+  local modify_keys = { "d", "dd", "D", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
+  for _, key in ipairs(modify_keys) do
+    vim.keymap.set("n", key, "<Nop>", opts)
+  end
+
+  -- Block visual mode
+  local visual_keys = { "v", "V", "<C-v>" }
+  for _, key in ipairs(visual_keys) do
+    vim.keymap.set("n", key, "<Nop>", opts)
+  end
+
+  -- Block mouse clicks
   local mouse_keys = {
     "<LeftMouse>", "<2-LeftMouse>", "<3-LeftMouse>", "<4-LeftMouse>",
     "<RightMouse>", "<2-RightMouse>",
@@ -284,6 +336,44 @@ local function on_target_reached()
   end, 300)
 end
 
+local function on_insert_leave()
+  if state.mode ~= "playing" then return end
+  if not state.lesson or state.lesson.type ~= "insert" then return end
+  if not state.current_challenge or not state.current_challenge.expected_lines then return end
+  if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then return end
+
+  -- Read current snippet zone from buffer
+  local actual = vim.api.nvim_buf_get_lines(
+    state.buf, state.snippet_offset, state.snippet_end + 1, false
+  )
+
+  -- Compare to expected
+  local expected = state.current_challenge.expected_lines
+  local match = #actual == #expected
+  if match then
+    for i = 1, #expected do
+      if actual[i] ~= expected[i] then match = false; break end
+    end
+  end
+
+  if match then
+    on_target_reached()
+  else
+    -- Restore original snippet and let user try again
+    vim.bo[state.buf].modifiable = true
+    vim.api.nvim_buf_set_lines(
+      state.buf, state.snippet_offset, state.snippet_end + 1, false,
+      state.original_snippet
+    )
+    -- Re-place target highlight
+    if state.target then
+      local target_buf_row = state.target.row + state.snippet_offset
+      highlight.place_target(state.buf, target_buf_row, state.target.col)
+    end
+    vim.notify("Not quite — try again!", vim.log.levels.INFO)
+  end
+end
+
 local function on_cursor_moved()
   -- Only active in playing mode
   if state.mode ~= "playing" then return end
@@ -295,14 +385,21 @@ local function on_cursor_moved()
   local was_constrained = validate.constrain_to_snippet(
     state.win, state.snippet_offset, state.snippet_end
   )
+
+  -- Start timer on first move (even if constrained — user is actively playing)
+  if not state.timer_start then
+    state.timer_start = vim.loop.hrtime()
+  end
+
   if was_constrained then return end
 
   -- Count the move (only non-constrained moves count)
   state.move_count = state.move_count + 1
 
-  -- Start timer on first move
-  if not state.timer_start then
-    state.timer_start = vim.loop.hrtime()
+  -- Insert lessons: don't trigger completion on cursor position;
+  -- success is validated via InsertLeave instead
+  if state.lesson and state.lesson.type == "insert" then
+    return
   end
 
   -- Check target match with dwell-time validation (50ms)
@@ -321,7 +418,7 @@ local function on_cursor_moved()
         if validate.check_position(state.win, tbr, state.target.col) then
           on_target_reached()
         end
-      end, 50)
+      end, state.lesson.dwell_time or 50)
     end
   else
     -- Cursor moved off target — allow new dwell timer on next landing
@@ -358,6 +455,12 @@ load_challenge = function()
     max_progress = state.max_challenges,
     snippet_lines = challenge.snippet_lines,
     hint_lines = state.lesson.hint_lines,
+    goal = challenge.key and {
+      action = challenge.key == "i" and "insert" or "append",
+      char = challenge.char,
+      key = challenge.key,
+      preposition = challenge.key == "i" and "before cursor" or "after cursor",
+    } or nil,
   })
 
   -- Get snippet boundaries
@@ -374,6 +477,12 @@ load_challenge = function()
   local start_pos = challenge.start_pos or { row = 0, col = 0 }
   local buf_start_row = start_pos.row + state.snippet_offset
   vim.api.nvim_win_set_cursor(state.win, { buf_start_row + 1, start_pos.col })
+
+  -- Insert lessons: store original snippet and enable editing
+  if state.lesson.type == "insert" then
+    state.original_snippet = vim.deepcopy(challenge.snippet_lines)
+    vim.bo[state.buf].modifiable = true
+  end
 end
 
 setup_autocmds = function()
@@ -383,6 +492,12 @@ setup_autocmds = function()
     group = state.augroup,
     buffer = state.buf,
     callback = on_cursor_moved,
+  })
+
+  vim.api.nvim_create_autocmd("InsertLeave", {
+    group = state.augroup,
+    buffer = state.buf,
+    callback = on_insert_leave,
   })
 
   vim.api.nvim_create_autocmd("BufWipeout", {
@@ -426,6 +541,13 @@ start_lesson = function(lesson_name)
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     state.buf, state.win = buffer.create()
     setup_autocmds()
+  end
+
+  -- Apply appropriate key blocking for this lesson type
+  -- (always re-apply; keymaps may be stale from a previous lesson or menu)
+  if lesson.type == "insert" then
+    block_keys_for_insert_lesson(lesson.allowed_keys or {})
+  else
     block_insert_keys()
   end
 

@@ -92,6 +92,12 @@ function M.setup()
 
   -- Inner separator: dim purple
   vim.api.nvim_set_hl(0, "VimTeacherMenuSep", { fg = "#5C4F7C" })
+
+  -- Insert mode hint: gold bold (shows what to type)
+  vim.api.nvim_set_hl(0, "VimTeacherInsertHint", { fg = "#E5C07B", bold = true })
+
+  -- Goal bar text: readable white for action labels
+  vim.api.nvim_set_hl(0, "VimTeacherGoalText", { fg = "#ABB2BF" })
 end
 
 --- Apply a highlight group to a line range in the layout namespace.

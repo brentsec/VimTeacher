@@ -17,6 +17,7 @@ TESTS=(
   "test_stats.lua"
   "test_basic_movement.lua"
   "test_word_movement.lua"
+  "test_insert_mode.lua"
 )
 
 FAILED=0
