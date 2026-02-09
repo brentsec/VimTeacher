@@ -1,0 +1,315 @@
+-- vimteacher/lessons/delete_multiple_lines.lua
+-- Multi-line delete operations: dj, dk, d2j, d2k
+
+local M = {}
+
+M.title = "Multi-Line Delete: dj, dk"
+M.type = "insert"
+M.allowed_keys = {}
+M.allowed_modify_keys = { "d" }
+M.challenges_required = 10
+
+M.description = {
+  "Delete multiple lines at once with d + motion:",
+  "",
+  "  dj  = delete current line and line below (2 lines)",
+  "  dk  = delete current line and line above (2 lines)",
+  "  d2j = delete current line and 2 lines below (3 lines)",
+  "  d2k = delete current line and 2 lines above (3 lines)",
+  "",
+  "Navigate to the green target and use the indicated key sequence.",
+}
+
+M.hint_lines = {
+  "[dj] Delete 2 lines down  [dk] Delete 2 lines up  [d2j] Delete 3 down  [d2k] Delete 3 up",
+}
+
+-- Pre-defined challenge pool with larger snippets to accommodate multi-line deletions.
+-- Each challenge removes multiple lines from the snippet.
+local CHALLENGES = {
+  -- Challenge 1: dj — delete 2 lines (comment block)
+  {
+    snippet_lines = {
+      "function processData(input) {",
+      "  // TODO: remove this debug line",
+      "  // console.log('debug:', input);",
+      "  const result = transform(input);",
+      "  return result;",
+      "}",
+    },
+    expected_lines = {
+      "function processData(input) {",
+      "  const result = transform(input);",
+      "  return result;",
+      "}",
+    },
+    target = { row = 1, col = 2 },
+    start_pos = { row = 5, col = 0 },
+    key = "dj",
+  },
+
+  -- Challenge 2: dk — delete 2 lines (empty line + comment)
+  {
+    snippet_lines = {
+      "function validateInput(data) {",
+      "  if (!data) return false;",
+      "",
+      "  // Unused validation check",
+      "  const isValid = data.length > 0;",
+      "  return isValid;",
+      "}",
+    },
+    expected_lines = {
+      "function validateInput(data) {",
+      "  if (!data) return false;",
+      "  const isValid = data.length > 0;",
+      "  return isValid;",
+      "}",
+    },
+    target = { row = 3, col = 2 },
+    start_pos = { row = 0, col = 0 },
+    key = "dk",
+  },
+
+  -- Challenge 3: dj — delete 2 lines (variable declarations)
+  {
+    snippet_lines = {
+      "function calculate(x, y) {",
+      "  const temp1 = x * 2;",
+      "  const temp2 = y * 2;",
+      "  const result = x + y;",
+      "  return result;",
+      "}",
+    },
+    expected_lines = {
+      "function calculate(x, y) {",
+      "  const result = x + y;",
+      "  return result;",
+      "}",
+    },
+    target = { row = 1, col = 2 },
+    start_pos = { row = 5, col = 0 },
+    key = "dj",
+  },
+
+  -- Challenge 4: dk — delete 2 lines (debug statements)
+  {
+    snippet_lines = {
+      "function fetchUser(id) {",
+      "  const url = buildUrl(id);",
+      "  console.log('fetching:', url);",
+      "  console.log('timestamp:', Date.now());",
+      "  return fetch(url);",
+      "}",
+    },
+    expected_lines = {
+      "function fetchUser(id) {",
+      "  const url = buildUrl(id);",
+      "  return fetch(url);",
+      "}",
+    },
+    target = { row = 3, col = 2 },
+    start_pos = { row = 0, col = 0 },
+    key = "dk",
+  },
+
+  -- Challenge 5: d2j — delete 3 lines (try-catch block)
+  {
+    snippet_lines = {
+      "function parseData(json) {",
+      "  try {",
+      "    return JSON.parse(json);",
+      "  } catch (e) {",
+      "    console.error(e);",
+      "  }",
+      "  return JSON.parse(json);",
+      "}",
+    },
+    expected_lines = {
+      "function parseData(json) {",
+      "    console.error(e);",
+      "  }",
+      "  return JSON.parse(json);",
+      "}",
+    },
+    target = { row = 1, col = 2 },
+    start_pos = { row = 7, col = 0 },
+    key = "d2j",
+  },
+
+  -- Challenge 6: d2k — delete 3 lines (import statements)
+  {
+    snippet_lines = {
+      "import { useState } from 'react';",
+      "import { useEffect } from 'react';",
+      "import { useCallback } from 'react';",
+      "import { api } from './api';",
+      "",
+      "function App() {",
+      "  return <div>Hello</div>;",
+      "}",
+    },
+    expected_lines = {
+      "import { api } from './api';",
+      "",
+      "function App() {",
+      "  return <div>Hello</div>;",
+      "}",
+    },
+    target = { row = 2, col = 0 },
+    start_pos = { row = 7, col = 0 },
+    key = "d2k",
+  },
+
+  -- Challenge 7: dj — delete 2 lines (console logs)
+  {
+    snippet_lines = {
+      "function initialize(config) {",
+      "  console.log('Init start');",
+      "  console.log('Config:', config);",
+      "  setupComponents(config);",
+      "  return true;",
+      "}",
+    },
+    expected_lines = {
+      "function initialize(config) {",
+      "  setupComponents(config);",
+      "  return true;",
+      "}",
+    },
+    target = { row = 1, col = 2 },
+    start_pos = { row = 5, col = 0 },
+    key = "dj",
+  },
+
+  -- Challenge 8: dk — delete 2 lines (old code)
+  {
+    snippet_lines = {
+      "function processOrder(order) {",
+      "  const items = order.items;",
+      "  // const tax = calculateTax(items);",
+      "  // const shipping = calculateShipping(items);",
+      "  const total = calculateTotal(items);",
+      "  return total;",
+      "}",
+    },
+    expected_lines = {
+      "function processOrder(order) {",
+      "  const items = order.items;",
+      "  const total = calculateTotal(items);",
+      "  return total;",
+      "}",
+    },
+    target = { row = 3, col = 2 },
+    start_pos = { row = 0, col = 0 },
+    key = "dk",
+  },
+
+  -- Challenge 9: d2j — delete 3 lines (error handling)
+  {
+    snippet_lines = {
+      "function loadData(source) {",
+      "  if (!source) {",
+      "    console.error('No source');",
+      "    return null;",
+      "  }",
+      "  return fetchFromSource(source);",
+      "}",
+    },
+    expected_lines = {
+      "function loadData(source) {",
+      "  }",
+      "  return fetchFromSource(source);",
+      "}",
+    },
+    target = { row = 1, col = 2 },
+    start_pos = { row = 6, col = 0 },
+    key = "d2j",
+  },
+
+  -- Challenge 10: d2k — delete 3 lines (comment block)
+  {
+    snippet_lines = {
+      "function renderComponent(props) {",
+      "  // Step 1: Validate props",
+      "  // Step 2: Build markup",
+      "  // Step 3: Attach events",
+      "  const element = createElement(props);",
+      "  return element;",
+      "}",
+    },
+    expected_lines = {
+      "function renderComponent(props) {",
+      "  const element = createElement(props);",
+      "  return element;",
+      "}",
+    },
+    target = { row = 3, col = 2 },
+    start_pos = { row = 0, col = 0 },
+    key = "d2k",
+  },
+}
+
+-- Track recently used challenges to avoid repetition
+local recent = {}
+local MAX_RECENT = 5
+
+--- Compute the minimum (optimal) moves between two positions.
+--- For multi-line delete, user must navigate to exact (row, col), so Manhattan distance applies.
+--- @param start_pos table {row=number, col=number} 0-indexed
+--- @param target table {row=number, col=number} 0-indexed
+--- @return number Optimal move count
+function M.compute_optimal(start_pos, target)
+  return math.abs(start_pos.row - target.row) + math.abs(start_pos.col - target.col)
+end
+
+--- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
+--- @param buf number Buffer handle (unused, part of interface)
+--- @param ns_id number Namespace ID (unused, part of interface)
+--- @return table challenge {snippet_lines, expected_lines, target, start_pos, key}
+function M.generate_challenge(buf, ns_id)
+  -- Build list of eligible indices (not recently used)
+  local eligible = {}
+  for i = 1, #CHALLENGES do
+    local dominated = false
+    for _, r in ipairs(recent) do
+      if r == i then dominated = true; break end
+    end
+    if not dominated then
+      eligible[#eligible + 1] = i
+    end
+  end
+
+  -- If all are recent, reset
+  if #eligible == 0 then
+    recent = {}
+    for i = 1, #CHALLENGES do
+      eligible[#eligible + 1] = i
+    end
+  end
+
+  -- Pick random eligible challenge
+  local idx = eligible[math.random(1, #eligible)]
+
+  -- Update recency
+  recent[#recent + 1] = idx
+  if #recent > MAX_RECENT then
+    table.remove(recent, 1)
+  end
+
+  local c = CHALLENGES[idx]
+  return {
+    snippet_lines = vim.deepcopy(c.snippet_lines),
+    expected_lines = vim.deepcopy(c.expected_lines),
+    target = { row = c.target.row, col = c.target.col },
+    start_pos = { row = c.start_pos.row, col = c.start_pos.col },
+    key = c.key,
+  }
+end
+
+--- Expose challenge pool for testing.
+function M._get_challenges()
+  return CHALLENGES
+end
+
+return M
