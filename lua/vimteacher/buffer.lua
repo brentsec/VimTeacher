@@ -13,6 +13,71 @@ local layout_meta = {
 
 local SEPARATOR = string.rep("─", 68)
 
+-- Box inner content width (chars between the │ borders)
+local BOX_WIDTH = 74
+
+-- ASCII art logo: heavy blocks for "Vim", box-drawing for "Teacher"
+local LOGO = {
+  "  ██╗   ██╗██╗███╗   ███╗",
+  "  ██║   ██║██║████╗ ████║  ╔╦╗╔═╗╔═╗╔═╗╦ ╦╔═╗╦═╗",
+  "  ╚██╗ ██╔╝██║██╔████╔██║   ║ ║╣ ╠═╣║  ╠═╣║╣ ╠╦╝",
+  "   ╚████╔╝ ██║██║╚██╔╝██║   ╩ ╚═╝╩ ╩╚═╝╩ ╩╚═╝╩╚═",
+  "    ╚═══╝  ╚═╝╚═╝     ╚═╝",
+}
+
+--- Pad a string to exactly `width` display columns.
+--- @param s string Input string
+--- @param width number Desired display width
+--- @return string Padded string
+local function pad_to_width(s, width)
+  local display_width = vim.api.nvim_strwidth(s)
+  if display_width >= width then
+    return s
+  end
+  return s .. string.rep(" ", width - display_width)
+end
+
+--- Build a bordered content line: │  content...padded...  │
+--- @param content string The content (can be empty for blank line)
+--- @return string
+local function bordered(content)
+  local inner = "  " .. content
+  local padded = pad_to_width(inner, BOX_WIDTH)
+  return "│" .. padded .. "│"
+end
+
+--- Build the top border: ╭──...──╮
+--- @return string
+local function border_top()
+  return "╭" .. string.rep("─", BOX_WIDTH) .. "╮"
+end
+
+--- Build the bottom border: ╰──...──╯
+--- @return string
+local function border_bottom()
+  return "╰" .. string.rep("─", BOX_WIDTH) .. "╯"
+end
+
+--- Build an inner separator line inside the box.
+--- @return string
+local function inner_separator()
+  return bordered(string.rep("─", BOX_WIDTH - 4))
+end
+
+--- Build a subtitle separator: │  ┈┈┈ Text ┈┈┈...┈  │
+--- @param text string The subtitle text
+--- @return string
+local function subtitle_line(text)
+  local prefix = "┈┈┈ "
+  local content = prefix .. text .. " "
+  local display_width = vim.api.nvim_strwidth(content)
+  local remaining = BOX_WIDTH - 4 - display_width
+  if remaining > 0 then
+    content = content .. string.rep("┈", remaining)
+  end
+  return bordered(content)
+end
+
 --- Create a scratch buffer and configure the window.
 --- @return number buf Buffer handle
 --- @return number win Window handle
@@ -45,16 +110,38 @@ end
 --- @param lessons table Ordered list of {name, title} tables
 --- @param all_stats table Stats data keyed by lesson name
 function M.render_menu(buf, lessons, all_stats)
-  local lines = {
-    "",
-    "  VimTeacher",
-    "",
-    "  Select a Topic",
-    "",
-    "  #   Topic                          Best Time   Best Accuracy",
-    "  " .. SEPARATOR,
-  }
+  local lines = {}
 
+  -- Top border
+  lines[#lines + 1] = border_top()
+  lines[#lines + 1] = bordered("")
+
+  -- Logo (5 lines)
+  local logo_start = #lines -- 0-indexed first logo line
+  for _, logo_line in ipairs(LOGO) do
+    lines[#lines + 1] = bordered(logo_line)
+  end
+
+  lines[#lines + 1] = bordered("")
+
+  -- Subtitle separator
+  local subtitle_row = #lines
+  lines[#lines + 1] = subtitle_line("Select a Topic")
+
+  lines[#lines + 1] = bordered("")
+
+  -- Column header
+  local header_row = #lines
+  lines[#lines + 1] = bordered(string.format(
+    "  %-4s%-35s%-12s%s", "#", "Topic", "Best Time", "Best Accuracy"
+  ))
+
+  -- Header underline
+  local header_sep_row = #lines
+  lines[#lines + 1] = inner_separator()
+
+  -- Menu items
+  local menu_start = #lines
   for i, lesson in ipairs(lessons) do
     local ls = all_stats[lesson.name]
     local best_time = "  --"
@@ -67,36 +154,111 @@ function M.render_menu(buf, lessons, all_stats)
         best_acc = string.format("%d%%", ls.best_accuracy)
       end
     end
-
-    local line = string.format("  %-4s%-35s%-12s%s", i .. ".", lesson.title, best_time, best_acc)
-    lines[#lines + 1] = line
+    lines[#lines + 1] = bordered(string.format(
+      "  %-4s%-35s%-12s%s", i .. ".", lesson.title, best_time, best_acc
+    ))
   end
+  local menu_end = #lines
 
-  lines[#lines + 1] = ""
-  lines[#lines + 1] = "  " .. SEPARATOR
-  lines[#lines + 1] = ""
-  lines[#lines + 1] = "  Type a number to start, or q to quit"
-  lines[#lines + 1] = ""
+  lines[#lines + 1] = bordered("")
 
+  -- Bottom separator inside box
+  local bottom_sep_row = #lines
+  lines[#lines + 1] = inner_separator()
+
+  -- Hint
+  local hint_row = #lines
+  lines[#lines + 1] = bordered("Type a number to start, or q to quit")
+
+  lines[#lines + 1] = bordered("")
+
+  -- Bottom border
+  lines[#lines + 1] = border_bottom()
+
+  -- Write to buffer
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
 
-  -- Apply highlights
-  highlight.apply_line_highlight(buf, 1, 2, "VimTeacherTitle")
-  highlight.apply_line_highlight(buf, 3, 4, "VimTeacherStatsHeader")
-  highlight.apply_line_highlight(buf, 5, 6, "VimTeacherHint")
-  highlight.apply_line_highlight(buf, 6, 7, "VimTeacherSeparator")
+  -- ── Apply highlights ──
 
-  -- Highlight menu item numbers
-  local menu_start = 7
-  for i = 1, #lessons do
-    highlight.apply_line_highlight(buf, menu_start + i - 1, menu_start + i, "VimTeacherMenuItem")
+  -- Top and bottom border lines
+  highlight.apply_line_highlight(buf, 0, 1, "VimTeacherBorder")
+  highlight.apply_line_highlight(buf, #lines - 1, #lines, "VimTeacherBorder")
+
+  -- Border │ characters on all intermediate lines
+  for row = 1, #lines - 2 do
+    local line_text = lines[row + 1]
+    if line_text then
+      local byte_len = #line_text
+      -- Left │ (3 bytes UTF-8)
+      highlight.apply_col_highlight(buf, row, 0, 3, "VimTeacherBorder")
+      -- Right │ (last 3 bytes)
+      if byte_len >= 3 then
+        highlight.apply_col_highlight(buf, row, byte_len - 3, byte_len, "VimTeacherBorder")
+      end
+    end
   end
 
-  -- Bottom hint
-  local hint_line = #lines - 2
-  highlight.apply_line_highlight(buf, hint_line, hint_line + 1, "VimTeacherHint")
+  -- Logo gradient: each line gets a different color
+  local logo_groups = {
+    "VimTeacherLogo1", "VimTeacherLogo2", "VimTeacherLogo3",
+    "VimTeacherLogo4", "VimTeacherLogo5",
+  }
+  for i = 1, #LOGO do
+    local row = logo_start + (i - 1)
+    -- Apply gradient to the content area (between the │ borders)
+    local line_text = lines[row + 1]
+    if line_text then
+      highlight.apply_col_highlight(buf, row, 3, #line_text - 3, logo_groups[i])
+    end
+  end
+
+  -- Subtitle: dim ┈ chars with purple "Select a Topic" overlay
+  highlight.apply_line_highlight(buf, subtitle_row, subtitle_row + 1, "VimTeacherMenuSep")
+  do
+    local st_line = lines[subtitle_row + 1]
+    if st_line then
+      local st_start, st_end = st_line:find("Select a Topic")
+      if st_start then
+        highlight.apply_col_highlight(buf, subtitle_row, st_start - 1, st_end, "VimTeacherSubtitle")
+      end
+    end
+  end
+
+  -- Column header
+  highlight.apply_line_highlight(buf, header_row, header_row + 1, "VimTeacherStatsHeader")
+
+  -- Inner separators
+  highlight.apply_line_highlight(buf, header_sep_row, header_sep_row + 1, "VimTeacherMenuSep")
+  highlight.apply_line_highlight(buf, bottom_sep_row, bottom_sep_row + 1, "VimTeacherMenuSep")
+
+  -- Menu items: base text color, then overlay number and stats
+  for idx = 0, menu_end - menu_start - 1 do
+    local row = menu_start + idx
+    highlight.apply_line_highlight(buf, row, row + 1, "VimTeacherMenuText")
+
+    local item_line = lines[row + 1]
+    if item_line then
+      -- Number overlay (e.g. "1.")
+      local num_start, num_end = item_line:find("%d+%.")
+      if num_start then
+        highlight.apply_col_highlight(buf, row, num_start - 1, num_end, "VimTeacherMenuNumber")
+      end
+
+      -- Stat value overlays (time, percentage, dashes)
+      for _, pat in ipairs({ "%d+%.%d+s", "%d+%%", "%-%-" }) do
+        local s, e = item_line:find(pat, 40)
+        while s do
+          highlight.apply_col_highlight(buf, row, s - 1, e, "VimTeacherMenuStat")
+          s, e = item_line:find(pat, e + 1)
+        end
+      end
+    end
+  end
+
+  -- Hint line
+  highlight.apply_line_highlight(buf, hint_row, hint_row + 1, "VimTeacherHint")
 end
 
 --- Render the lesson layout with description, progress bar, and code snippet.
