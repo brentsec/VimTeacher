@@ -388,6 +388,7 @@ function M.render(buf, opts)
   -- Store layout metadata
   layout_meta.snippet_offset = snippet_offset
   layout_meta.snippet_end = snippet_end
+  layout_meta.progress_line = progress_line
 
   -- Apply highlights (layout namespace)
   vim.api.nvim_buf_clear_namespace(buf, highlight.ns_layout, 0, -1)
@@ -593,6 +594,32 @@ end
 --- @return number snippet_end 0-indexed last line of snippet
 function M.get_snippet_bounds()
   return layout_meta.snippet_offset, layout_meta.snippet_end
+end
+
+--- Update the elapsed timer display on the progress bar line.
+--- @param buf number Buffer handle
+--- @param elapsed_secs number Elapsed time in seconds
+function M.update_timer(buf, elapsed_secs)
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
+  if not layout_meta.progress_line then return end
+
+  local mins = math.floor(elapsed_secs / 60)
+  local secs = math.floor(elapsed_secs % 60)
+  local text = string.format("  %02d:%02d", mins, secs)
+
+  vim.api.nvim_buf_clear_namespace(buf, highlight.ns_timer, 0, -1)
+  vim.api.nvim_buf_set_extmark(buf, highlight.ns_timer, layout_meta.progress_line, 0, {
+    virt_text = { { text, "VimTeacherTimer" } },
+    virt_text_pos = "eol",
+  })
+end
+
+--- Clear the elapsed timer display.
+--- @param buf number Buffer handle
+function M.clear_timer(buf)
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
+  vim.api.nvim_buf_clear_namespace(buf, highlight.ns_timer, 0, -1)
+  layout_meta.progress_line = nil
 end
 
 return M

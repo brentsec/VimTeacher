@@ -40,11 +40,18 @@ local state = {
   dwell_pending = false,   -- true while a dwell timer is running
   original_snippet = nil,  -- stored for restore on failed insert edit
   total_buf_lines = nil,   -- buffer line count at render time (for o/O restore)
+  elapsed_timer = nil,        -- repeating vim timer ID for display
+  challenge_load_time = nil,  -- hrtime when challenge was loaded
 }
 
 -- ─── Cleanup ───────────────────────────────────────────────────────────────
 
 local function cleanup()
+  -- Stop elapsed display timer
+  if state.elapsed_timer then
+    vim.fn.timer_stop(state.elapsed_timer)
+  end
+
   if state.augroup then
     pcall(vim.api.nvim_del_augroup_by_id, state.augroup)
     state.augroup = nil
@@ -71,6 +78,8 @@ local function cleanup()
   state.dwell_pending = false
   state.original_snippet = nil
   state.total_buf_lines = nil
+  state.elapsed_timer = nil
+  state.challenge_load_time = nil
 end
 
 -- ─── Key blocking ──────────────────────────────────────────────────────────
@@ -383,10 +392,40 @@ clear_info_keymaps = function()
   pcall(vim.keymap.del, "n", "q", { buffer = buf })
 end
 
+-- ─── Elapsed timer display ────────────────────────────────────────────────
+
+local function stop_elapsed_timer()
+  if state.elapsed_timer then
+    vim.fn.timer_stop(state.elapsed_timer)
+    state.elapsed_timer = nil
+  end
+end
+
+local function update_timer_display()
+  if not state.challenge_load_time then return end
+  if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then return end
+  local elapsed = (vim.loop.hrtime() - state.challenge_load_time) / 1e9
+  buffer.update_timer(state.buf, elapsed)
+end
+
+local function start_elapsed_timer()
+  stop_elapsed_timer()
+  state.challenge_load_time = vim.loop.hrtime()
+  -- Show initial 00:00
+  buffer.update_timer(state.buf, 0)
+  -- Update every second
+  state.elapsed_timer = vim.fn.timer_start(1000, function()
+    vim.schedule(update_timer_display)
+  end, { ["repeat"] = -1 })
+end
+
 -- ─── Playing mode ──────────────────────────────────────────────────────────
 
 local function on_target_reached()
-  -- Stop timer
+  -- Stop elapsed display timer
+  stop_elapsed_timer()
+
+  -- Stop scoring timer
   local elapsed = 0
   if state.timer_start then
     elapsed = vim.loop.hrtime() - state.timer_start
@@ -678,6 +717,9 @@ load_challenge = function()
     state.original_snippet = vim.deepcopy(challenge.snippet_lines)
     vim.bo[state.buf].modifiable = true
   end
+
+  -- Start elapsed timer display
+  start_elapsed_timer()
 end
 
 setup_autocmds = function()

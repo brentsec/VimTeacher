@@ -1,16 +1,18 @@
 -- vimteacher/highlight.lua
 -- Highlight group definitions and extmark management
--- Uses two namespaces: layout (decorations) and target (game element)
+-- Uses three namespaces: layout (decorations), target (game element), timer (elapsed clock)
 
 local M = {}
 
 M.ns_layout = nil
 M.ns_target = nil
+M.ns_timer = nil
 
 --- Initialize highlight groups and namespaces.
 function M.setup()
   M.ns_layout = vim.api.nvim_create_namespace("vimteacher_layout")
   M.ns_target = vim.api.nvim_create_namespace("vimteacher_target")
+  M.ns_timer = vim.api.nvim_create_namespace("vimteacher_timer")
 
   -- Title: blue bold
   vim.api.nvim_set_hl(0, "VimTeacherTitle", {
@@ -40,6 +42,12 @@ function M.setup()
   -- Progress bar: green text
   vim.api.nvim_set_hl(0, "VimTeacherProgress", {
     fg = "#98C379",
+  })
+
+  -- Elapsed timer: cyan bold
+  vim.api.nvim_set_hl(0, "VimTeacherTimer", {
+    fg = "#56B6C2",
+    bold = true,
   })
 
   -- Hint text: gray italic
