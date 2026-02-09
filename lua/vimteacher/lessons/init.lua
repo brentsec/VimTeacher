@@ -17,6 +17,36 @@ M.sections = {
     title = "Essential Motions",
     lessons = { "upper_word_movement", "line_ends", "find_char", "till_char" },
   },
+  {
+    title = "Basic Operators",
+    lessons = { "intro_operators", "delete_words", "change_words",
+                "delete_lines", "delete_multiple_lines", "copy_paste_lines" },
+  },
+  {
+    title = "Advanced Vertical Movement",
+    lessons = { "relative_line_jumps", "absolute_line_jumps",
+                "paragraph_jumps", "window_scrolls" },
+  },
+  {
+    title = "Search",
+    lessons = { "search", "repeat_search", "quick_word_search", "search_review" },
+  },
+  {
+    title = "Text Objects: Brackets",
+    lessons = { "intro_text_objects", "delete_inside_brackets",
+                "delete_around_brackets", "change_inside_brackets",
+                "change_around_brackets" },
+  },
+  {
+    title = "Text Objects: Quotes, Words & Paragraphs",
+    lessons = { "quote_text_objects", "word_text_objects",
+                "paragraph_text_objects", "text_objects_mega_review" },
+  },
+  {
+    title = "Visual Mode",
+    lessons = { "intro_visual_mode", "visual_mode_operators",
+                "visual_line_mode", "switch_selection_ends" },
+  },
 }
 
 -- Derived flat order (for navigation: get_next, get_prev, get_all)
