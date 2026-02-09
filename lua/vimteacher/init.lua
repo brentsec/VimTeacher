@@ -12,7 +12,11 @@ local M = {}
 
 -- Forward declarations for local functions referenced before definition
 local load_challenge, setup_autocmds, start_lesson
-local clear_stats_keymaps, clear_completion_keymaps
+local clear_stats_keymaps, clear_completion_keymaps, clear_info_keymaps
+local clear_playing_keymaps
+
+-- Menu input timer (module-level for cleanup access)
+local menu_input_timer = nil
 
 -- Session state (singleton — one session at a time)
 local state = {
@@ -35,6 +39,7 @@ local state = {
   session_challenges = {}, -- list of {time, accuracy_pct, moves, optimal} per challenge
   dwell_pending = false,   -- true while a dwell timer is running
   original_snippet = nil,  -- stored for restore on failed insert edit
+  total_buf_lines = nil,   -- buffer line count at render time (for o/O restore)
 }
 
 -- ─── Cleanup ───────────────────────────────────────────────────────────────
@@ -65,6 +70,7 @@ local function cleanup()
   state.session_challenges = {}
   state.dwell_pending = false
   state.original_snippet = nil
+  state.total_buf_lines = nil
 end
 
 -- ─── Key blocking ──────────────────────────────────────────────────────────
@@ -82,7 +88,7 @@ local function block_insert_keys()
   end
 
   -- Block text-modifying keys silently
-  local modify_keys = { "d", "dd", "D", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
+  local modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
   for _, key in ipairs(modify_keys) do
     vim.keymap.set("n", key, "<Nop>", opts)
   end
@@ -107,34 +113,52 @@ local function block_insert_keys()
 end
 
 --- Block keys for insert-type lessons: allows specified insert keys, blocks the rest.
---- @param allowed string[] Keys to leave unblocked (e.g., {"i", "a"})
-local function block_keys_for_insert_lesson(allowed)
+--- @param allowed string[] Insert keys to leave unblocked (e.g., {"i", "a"})
+--- @param allowed_modify string[]|nil Modify keys to leave unblocked (e.g., {"x", "r"})
+local function block_keys_for_insert_lesson(allowed, allowed_modify)
   local buf = state.buf
   local opts = { buffer = buf, noremap = true, silent = true }
 
-  -- Build lookup of allowed keys
+  -- Build lookup of allowed insert keys
   local allowed_set = {}
   for _, key in ipairs(allowed) do
     allowed_set[key] = true
   end
+
+  -- Build lookup of allowed modify keys
+  local modify_allowed_set = {}
+  for _, key in ipairs(allowed_modify or {}) do
+    modify_allowed_set[key] = true
+  end
+
+  -- Build notification message with all allowed keys
+  local all_allowed = {}
+  for _, key in ipairs(allowed) do all_allowed[#all_allowed + 1] = key end
+  for _, key in ipairs(allowed_modify or {}) do all_allowed[#all_allowed + 1] = key end
+  local hint_msg = "VimTeacher: Use " .. table.concat(all_allowed, ", ") .. " for this lesson"
 
   -- Block insert-mode entry keys that are NOT allowed
   local insert_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" }
   for _, key in ipairs(insert_keys) do
     if not allowed_set[key] then
       vim.keymap.set("n", key, function()
-        vim.notify("VimTeacher: Use " .. table.concat(allowed, " or ") .. " for this lesson", vim.log.levels.WARN)
+        vim.notify(hint_msg, vim.log.levels.WARN)
       end, opts)
     else
-      -- Remove any previous blocking keymap so the key works natively
-      pcall(vim.keymap.del, "n", key, { buffer = buf })
+      -- Map allowed key to its native command (noremap) to override global plugin keymaps
+      vim.keymap.set("n", key, key, opts)
     end
   end
 
-  -- Block text-modifying keys silently
-  local modify_keys = { "d", "dd", "D", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
+  -- Block text-modifying keys that are NOT in allowed_modify
+  local modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
   for _, key in ipairs(modify_keys) do
-    vim.keymap.set("n", key, "<Nop>", opts)
+    if modify_allowed_set[key] then
+      -- Map allowed key to its native command (noremap) to override global plugin keymaps
+      vim.keymap.set("n", key, key, opts)
+    else
+      vim.keymap.set("n", key, "<Nop>", opts)
+    end
   end
 
   -- Block visual mode
@@ -161,28 +185,86 @@ end
 local function setup_menu_keymaps()
   local buf = state.buf
   local opts = { buffer = buf, noremap = true, silent = true }
-
-  -- Number keys for topic selection
   local all_lessons = lessons.get_all()
-  for i, lesson_info in ipairs(all_lessons) do
-    if i <= 9 then -- support up to 9 topics
-      vim.keymap.set("n", tostring(i), function()
-        start_lesson(lesson_info.name)
-      end, opts)
+  local total = #all_lessons
+  local input_buf = ""
+
+  local function flush_input()
+    if menu_input_timer then
+      vim.fn.timer_stop(menu_input_timer)
+      menu_input_timer = nil
+    end
+    local num = tonumber(input_buf)
+    input_buf = ""
+    if num and num >= 1 and num <= total then
+      start_lesson(all_lessons[num].name)
     end
   end
 
+  local function handle_digit(d)
+    if menu_input_timer then
+      vim.fn.timer_stop(menu_input_timer)
+      menu_input_timer = nil
+    end
+    input_buf = input_buf .. tostring(d)
+    local num = tonumber(input_buf)
+
+    -- Check if appending any digit 0-9 could yield a valid lesson number
+    local could_extend = false
+    if num then
+      for ext = num * 10, num * 10 + 9 do
+        if ext >= 1 and ext <= total then
+          could_extend = true
+          break
+        end
+      end
+    end
+
+    if not could_extend then
+      flush_input()
+    else
+      menu_input_timer = vim.fn.timer_start(800, function()
+        vim.schedule(function()
+          flush_input()
+        end)
+      end)
+    end
+  end
+
+  -- Map digit keys 1-9
+  for d = 1, 9 do
+    vim.keymap.set("n", tostring(d), function()
+      handle_digit(d)
+    end, opts)
+  end
+
+  -- Map 0 only as a continuation digit (ignored when input_buf is empty)
+  vim.keymap.set("n", "0", function()
+    if input_buf ~= "" then
+      handle_digit(0)
+    end
+  end, opts)
+
   -- Quit from menu
   vim.keymap.set("n", "q", function()
+    if menu_input_timer then
+      vim.fn.timer_stop(menu_input_timer)
+      menu_input_timer = nil
+    end
+    input_buf = ""
     cleanup()
   end, opts)
 end
 
 local function clear_menu_keymaps()
+  if menu_input_timer then
+    vim.fn.timer_stop(menu_input_timer)
+    menu_input_timer = nil
+  end
   local buf = state.buf
   if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
   local opts = { buffer = buf }
-  for i = 1, 9 do
+  for i = 0, 9 do
     pcall(vim.keymap.del, "n", tostring(i), opts)
   end
   pcall(vim.keymap.del, "n", "q", opts)
@@ -191,6 +273,8 @@ end
 local function show_menu()
   state.mode = "menu"
   state.target = nil
+  clear_info_keymaps()
+  clear_playing_keymaps()
 
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     state.buf, state.win = buffer.create()
@@ -199,8 +283,8 @@ local function show_menu()
   end
 
   -- Clear any playing keymaps
-  local all_lessons = lessons.get_all()
-  buffer.render_menu(state.buf, all_lessons, state.all_stats)
+  local all_sections = lessons.get_sections()
+  buffer.render_menu(state.buf, all_sections, state.all_stats)
   setup_menu_keymaps()
 end
 
@@ -220,6 +304,29 @@ clear_stats_keymaps = function()
   local buf = state.buf
   if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
   pcall(vim.keymap.del, "n", "<Space>", { buffer = buf })
+end
+
+-- ─── Playing mode keymaps (menu return + restart) ─────────────────────────
+
+local function setup_playing_keymaps()
+  local buf = state.buf
+  local opts = { buffer = buf, noremap = true, silent = true }
+
+  vim.keymap.set("n", "q", function()
+    show_menu()
+  end, opts)
+
+  vim.keymap.set("n", "Q", function()
+    start_lesson(state.lesson_name)
+  end, opts)
+end
+
+clear_playing_keymaps = function()
+  local buf = state.buf
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
+  local opts = { buffer = buf }
+  pcall(vim.keymap.del, "n", "q", opts)
+  pcall(vim.keymap.del, "n", "Q", opts)
 end
 
 -- ─── Completion mode ───────────────────────────────────────────────────────
@@ -267,6 +374,13 @@ clear_completion_keymaps = function()
   for _, key in ipairs({ "n", "p", "r", "m", "q" }) do
     pcall(vim.keymap.del, "n", key, opts)
   end
+end
+
+clear_info_keymaps = function()
+  local buf = state.buf
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
+  pcall(vim.keymap.del, "n", "<CR>", { buffer = buf })
+  pcall(vim.keymap.del, "n", "q", { buffer = buf })
 end
 
 -- ─── Playing mode ──────────────────────────────────────────────────────────
@@ -342,13 +456,11 @@ local function on_insert_leave()
   if not state.current_challenge or not state.current_challenge.expected_lines then return end
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then return end
 
-  -- Read current snippet zone from buffer
-  local actual = vim.api.nvim_buf_get_lines(
-    state.buf, state.snippet_offset, state.snippet_end + 1, false
-  )
-
-  -- Compare to expected
+  -- Read current snippet zone from buffer (use expected length for o/O compatibility)
   local expected = state.current_challenge.expected_lines
+  local actual = vim.api.nvim_buf_get_lines(
+    state.buf, state.snippet_offset, state.snippet_offset + #expected, false
+  )
   local match = #actual == #expected
   if match then
     for i = 1, #expected do
@@ -361,8 +473,10 @@ local function on_insert_leave()
   else
     -- Restore original snippet and let user try again
     vim.bo[state.buf].modifiable = true
+    local extra = vim.api.nvim_buf_line_count(state.buf) - (state.total_buf_lines or 0)
+    if extra < 0 then extra = 0 end
     vim.api.nvim_buf_set_lines(
-      state.buf, state.snippet_offset, state.snippet_end + 1, false,
+      state.buf, state.snippet_offset, state.snippet_end + extra + 1, false,
       state.original_snippet
     )
     -- Re-place target highlight
@@ -374,7 +488,66 @@ local function on_insert_leave()
   end
 end
 
+local function on_text_changed()
+  if state.mode ~= "playing" then return end
+  if not state.lesson or state.lesson.type ~= "insert" then return end
+  -- Only process for lessons with Normal-mode modify keys (e.g., small_edits with x, r)
+  if not state.lesson.allowed_modify_keys then return end
+  if not state.current_challenge or not state.current_challenge.expected_lines then return end
+  if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then return end
+
+  local expected = state.current_challenge.expected_lines
+  local actual = vim.api.nvim_buf_get_lines(
+    state.buf, state.snippet_offset, state.snippet_offset + #expected, false
+  )
+
+  local match = #actual == #expected
+  if match then
+    for i = 1, #expected do
+      if actual[i] ~= expected[i] then match = false; break end
+    end
+  end
+
+  if match then
+    on_target_reached()
+    return
+  end
+
+  -- Check if text is already the original (avoid double-restore from InsertLeave + TextChanged)
+  local orig = state.original_snippet
+  if orig then
+    local is_orig = #actual == #orig
+    if is_orig then
+      for i = 1, #orig do
+        if actual[i] ~= orig[i] then is_orig = false; break end
+      end
+    end
+    if is_orig then return end
+  end
+
+  -- Restore original snippet
+  vim.bo[state.buf].modifiable = true
+  local extra = vim.api.nvim_buf_line_count(state.buf) - (state.total_buf_lines or 0)
+  if extra < 0 then extra = 0 end
+  vim.api.nvim_buf_set_lines(
+    state.buf, state.snippet_offset, state.snippet_end + extra + 1, false,
+    state.original_snippet
+  )
+  -- Re-place target highlight
+  if state.target then
+    local target_buf_row = state.target.row + state.snippet_offset
+    highlight.place_target(state.buf, target_buf_row, state.target.col)
+  end
+  vim.notify("Not quite — try again!", vim.log.levels.INFO)
+end
+
 local function on_cursor_moved()
+  -- Info lessons: constrain cursor to snippet zone only (no move counting)
+  if state.mode == "info" then
+    validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
+    return
+  end
+
   -- Only active in playing mode
   if state.mode ~= "playing" then return end
   if not state.target then return end
@@ -455,16 +628,38 @@ load_challenge = function()
     max_progress = state.max_challenges,
     snippet_lines = challenge.snippet_lines,
     hint_lines = state.lesson.hint_lines,
-    goal = challenge.key and {
-      action = challenge.key == "i" and "insert" or "append",
-      char = challenge.char,
-      key = challenge.key,
-      preposition = challenge.key == "i" and "before cursor" or "after cursor",
-    } or nil,
+    goal = (function()
+      if not challenge.key then return nil end
+      local k = challenge.key
+      local g = { key = k, char = challenge.char }
+      if k == "i" then
+        g.action, g.preposition = "insert", "before cursor"
+      elseif k == "a" then
+        g.action, g.preposition = "append", "after cursor"
+      elseif k == "I" then
+        g.action, g.preposition = "insert", "at line start"
+      elseif k == "A" then
+        g.action, g.preposition = "append", "at line end"
+      elseif k == "o" then
+        g.action, g.preposition = "open below", "and type"
+      elseif k == "O" then
+        g.action, g.preposition = "open above", "and type"
+      elseif k == "cl" then
+        g.action, g.preposition = "change letter", "under cursor"
+      elseif k == "x" then
+        g.action, g.preposition = "delete", "under cursor"
+      elseif k == "r" then
+        g.action, g.preposition = "replace with", "under cursor"
+      end
+      return g
+    end)(),
   })
 
   -- Get snippet boundaries
   state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
+
+  -- Store total buffer line count (needed for o/O restore when lines are added)
+  state.total_buf_lines = vim.api.nvim_buf_line_count(state.buf)
 
   -- Store target
   state.target = challenge.target
@@ -500,6 +695,12 @@ setup_autocmds = function()
     callback = on_insert_leave,
   })
 
+  vim.api.nvim_create_autocmd("TextChanged", {
+    group = state.augroup,
+    buffer = state.buf,
+    callback = on_text_changed,
+  })
+
   vim.api.nvim_create_autocmd("BufWipeout", {
     group = state.augroup,
     buffer = state.buf,
@@ -515,6 +716,8 @@ start_lesson = function(lesson_name)
     clear_menu_keymaps()
     clear_stats_keymaps()
     clear_completion_keymaps()
+    clear_info_keymaps()
+    clear_playing_keymaps()
   end
 
   local lesson = lessons.get_lesson(lesson_name)
@@ -543,13 +746,46 @@ start_lesson = function(lesson_name)
     setup_autocmds()
   end
 
+  -- Info lessons: display description + sandbox, no challenges
+  if lesson.type == "info" then
+    state.mode = "info"
+    block_insert_keys()
+    -- Unblock 'i' for sandbox practice
+    pcall(vim.keymap.del, "n", "i", { buffer = state.buf })
+    -- Render layout (no progress bar)
+    buffer.render(state.buf, {
+      title = lesson.title,
+      description = lesson.description,
+      snippet_lines = lesson.sandbox_snippet,
+      hint_lines = lesson.hint_lines,
+    })
+    state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
+    vim.bo[state.buf].modifiable = true
+    vim.api.nvim_win_set_cursor(state.win, { state.snippet_offset + 1, 0 })
+    -- Navigation keymaps
+    local opts = { buffer = state.buf, noremap = true, silent = true }
+    vim.keymap.set("n", "<CR>", function()
+      local next_name = lessons.get_next(lesson_name)
+      if next_name then start_lesson(next_name) end
+    end, opts)
+    vim.keymap.set("n", "q", function()
+      show_menu()
+    end, opts)
+    return
+  end
+
   -- Apply appropriate key blocking for this lesson type
   -- (always re-apply; keymaps may be stale from a previous lesson or menu)
   if lesson.type == "insert" then
-    block_keys_for_insert_lesson(lesson.allowed_keys or {})
+    block_keys_for_insert_lesson(lesson.allowed_keys or {}, lesson.allowed_modify_keys)
+    -- Ensure autoindent for o/O lessons (new lines inherit current line's indent)
+    vim.bo[state.buf].autoindent = true
   else
     block_insert_keys()
   end
+
+  -- Set up navigation keymaps (q=menu, Q=restart) for playing mode
+  setup_playing_keymaps()
 
   -- Load first challenge
   load_challenge()

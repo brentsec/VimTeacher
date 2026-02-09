@@ -51,6 +51,11 @@ To jump directly into a specific lesson:
 - Challenges auto-progress after each completion
 - Complete 10 challenges to finish the lesson and view your session stats
 
+| Key | Action |
+|-----|--------|
+| `q` | Return to topic menu |
+| `Q` | Restart current lesson (resets progress and stats) |
+
 ### After Completing a Lesson
 
 | Key | Action |
@@ -76,6 +81,10 @@ The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handle
 ### Non-Opinionated
 
 The tutorial teaches Vim concepts without prescribing how users should physically interact with their keyboard. No finger placement suggestions, hand position guidance, or ergonomic opinions.
+
+### LazyVim-Compatible Keybindings
+
+All lessons must use keybindings compatible with the standard LazyVim distribution. When a vanilla Vim key conflicts with a LazyVim default (e.g., `s` is remapped to flash.nvim), use the LazyVim-equivalent motion instead (e.g., `cl` for substitute-character). Reference: https://www.lazyvim.org/keymaps
 
 ## Adding New Lessons
 

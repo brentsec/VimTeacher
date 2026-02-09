@@ -15,9 +15,17 @@ TESTS=(
   "test_snippets.lua"
   "test_validate.lua"
   "test_stats.lua"
+  "test_intro_modes.lua"
   "test_basic_movement.lua"
   "test_word_movement.lua"
   "test_insert_mode.lua"
+  "test_line_inserts.lua"
+  "test_open_lines.lua"
+  "test_small_edits.lua"
+  "test_upper_word_movement.lua"
+  "test_line_ends.lua"
+  "test_find_char.lua"
+  "test_till_char.lua"
 )
 
 FAILED=0

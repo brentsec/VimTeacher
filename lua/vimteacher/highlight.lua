@@ -93,6 +93,9 @@ function M.setup()
   -- Inner separator: dim purple
   vim.api.nvim_set_hl(0, "VimTeacherMenuSep", { fg = "#5C4F7C" })
 
+  -- Menu section header: teal/cyan bold
+  vim.api.nvim_set_hl(0, "VimTeacherMenuSection", { fg = "#56B6C2", bold = true })
+
   -- Insert mode hint: gold bold (shows what to type)
   vim.api.nvim_set_hl(0, "VimTeacherInsertHint", { fg = "#E5C07B", bold = true })
 

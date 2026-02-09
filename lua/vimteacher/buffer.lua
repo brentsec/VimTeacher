@@ -107,9 +107,9 @@ end
 
 --- Render the topic selection menu.
 --- @param buf number Buffer handle
---- @param lessons table Ordered list of {name, title} tables
+--- @param sections table Ordered list of {title, lessons={{name, title}}} section tables
 --- @param all_stats table Stats data keyed by lesson name
-function M.render_menu(buf, lessons, all_stats)
+function M.render_menu(buf, sections, all_stats)
   local lines = {}
 
   -- Top border
@@ -140,23 +140,38 @@ function M.render_menu(buf, lessons, all_stats)
   local header_sep_row = #lines
   lines[#lines + 1] = inner_separator()
 
-  -- Menu items
+  -- Menu items with section headers
   local menu_start = #lines
-  for i, lesson in ipairs(lessons) do
-    local ls = all_stats[lesson.name]
-    local best_time = "  --"
-    local best_acc = "  --"
-    if ls then
-      if ls.best_time then
-        best_time = string.format("%.1fs", ls.best_time)
-      end
-      if ls.best_accuracy and ls.best_accuracy > 0 then
-        best_acc = string.format("%d%%", ls.best_accuracy)
-      end
+  local lesson_num = 0
+  local section_rows = {}
+
+  for sec_idx, section in ipairs(sections) do
+    -- Blank line before section (except first)
+    if sec_idx > 1 then
+      lines[#lines + 1] = bordered("")
     end
-    lines[#lines + 1] = bordered(string.format(
-      "  %-4s%-35s%-12s%s", i .. ".", lesson.title, best_time, best_acc
-    ))
+    -- Section header
+    section_rows[#section_rows + 1] = #lines
+    lines[#lines + 1] = bordered("  " .. section.title)
+
+    -- Lessons in this section
+    for _, lesson in ipairs(section.lessons) do
+      lesson_num = lesson_num + 1
+      local ls = all_stats[lesson.name]
+      local best_time = "  --"
+      local best_acc = "  --"
+      if ls then
+        if ls.best_time then
+          best_time = string.format("%.1fs", ls.best_time)
+        end
+        if ls.best_accuracy and ls.best_accuracy > 0 then
+          best_acc = string.format("%d%%", ls.best_accuracy)
+        end
+      end
+      lines[#lines + 1] = bordered(string.format(
+        "  %-4s%-35s%-12s%s", lesson_num .. ".", lesson.title, best_time, best_acc
+      ))
+    end
   end
   local menu_end = #lines
 
@@ -257,6 +272,11 @@ function M.render_menu(buf, lessons, all_stats)
     end
   end
 
+  -- Section headers
+  for _, row in ipairs(section_rows) do
+    highlight.apply_line_highlight(buf, row, row + 1, "VimTeacherMenuSection")
+  end
+
   -- Hint line
   highlight.apply_line_highlight(buf, hint_row, hint_row + 1, "VimTeacherHint")
 end
@@ -285,14 +305,19 @@ function M.render(buf, opts)
   local desc_end = #lines
   lines[#lines + 1] = ""
 
-  -- Separator + Progress + Separator
-  lines[#lines + 1] = "  " .. SEPARATOR
-  local progress_line = #lines
-  local completed = opts.progress - 1
-  local remaining = opts.max_progress - completed
-  local bar = string.rep("#", completed) .. string.rep(".", remaining)
-  lines[#lines + 1] = string.format("  Challenge %d/%d   [%s]", opts.progress, opts.max_progress, bar)
-  lines[#lines + 1] = "  " .. SEPARATOR
+  -- Separator + Progress + Separator (omitted for info lessons)
+  local progress_line = nil
+  if opts.progress then
+    lines[#lines + 1] = "  " .. SEPARATOR
+    progress_line = #lines
+    local completed = opts.progress - 1
+    local remaining = opts.max_progress - completed
+    local bar = string.rep("#", completed) .. string.rep(".", remaining)
+    lines[#lines + 1] = string.format("  Challenge %d/%d   [%s]", opts.progress, opts.max_progress, bar)
+    lines[#lines + 1] = "  " .. SEPARATOR
+  else
+    lines[#lines + 1] = "  " .. SEPARATOR
+  end
 
   -- Goal bar (insert lessons only)
   local goal_row = nil
@@ -349,6 +374,11 @@ function M.render(buf, opts)
   for _, line in ipairs(opts.hint_lines) do
     lines[#lines + 1] = "  " .. line
   end
+  -- Navigation hints (shown during challenges, not info lessons)
+  if opts.progress then
+    lines[#lines + 1] = "  [q] Menu  [Q] Restart lesson"
+  end
+  local hint_end = #lines
 
   -- Write to buffer
   vim.bo[buf].modifiable = true
@@ -365,10 +395,14 @@ function M.render(buf, opts)
   highlight.apply_line_highlight(buf, 0, 1, "VimTeacherTitle")
   highlight.apply_line_highlight(buf, desc_start, desc_end, "VimTeacherHint")
 
-  -- Separators
-  highlight.apply_line_highlight(buf, snippet_offset - 3, snippet_offset - 2, "VimTeacherSeparator")
-  highlight.apply_line_highlight(buf, progress_line, progress_line + 1, "VimTeacherProgress")
-  highlight.apply_line_highlight(buf, snippet_offset - 1, snippet_offset, "VimTeacherSeparator")
+  -- Separators + Progress
+  if progress_line then
+    highlight.apply_line_highlight(buf, snippet_offset - 3, snippet_offset - 2, "VimTeacherSeparator")
+    highlight.apply_line_highlight(buf, progress_line, progress_line + 1, "VimTeacherProgress")
+    highlight.apply_line_highlight(buf, snippet_offset - 1, snippet_offset, "VimTeacherSeparator")
+  else
+    highlight.apply_line_highlight(buf, snippet_offset - 2, snippet_offset - 1, "VimTeacherSeparator")
+  end
 
   -- Goal bar highlights
   if goal_row then
@@ -379,7 +413,7 @@ function M.render(buf, opts)
 
   -- Bottom separator + hints
   highlight.apply_line_highlight(buf, snippet_end + 2, snippet_end + 3, "VimTeacherSeparator")
-  highlight.apply_line_highlight(buf, hint_start, hint_start + #opts.hint_lines, "VimTeacherHint")
+  highlight.apply_line_highlight(buf, hint_start, hint_end, "VimTeacherHint")
 end
 
 --- Render the stats overlay (replaces snippet zone content between challenges).

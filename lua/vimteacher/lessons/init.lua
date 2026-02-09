@@ -3,12 +3,29 @@
 
 local M = {}
 
--- Ordered list of lesson module names (add new lessons here)
-M.order = {
-  "basic_movement",
-  "word_movement",
-  "insert_mode",
+-- Ordered sections with their lessons (add new sections/lessons here)
+M.sections = {
+  {
+    title = "Getting Started",
+    lessons = { "intro_modes", "basic_movement", "word_movement", "insert_mode" },
+  },
+  {
+    title = "Advanced Inserts",
+    lessons = { "line_inserts", "open_lines", "small_edits" },
+  },
+  {
+    title = "Essential Motions",
+    lessons = { "upper_word_movement", "line_ends", "find_char", "till_char" },
+  },
 }
+
+-- Derived flat order (for navigation: get_next, get_prev, get_all)
+M.order = {}
+for _, section in ipairs(M.sections) do
+  for _, name in ipairs(section.lessons) do
+    M.order[#M.order + 1] = name
+  end
+end
 
 -- Cache of loaded lesson modules
 local loaded = {}
@@ -92,6 +109,25 @@ function M.get_all()
     local mod = M.get_lesson(name)
     if mod then
       result[#result + 1] = { name = name, title = mod.title }
+    end
+  end
+  return result
+end
+
+--- Get all sections with loaded lessons for menu rendering.
+--- @return table[] List of {title=string, lessons={{name, title}}}
+function M.get_sections()
+  local result = {}
+  for _, section in ipairs(M.sections) do
+    local sec = { title = section.title, lessons = {} }
+    for _, name in ipairs(section.lessons) do
+      local mod = M.get_lesson(name)
+      if mod then
+        sec.lessons[#sec.lessons + 1] = { name = name, title = mod.title }
+      end
+    end
+    if #sec.lessons > 0 then
+      result[#result + 1] = sec
     end
   end
   return result
