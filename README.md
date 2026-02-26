@@ -66,9 +66,62 @@ To jump directly into a specific lesson:
 | `m` | Return to topic menu |
 | `q` | Quit |
 
-## Available Topics
+## Available Topics (37 lessons)
 
-1. **Basic Movement** (h, j, k, l) — Cursor movement using home row keys
+### Getting Started
+1. Intro to Modes
+2. Basic Movement: h, j, k, l
+3. Moving by Words: w, e, b
+4. Insert Mode: i, a
+
+### Advanced Inserts
+5. Line Inserts: I, A
+6. Open New Lines: o, O
+7. Small Edits: cl, x, r
+
+### Essential Motions
+8. Moving by WORDs: W, E, B
+9. Line Boundaries: 0, $, _
+10. Find Character: f, F, ;
+11. Till Character: t, T, ;
+
+### Basic Operators
+12. Intro to Operators
+13. Delete Words: dw, dW
+14. Change Words: cw, cW
+15. Delete Lines: dd, D
+16. Multi-Line Delete: dj, dk
+17. Copy & Paste: yy, p, P
+
+### Advanced Vertical Movement
+18. Line Jumps: 5j, 3k
+19. Jump to Top/Bottom: gg, G
+20. Paragraph Jumps: }, {
+21. Scrolling: Ctrl+u, Ctrl+d
+
+### Search
+22. Search: /, n, N
+23. Word Search: *, #
+24. Search Review
+
+### Text Objects: Brackets
+25. Intro to Text Objects
+26. Delete Inside: di(, di[, di{
+27. Delete Around: da(, da[, da{
+28. Change Inside: ci(, ci[, ci{
+29. Change Around: ca(, ca[, ca{
+
+### Text Objects: Quotes, Words & Paragraphs
+30. Quote Objects: di", ci", da", ca"
+31. Word Objects: diw, daw, ciw, caw
+32. Paragraph Objects: dip, dap
+33. Text Objects: Mega Review
+
+### Visual Mode
+34. Intro to Visual Mode
+35. Visual Operators: v + d, v + c
+36. Visual Line Mode: V + d, V + c
+37. Switch Selection Ends: o
 
 ## Design Principles
 
