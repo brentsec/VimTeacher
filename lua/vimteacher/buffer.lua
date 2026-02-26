@@ -319,7 +319,7 @@ function M.render(buf, opts)
     lines[#lines + 1] = "  " .. SEPARATOR
   end
 
-  -- Goal bar (insert lessons only)
+  -- Goal bar (insert lessons with key reveal)
   local goal_row = nil
   local goal_hl_regions = {}
   if opts.goal then
@@ -328,6 +328,7 @@ function M.render(buf, opts)
     local byte_pos = 0
 
     local function add(text, hl_group)
+      if not text then return end
       parts[#parts + 1] = text
       if hl_group then
         goal_hl_regions[#goal_hl_regions + 1] = { s = byte_pos, e = byte_pos + #text, g = hl_group }
@@ -352,6 +353,37 @@ function M.render(buf, opts)
     local remaining = 68 + 2 - display_width
     if remaining > 0 then
       add(string.rep("─", remaining), "VimTeacherSeparator")
+    end
+
+    lines[#lines + 1] = table.concat(parts, "")
+  end
+
+  -- Goal text bar (text-only instruction, no key reveal)
+  local goal_text_row = nil
+  local goal_text_hl_regions = {}
+  if not opts.goal and opts.goal_text then
+    goal_text_row = #lines
+    local parts = {}
+    local byte_pos = 0
+
+    local function add_gt(text, hl_group)
+      if not text then return end
+      parts[#parts + 1] = text
+      if hl_group then
+        goal_text_hl_regions[#goal_text_hl_regions + 1] = { s = byte_pos, e = byte_pos + #text, g = hl_group }
+      end
+      byte_pos = byte_pos + #text
+    end
+
+    add_gt("  ")
+    add_gt("─── ", "VimTeacherSeparator")
+    add_gt(opts.goal_text, "VimTeacherGoalText")
+    add_gt(" ")
+
+    local display_width = vim.api.nvim_strwidth(table.concat(parts, ""))
+    local remaining = 68 + 2 - display_width
+    if remaining > 0 then
+      add_gt(string.rep("─", remaining), "VimTeacherSeparator")
     end
 
     lines[#lines + 1] = table.concat(parts, "")
@@ -409,6 +441,13 @@ function M.render(buf, opts)
   if goal_row then
     for _, region in ipairs(goal_hl_regions) do
       highlight.apply_col_highlight(buf, goal_row, region.s, region.e, region.g)
+    end
+  end
+
+  -- Goal text bar highlights
+  if goal_text_row then
+    for _, region in ipairs(goal_text_hl_regions) do
+      highlight.apply_col_highlight(buf, goal_text_row, region.s, region.e, region.g)
     end
   end
 

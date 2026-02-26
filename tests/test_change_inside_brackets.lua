@@ -220,6 +220,39 @@ for i = 1, 50 do
   assert_test(ch.start_pos ~= nil, "Generation " .. i .. " returned nil start_pos")
 end
 
+-- Test 12: Bracket space normalization tolerates natural spacing
+local init_mod = require("vimteacher")
+local normalize = init_mod._normalize_bracket_spaces
+
+-- Spaces after opening brackets
+assert_test(normalize("{  hello }") == "{hello}", "Double space after { should normalize")
+assert_test(normalize("( value )") == "(value)", "Spaces in parens should normalize")
+assert_test(normalize("[ item ]") == "[item]", "Spaces in square brackets should normalize")
+
+-- No brackets: unchanged
+assert_test(normalize("no brackets here") == "no brackets here", "No brackets = no change")
+
+-- Only opening space
+assert_test(normalize("{ hello}") == "{hello}", "Only opening space should normalize")
+
+-- Only closing space
+assert_test(normalize("{hello }") == "{hello}", "Only closing space should normalize")
+
+-- No spaces: unchanged
+assert_test(normalize("{hello}") == "{hello}", "No spaces = no change")
+
+-- Nested brackets
+assert_test(normalize("{ items: [ a, b ] }") == "{items: [a, b]}", "Nested brackets normalize")
+
+-- Multiple bracket types on one line
+assert_test(normalize("( x ) and [ y ]") == "(x) and [y]", "Multiple bracket types normalize")
+
+-- Interior spaces preserved
+assert_test(normalize("{ a b c }") == "{a b c}", "Interior spaces preserved, only boundary spaces removed")
+
+-- Empty brackets with space
+assert_test(normalize("{ }") == "{}", "Empty brackets with space normalize to empty")
+
 -- Cleanup
 vim.api.nvim_buf_delete(buf, { force = true })
 

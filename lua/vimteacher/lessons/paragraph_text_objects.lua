@@ -344,12 +344,37 @@ function M.generate_challenge(buf, ns_id)
   end
 
   local c = CHALLENGES[idx]
+
+  -- Compute highlight_rows: paragraph ops delete/change entire lines,
+  -- so we need multi-row highlighting instead of single-char highlighting.
+  local highlight_rows = {}
+  local top = 0
+  for i = 1, math.min(#c.snippet_lines, #c.expected_lines) do
+    if c.snippet_lines[i] == c.expected_lines[i] then
+      top = i
+    else
+      break
+    end
+  end
+  local bot = 0
+  for i = 0, math.min(#c.snippet_lines, #c.expected_lines) - top - 1 do
+    if c.snippet_lines[#c.snippet_lines - i] == c.expected_lines[#c.expected_lines - i] then
+      bot = i + 1
+    else
+      break
+    end
+  end
+  for i = top + 1, #c.snippet_lines - bot do
+    highlight_rows[#highlight_rows + 1] = i - 1  -- 0-indexed
+  end
+
   local result = {
     snippet_lines = vim.deepcopy(c.snippet_lines),
     expected_lines = vim.deepcopy(c.expected_lines),
     target = { row = c.target.row, col = c.target.col },
     start_pos = { row = c.start_pos.row, col = c.start_pos.col },
     key = c.key,
+    highlight_rows = highlight_rows,
   }
 
   if c.char then

@@ -5,6 +5,7 @@ local M = {}
 
 M.title = "Intro to Visual Mode"
 M.type = "info"
+M.sandbox_modify_keys = { "v", "V", "<C-v>" }
 
 M.description = {
   "Visual mode lets you SELECT text before acting on it:",

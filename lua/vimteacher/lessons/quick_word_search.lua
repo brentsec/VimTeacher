@@ -18,7 +18,7 @@ M.description = {
   "",
   "  Much faster than typing /word every time!",
   "",
-  "Move your cursor to the green highlighted target.",
+  "Navigate to the highlighted target word.",
 }
 
 M.hint_lines = {
@@ -125,7 +125,7 @@ local SNIPPETS = {
 }
 
 --- Compute the minimum (optimal) moves between two positions.
---- For word search: same pos = 0, different pos = 1 (single * or # press).
+--- For word search with non-adjacent targets: * or # + at least one n/N.
 --- @param start_pos table {row=number, col=number} 0-indexed
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
@@ -133,7 +133,7 @@ function M.compute_optimal(start_pos, target)
   if start_pos.row == target.row and start_pos.col == target.col then
     return 0
   end
-  return 1 -- * or # gets you to the next/prev occurrence in one press
+  return 2 -- * or # + at least one n/N
 end
 
 --- Extract word at a given position in a line.
@@ -175,9 +175,10 @@ local function get_word_at_pos(line, col)
 end
 
 --- Generate a new challenge: snippet with repeated words.
+--- Randomizes direction (* forward / # backward) and ensures non-adjacent targets.
 --- @param buf number Buffer handle (unused)
 --- @param ns_id number Namespace ID (unused)
---- @return table challenge {snippet_lines, target, start_pos}
+--- @return table challenge {snippet_lines, target, target_end_col, start_pos, goal_text}
 function M.generate_challenge(buf, ns_id)
   -- Pick a random snippet
   local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
@@ -224,30 +225,54 @@ function M.generate_challenge(buf, ns_id)
   local chosen = repeated_words[math.random(1, #repeated_words)]
   local positions = chosen.positions
 
-  -- Find positions that are at least 3 rows apart
+  -- Find ALL pairs (both directions: i→j and j→i) at least 3 rows apart
   local valid_pairs = {}
   for i = 1, #positions do
-    for j = i + 1, #positions do
-      local row_dist = math.abs(positions[i].row - positions[j].row)
-      if row_dist >= 3 then
-        table.insert(valid_pairs, { start = positions[i], target = positions[j] })
+    for j = 1, #positions do
+      if i ~= j then
+        local row_dist = math.abs(positions[i].row - positions[j].row)
+        if row_dist >= 3 then
+          table.insert(valid_pairs, { start_idx = i, target_idx = j })
+        end
       end
     end
   end
 
   -- If no pairs 3+ rows apart, try a different word or retry
   if #valid_pairs == 0 then
-    -- Retry with a different word or snippet
     return M.generate_challenge(buf, ns_id)
   end
 
+  -- Prefer non-adjacent pairs (target is NOT the immediately next/prev occurrence)
+  local non_adjacent = {}
+  for _, pair in ipairs(valid_pairs) do
+    local si, ti = pair.start_idx, pair.target_idx
+    if si < ti and ti > si + 1 then
+      non_adjacent[#non_adjacent + 1] = pair
+    elseif si > ti and ti < si - 1 then
+      non_adjacent[#non_adjacent + 1] = pair
+    end
+  end
+
+  local selected_pairs = #non_adjacent > 0 and non_adjacent or valid_pairs
+
   -- Pick a random valid pair
-  local pair = valid_pairs[math.random(1, #valid_pairs)]
+  local pair = selected_pairs[math.random(1, #selected_pairs)]
+  local start_pos = positions[pair.start_idx]
+  local target_pos = positions[pair.target_idx]
+
+  -- Compute word length for full-word highlight
+  local target_line = snippet[target_pos.row + 1]
+  local target_word = get_word_at_pos(target_line, target_pos.col)
+  local target_end_col = target_pos.col + (target_word and #target_word or 1)
 
   return {
     snippet_lines = snippet,
-    target = pair.target,
-    start_pos = pair.start,
+    target = { row = target_pos.row, col = target_pos.col },
+    target_end_col = target_end_col,
+    start_pos = { row = start_pos.row, col = start_pos.col },
+    search_word = chosen.word,
+    goal_text = "Use * or # to search for the word under cursor",
   }
 end
 

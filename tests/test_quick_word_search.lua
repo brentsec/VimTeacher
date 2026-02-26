@@ -33,7 +33,7 @@ local opt = quick_word_search.compute_optimal({ row = 0, col = 0 }, { row = 0, c
 assert_test(opt == 0, "Same position should be 0, got " .. opt)
 
 local opt2 = quick_word_search.compute_optimal({ row = 0, col = 0 }, { row = 3, col = 5 })
-assert_test(opt2 == 1, "Different position should be 1 (* jumps to target), got " .. opt2)
+assert_test(opt2 == 2, "Different position should be 2 (* + n/N), got " .. opt2)
 
 -- Test 3: generate_challenge returns valid structure
 local buf = vim.api.nvim_create_buf(false, true)
@@ -45,6 +45,9 @@ assert_test(challenge.target ~= nil, "Missing target")
 assert_test(challenge.target.row ~= nil, "Missing target.row")
 assert_test(challenge.target.col ~= nil, "Missing target.col")
 assert_test(challenge.start_pos ~= nil, "Missing start_pos")
+assert_test(challenge.target_end_col ~= nil, "Missing target_end_col")
+assert_test(challenge.search_word ~= nil, "Missing search_word")
+assert_test(challenge.goal_text ~= nil, "Missing goal_text")
 
 -- Test 4: Target is within snippet bounds
 assert_test(challenge.target.row >= 0, "target.row must be >= 0")
@@ -94,6 +97,9 @@ for i = 1, 50 do
   assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
   assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
   assert_test(ch.start_pos ~= nil, "Generation " .. i .. " returned nil start_pos")
+  assert_test(ch.target_end_col ~= nil, "Generation " .. i .. " missing target_end_col")
+  assert_test(ch.search_word ~= nil, "Generation " .. i .. " missing search_word")
+  assert_test(ch.goal_text ~= nil, "Generation " .. i .. " missing goal_text")
 
   -- Verify target is on non-whitespace
   local tl = ch.snippet_lines[ch.target.row + 1]

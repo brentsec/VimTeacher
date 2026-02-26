@@ -10,21 +10,14 @@ M.allowed_modify_keys = { "d" }
 M.challenges_required = 10
 
 M.description = {
-  "Review all text object commands you have learned:",
+  "Mixed review of all text object commands:",
+  "  d/c + i/a + brackets/quotes/words/paragraphs",
   "",
-  "  Brackets: di(  da(  ci(  ca(  (also [ and {)",
-  "  Quotes:   di\"  da\"  ci\"  ca\"  (also ')",
-  "  Words:    diw  daw  ciw  caw",
-  "  Paragraphs: dip  dap  cip  cap",
-  "",
-  "  i = inside (keep delimiters)  a = around (remove delimiters)",
-  "  d = delete  c = change (delete + type replacement)",
-  "",
-  "Navigate to the target and use the indicated command.",
+  "Navigate to the highlighted target and execute the command shown above.",
 }
 
 M.hint_lines = {
-  "[d/c + i/a + object] Use the command shown in the goal bar  [q] Menu",
+  "Execute the text object command on the highlighted target  [q] Menu",
 }
 
 -- Pre-defined challenge pool mixing all text object types
@@ -429,6 +422,33 @@ function M.generate_challenge(buf, ns_id)
   end
 
   local c = CHALLENGES[idx]
+
+  -- Paragraph text objects need multi-row highlights (single-line fallback breaks
+  -- because entire lines are deleted, shifting different content into the target row)
+  local highlight_rows = nil
+  if c.key:match("^[dc][ia]p$") then
+    highlight_rows = {}
+    local top = 0
+    for i = 1, math.min(#c.snippet_lines, #c.expected_lines) do
+      if c.snippet_lines[i] == c.expected_lines[i] then
+        top = i
+      else
+        break
+      end
+    end
+    local bot = 0
+    for i = 0, math.min(#c.snippet_lines, #c.expected_lines) - top - 1 do
+      if c.snippet_lines[#c.snippet_lines - i] == c.expected_lines[#c.expected_lines - i] then
+        bot = i + 1
+      else
+        break
+      end
+    end
+    for i = top + 1, #c.snippet_lines - bot do
+      highlight_rows[#highlight_rows + 1] = i - 1  -- 0-indexed
+    end
+  end
+
   return {
     snippet_lines = vim.deepcopy(c.snippet_lines),
     expected_lines = vim.deepcopy(c.expected_lines),
@@ -436,6 +456,7 @@ function M.generate_challenge(buf, ns_id)
     start_pos = { row = c.start_pos.row, col = c.start_pos.col },
     key = c.key,
     char = c.char,
+    highlight_rows = highlight_rows,
   }
 end
 

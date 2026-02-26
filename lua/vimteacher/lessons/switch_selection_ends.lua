@@ -5,6 +5,7 @@ local M = {}
 
 M.title = "Switch Selection Ends: o"
 M.type = "info"
+M.sandbox_modify_keys = { "v", "V", "<C-v>" }
 
 M.description = {
   "In Visual mode, you can jump between the two ends of your selection.",

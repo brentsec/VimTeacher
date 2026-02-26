@@ -27,21 +27,18 @@ assert_test(type(absolute.hint_lines) == "table", "hint_lines must be table")
 assert_test(type(absolute.generate_challenge) == "function", "generate_challenge must be function")
 assert_test(type(absolute.compute_optimal) == "function", "compute_optimal must be function")
 
--- Test 2: compute_optimal works - same position
+-- Test 2: compute_optimal always returns 1 (single gg/G keypress)
 local opt = absolute.compute_optimal({ row = 0, col = 0 }, { row = 0, col = 0 })
-assert_test(opt == 0, "Same position should be 0, got " .. opt)
+assert_test(opt == 1, "compute_optimal should always be 1, got " .. opt)
 
--- Test 3: compute_optimal - same row, different col
 local opt2 = absolute.compute_optimal({ row = 3, col = 2 }, { row = 3, col = 7 })
-assert_test(opt2 == 1, "Same row, different col should be 1, got " .. opt2)
+assert_test(opt2 == 1, "compute_optimal should always be 1, got " .. opt2)
 
--- Test 4: compute_optimal - different row, same col
 local opt3 = absolute.compute_optimal({ row = 0, col = 5 }, { row = 8, col = 5 })
-assert_test(opt3 == 1, "Different row, same col should be 1 (gg/G), got " .. opt3)
+assert_test(opt3 == 1, "compute_optimal should always be 1, got " .. opt3)
 
--- Test 5: compute_optimal - different row and col
 local opt4 = absolute.compute_optimal({ row = 1, col = 2 }, { row = 5, col = 7 })
-assert_test(opt4 == 2, "Different row and col should be 2 (gg/G + col), got " .. opt4)
+assert_test(opt4 == 1, "compute_optimal should always be 1, got " .. opt4)
 
 -- Test 6: generate_challenge returns valid structure
 local buf = vim.api.nvim_create_buf(false, true)
@@ -53,6 +50,7 @@ assert_test(challenge.target ~= nil, "Missing target")
 assert_test(challenge.target.row ~= nil, "Missing target.row")
 assert_test(challenge.target.col ~= nil, "Missing target.col")
 assert_test(challenge.start_pos ~= nil, "Missing start_pos")
+assert_test(challenge.goal_text ~= nil, "Missing goal_text")
 
 -- Test 7: Target is ALWAYS on first line (row=0) or last line (row=#snippet-1)
 local last_row = #challenge.snippet_lines - 1
@@ -61,24 +59,21 @@ assert_test(
   "Target must be on first (0) or last (" .. last_row .. ") line, got " .. challenge.target.row
 )
 
--- Test 8: Target is within snippet bounds
+-- Test 8: Target is within snippet bounds and col is always 0
 assert_test(challenge.target.row >= 0, "target.row must be >= 0")
 assert_test(
   challenge.target.row < #challenge.snippet_lines,
   "target.row out of bounds: " .. challenge.target.row .. " >= " .. #challenge.snippet_lines
 )
-local target_line = challenge.snippet_lines[challenge.target.row + 1]
-assert_test(challenge.target.col >= 0, "target.col must be >= 0")
-assert_test(
-  challenge.target.col < #target_line,
-  "target.col out of bounds: " .. challenge.target.col .. " >= " .. #target_line
-)
+assert_test(challenge.target.col == 0, "target.col must be 0 for row-only lesson, got " .. challenge.target.col)
 
--- Test 9: Target is on a non-whitespace character
-local target_char = target_line:sub(challenge.target.col + 1, challenge.target.col + 1)
+-- Test 9: Challenge has row_only_check and highlight_rows flags
+assert_test(challenge.row_only_check == true, "Missing row_only_check flag")
+assert_test(type(challenge.highlight_rows) == "table", "Missing highlight_rows")
+assert_test(#challenge.highlight_rows == 1, "highlight_rows should have 1 entry, got " .. #challenge.highlight_rows)
 assert_test(
-  target_char ~= " " and target_char ~= "\t",
-  "Target must be on non-whitespace, got '" .. target_char .. "'"
+  challenge.highlight_rows[1] == challenge.target.row,
+  "highlight_rows[1] should match target.row"
 )
 
 -- Test 10: Start position is at opposite end from target
@@ -103,6 +98,7 @@ for i = 1, 50 do
   local ch = absolute.generate_challenge(buf, ns)
   assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
   assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
+  assert_test(ch.goal_text ~= nil, "Generation " .. i .. " missing goal_text")
 
   -- Verify target is always on first or last line
   local last = #ch.snippet_lines - 1
@@ -111,16 +107,15 @@ for i = 1, 50 do
     "Generation " .. i .. ": target not on first/last line, got row " .. ch.target.row
   )
 
-  -- Verify target is always on non-whitespace
-  local tl = ch.snippet_lines[ch.target.row + 1]
-  if tl then
-    local tc = tl:sub(ch.target.col + 1, ch.target.col + 1)
-    assert_test(
-      tc ~= " " and tc ~= "\t" and tc ~= "",
-      "Generation " .. i .. ": target on whitespace/empty at ("
-        .. ch.target.row .. "," .. ch.target.col .. ")"
-    )
-  end
+  -- Verify target col is always 0 and row_only_check is set
+  assert_test(
+    ch.target.col == 0,
+    "Generation " .. i .. ": target.col should be 0, got " .. ch.target.col
+  )
+  assert_test(
+    ch.row_only_check == true,
+    "Generation " .. i .. ": missing row_only_check flag"
+  )
 
   -- Verify start is at opposite end
   if ch.start_pos then

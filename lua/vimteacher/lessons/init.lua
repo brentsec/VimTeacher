@@ -29,7 +29,7 @@ M.sections = {
   },
   {
     title = "Search",
-    lessons = { "search", "repeat_search", "quick_word_search", "search_review" },
+    lessons = { "search", "quick_word_search", "search_review" },
   },
   {
     title = "Text Objects: Brackets",

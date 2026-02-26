@@ -324,12 +324,24 @@ function M.generate_challenge(buf, ns_id)
   end
 
   local c = CHALLENGES[idx]
+
+  -- Compute highlight_rows based on key
+  local highlight_rows = {}
+  if c.key == "Vd" or c.key == "Vc" then
+    highlight_rows = { c.target.row }
+  elseif c.key == "Vjd" then
+    highlight_rows = { c.target.row, c.target.row + 1 }
+  elseif c.key == "Vjjd" then
+    highlight_rows = { c.target.row, c.target.row + 1, c.target.row + 2 }
+  end
+
   local result = {
     snippet_lines = vim.deepcopy(c.snippet_lines),
     expected_lines = vim.deepcopy(c.expected_lines),
     target = { row = c.target.row, col = c.target.col },
     start_pos = { row = c.start_pos.row, col = c.start_pos.col },
     key = c.key,
+    highlight_rows = highlight_rows,
   }
 
   -- Include char field if present (for Vc challenges)

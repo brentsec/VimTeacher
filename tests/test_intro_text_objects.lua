@@ -76,6 +76,15 @@ assert_test(challenge.snippet_lines ~= intro.sandbox_snippet, "snippet_lines sho
 assert_test(intro.challenges_required == nil, "Info lesson should not have challenges_required")
 assert_test(intro.compute_optimal == nil, "Info lesson should not have compute_optimal")
 
+-- Test 12: sandbox_modify_keys contains text-object-relevant keys
+assert_test(type(intro.sandbox_modify_keys) == "table", "sandbox_modify_keys must be table")
+local smk_set = {}
+for _, key in ipairs(intro.sandbox_modify_keys) do smk_set[key] = true end
+assert_test(smk_set["d"] == true, "sandbox_modify_keys must contain 'd'")
+assert_test(smk_set["c"] == true, "sandbox_modify_keys must contain 'c'")
+assert_test(smk_set["y"] == true, "sandbox_modify_keys must contain 'y'")
+assert_test(smk_set["u"] == true, "sandbox_modify_keys must contain 'u'")
+
 -- Summary
 print(string.format("test_intro_text_objects: %d passed, %d failed (total: %d assertions)",
   pass_count, fail_count, pass_count + fail_count))

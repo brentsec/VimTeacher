@@ -109,6 +109,14 @@ function M.setup()
 
   -- Goal bar text: readable white for action labels
   vim.api.nvim_set_hl(0, "VimTeacherGoalText", { fg = "#ABB2BF" })
+
+  -- Search target: blue bg, distinct from Vim's yellow hlsearch
+  vim.api.nvim_set_hl(0, "VimTeacherSearchTarget", {
+    bg = "#61AFEF",
+    fg = "#282C34",
+    bold = true,
+    underline = true,
+  })
 end
 
 --- Apply a highlight group to a line range in the layout namespace.
@@ -147,16 +155,39 @@ function M.apply_col_highlight(buf, row, col_start, col_end, hl_group)
   })
 end
 
---- Place the green target highlight on a specific character.
+--- Place the green target highlight on a character, range, or full line.
 --- Clears previous target extmark first.
 --- @param buf number Buffer handle
 --- @param target_buf_row number 0-indexed buffer row
 --- @param target_col number 0-indexed column
-function M.place_target(buf, target_buf_row, target_col)
+--- @param target_end_col number|nil 0-indexed exclusive end column (default: target_col + 1)
+--- @param full_line boolean|nil If true, highlight the entire line (for dd)
+--- @param hl_group string|nil Highlight group (default: "VimTeacherTarget")
+function M.place_target(buf, target_buf_row, target_col, target_end_col, full_line, hl_group)
+  hl_group = hl_group or "VimTeacherTarget"
   vim.api.nvim_buf_clear_namespace(buf, M.ns_target, 0, -1)
 
   local line_count = vim.api.nvim_buf_line_count(buf)
   if target_buf_row >= line_count then
+    return
+  end
+
+  if full_line then
+    local line = vim.api.nvim_buf_get_lines(buf, target_buf_row, target_buf_row + 1, false)[1]
+    local opts = {
+      line_hl_group = hl_group,
+      priority = 200,
+    }
+    -- For empty lines, add virtual text so the highlight is visible
+    if not line or #line == 0 then
+      opts.virt_text = { { " ← this line", hl_group } }
+      opts.virt_text_pos = "overlay"
+    else
+      -- Also set character-level highlight so syntax/treesitter can't override
+      opts.end_col = #line
+      opts.hl_group = hl_group
+    end
+    vim.api.nvim_buf_set_extmark(buf, M.ns_target, target_buf_row, 0, opts)
     return
   end
 
@@ -166,8 +197,55 @@ function M.place_target(buf, target_buf_row, target_col)
   end
 
   vim.api.nvim_buf_set_extmark(buf, M.ns_target, target_buf_row, target_col, {
-    end_col = target_col + 1,
-    hl_group = "VimTeacherTarget",
+    end_col = target_end_col or (target_col + 1),
+    hl_group = hl_group,
+    priority = 200,
+  })
+end
+
+--- Place target highlight on multiple full lines.
+--- Clears previous target extmarks first.
+--- @param buf number Buffer handle
+--- @param rows number[] List of 0-indexed buffer rows to highlight
+--- @param hl_group string|nil Highlight group (default: "VimTeacherTarget")
+function M.place_target_rows(buf, rows, hl_group)
+  hl_group = hl_group or "VimTeacherTarget"
+  vim.api.nvim_buf_clear_namespace(buf, M.ns_target, 0, -1)
+
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  for _, row in ipairs(rows) do
+    if row < line_count then
+      local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1]
+      local opts = {
+        line_hl_group = hl_group,
+        priority = 200,
+      }
+      if not line or #line == 0 then
+        -- For empty lines, add virtual text so the highlight is visible
+        opts.virt_text = { { " ← this line", hl_group } }
+        opts.virt_text_pos = "overlay"
+      else
+        -- Also set character-level highlight so syntax/treesitter can't override
+        opts.end_col = #line
+        opts.hl_group = hl_group
+      end
+      vim.api.nvim_buf_set_extmark(buf, M.ns_target, row, 0, opts)
+    end
+  end
+end
+
+--- Place a virtual line marker showing where a yanked line should be pasted.
+--- Must be called AFTER place_target_rows (does not clear ns_target).
+--- @param buf number Buffer handle
+--- @param after_row number 0-indexed buffer row; marker appears below this line
+function M.place_paste_marker(buf, after_row)
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  if after_row >= line_count then return end
+  vim.api.nvim_buf_set_extmark(buf, M.ns_target, after_row, 0, {
+    virt_lines = {
+      { { "  ▸ ─── paste the yanked line here ─────────────────────────", "VimTeacherInsertHint" } },
+    },
+    virt_lines_above = false,
     priority = 200,
   })
 end

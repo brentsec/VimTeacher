@@ -53,6 +53,7 @@ assert_test(challenge.target ~= nil, "Missing target")
 assert_test(challenge.target.row ~= nil, "Missing target.row")
 assert_test(challenge.target.col ~= nil, "Missing target.col")
 assert_test(challenge.start_pos ~= nil, "Missing start_pos")
+assert_test(challenge.goal_text ~= nil, "Missing goal_text")
 
 -- Test 4: Target is within snippet bounds
 assert_test(challenge.target.row >= 0, "target.row must be >= 0")
@@ -88,6 +89,7 @@ for i = 1, 50 do
   local ch = relative.generate_challenge(buf, ns)
   assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
   assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
+  assert_test(ch.goal_text ~= nil, "Generation " .. i .. " missing goal_text")
   assert_test(#ch.snippet_lines >= 8, "Generation " .. i .. " has < 8 lines: " .. #ch.snippet_lines)
 
   -- Verify target is always on non-whitespace

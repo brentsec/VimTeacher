@@ -5,6 +5,7 @@ local M = {}
 
 M.title = "Intro to Operators"
 M.type = "info"
+M.sandbox_modify_keys = { "d", "dd", "D", "u", "<C-r>" }
 
 M.description = {
   "Operators are action commands — think of them as VERBS.",

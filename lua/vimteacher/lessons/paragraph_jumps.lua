@@ -170,88 +170,108 @@ local SNIPPETS = {
   },
 }
 
---- Compute the minimum (optimal) moves between two positions.
---- For paragraph jumps, if on same row, just position cursor (1 move).
---- If on different rows, jump to paragraph + position (2 moves).
+-- Track blank line positions for the current challenge (used by compute_optimal)
+local _current_blank_lines = {}
+
+--- Compute the minimum number of } or { presses to reach the target blank line.
 --- @param start_pos table {row=number, col=number} 0-indexed
---- @param target table {row=number, col=number} 0-indexed
+--- @param target table {row=number, col=number} 0-indexed (always a blank line at col 0)
 --- @return number Optimal move count
 function M.compute_optimal(start_pos, target)
-  if start_pos.row == target.row and start_pos.col == target.col then
+  if start_pos.row == target.row then
     return 0
   end
-  if start_pos.row == target.row then
-    return 1 -- Same row, just reposition column
-  end
-  if start_pos.col == target.col then
-    return 1 -- Different row, same column (paragraph jump lands there)
-  end
-  return 2 -- Different row and column (paragraph jump + column adjustment)
-end
 
---- Generate a new challenge: pick snippet with paragraphs + random target + start position.
---- @param buf number Buffer handle (unused for this lesson, but part of interface)
---- @param ns_id number Namespace ID (unused for this lesson)
---- @return table challenge {snippet_lines, target, start_pos}
-function M.generate_challenge(buf, ns_id)
-  local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
-
-  -- Build list of all valid target positions (non-whitespace characters, exclude blank lines)
-  local valid_positions = {}
-  for row_idx, line in ipairs(snippet) do
-    if line ~= "" then -- Skip blank lines
-      for col_idx = 1, #line do
-        local char = line:sub(col_idx, col_idx)
-        if char ~= " " and char ~= "\t" then
-          valid_positions[#valid_positions + 1] = {
-            row = row_idx - 1, -- 0-indexed
-            col = col_idx - 1, -- 0-indexed
-          }
-        end
+  -- Count } presses needed (forward): blank lines between start (exclusive) and target (inclusive)
+  local forward = 0
+  if target.row > start_pos.row then
+    for _, bl in ipairs(_current_blank_lines) do
+      if bl > start_pos.row and bl <= target.row then
+        forward = forward + 1
       end
     end
   end
 
-  -- Safety: if no valid positions, retry with different snippet
-  if #valid_positions == 0 then
+  -- Count { presses needed (backward): blank lines between target (inclusive) and start (exclusive)
+  local backward = 0
+  if target.row < start_pos.row then
+    for _, bl in ipairs(_current_blank_lines) do
+      if bl >= target.row and bl < start_pos.row then
+        backward = backward + 1
+      end
+    end
+  end
+
+  if forward > 0 and backward > 0 then
+    return math.min(forward, backward)
+  end
+  return forward > 0 and forward or backward
+end
+
+--- Generate a new challenge: pick snippet, target a blank line, start on a non-blank line.
+--- @param buf number Buffer handle (unused for this lesson, but part of interface)
+--- @param ns_id number Namespace ID (unused for this lesson)
+--- @return table challenge {snippet_lines, target, start_pos, highlight_rows}
+function M.generate_challenge(buf, ns_id)
+  local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
+
+  -- Find all blank line rows (0-indexed)
+  local blank_lines = {}
+  for row_idx, line in ipairs(snippet) do
+    if line == "" then
+      blank_lines[#blank_lines + 1] = row_idx - 1
+    end
+  end
+
+  -- Safety: if no blank lines, retry with different snippet
+  if #blank_lines == 0 then
     return M.generate_challenge(buf, ns_id)
   end
 
-  -- Pick a random target
-  local target = valid_positions[math.random(1, #valid_positions)]
+  -- Pick a random blank line as target
+  local target_row = blank_lines[math.random(1, #blank_lines)]
+  local target = { row = target_row, col = 0 }
+
+  -- Build list of non-blank line positions for start candidates
+  local non_blank = {}
+  for row_idx, line in ipairs(snippet) do
+    if line ~= "" then
+      non_blank[#non_blank + 1] = row_idx - 1
+    end
+  end
 
   -- Pick a starting position at least 3 rows from target
   local candidates = {}
-  for _, pos in ipairs(valid_positions) do
-    local row_dist = math.abs(pos.row - target.row)
+  for _, row in ipairs(non_blank) do
+    local row_dist = math.abs(row - target_row)
     if row_dist >= 3 then
-      candidates[#candidates + 1] = { row = pos.row, col = pos.col, row_dist = row_dist }
+      candidates[#candidates + 1] = { row = row, dist = row_dist }
     end
   end
 
   local start_pos
   if #candidates == 0 then
-    -- Fallback: use first char of first non-empty line
-    for i, line in ipairs(snippet) do
-      if line ~= "" and #line > 0 then
-        start_pos = { row = i - 1, col = 0 }
-        break
-      end
-    end
+    -- Fallback: use first non-blank line
+    start_pos = { row = non_blank[1] or 0, col = 0 }
   else
     -- Prefer positions around 5-7 rows away for interesting paragraph jumps
     table.sort(candidates, function(a, b)
-      return math.abs(a.row_dist - 6) < math.abs(b.row_dist - 6)
+      return math.abs(a.dist - 6) < math.abs(b.dist - 6)
     end)
     local top_n = math.min(5, #candidates)
     local chosen = candidates[math.random(1, top_n)]
-    start_pos = { row = chosen.row, col = chosen.col }
+    start_pos = { row = chosen.row, col = 0 }
   end
+
+  -- Store blank lines for compute_optimal
+  _current_blank_lines = blank_lines
 
   return {
     snippet_lines = snippet,
     target = target,
     start_pos = start_pos,
+    highlight_rows = { target_row },
+    goal_text = "Jump to the highlighted blank line",
   }
 end
 

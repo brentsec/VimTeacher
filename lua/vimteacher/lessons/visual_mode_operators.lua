@@ -135,29 +135,27 @@ local CHALLENGES = {
     char = "",
   },
 
-  -- Challenge 6: vc — replace "x" with "count" in "let x = 0;"
+  -- Challenge 6: vc — replace "item" with "element" in "const item = list[0];"
   {
     snippet_lines = {
       "function loop() {",
-      "  let x = 0;",
-      "  while (x < 10) {",
-      "    x++;",
-      "  }",
+      "  const item = list[0];",
+      "  process(item);",
+      "  return item;",
       "}",
     },
     expected_lines = {
       "function loop() {",
-      "  let count = 0;",
-      "  while (x < 10) {",
-      "    x++;",
-      "  }",
+      "  const element = list[0];",
+      "  process(item);",
+      "  return item;",
       "}",
     },
-    target = { row = 1, col = 6 },
-    select_end = { row = 1, col = 6 },
-    start_pos = { row = 5, col = 0 },
+    target = { row = 1, col = 8 },
+    select_end = { row = 1, col = 11 },
+    start_pos = { row = 4, col = 0 },
     key = "vc",
-    char = "count",
+    char = "element",
   },
 
   -- Challenge 7: vd — delete "extra " in "return extra result;"
@@ -223,27 +221,27 @@ local CHALLENGES = {
     char = "",
   },
 
-  -- Challenge 10: vc — replace "i" with "index" in "for (let i = 0;"
+  -- Challenge 10: vc — replace "name" with "label" in "const name = getTag();"
   {
     snippet_lines = {
-      "function iterate() {",
-      "  for (let i = 0; i < 10; i++) {",
-      "    console.log(i);",
-      "  }",
+      "function render() {",
+      "  const name = getTag();",
+      "  display(name);",
+      "  return name;",
       "}",
     },
     expected_lines = {
-      "function iterate() {",
-      "  for (let index = 0; i < 10; i++) {",
-      "    console.log(i);",
-      "  }",
+      "function render() {",
+      "  const label = getTag();",
+      "  display(name);",
+      "  return name;",
       "}",
     },
-    target = { row = 1, col = 11 },
+    target = { row = 1, col = 8 },
     select_end = { row = 1, col = 11 },
     start_pos = { row = 0, col = 0 },
     key = "vc",
-    char = "index",
+    char = "label",
   },
 }
 

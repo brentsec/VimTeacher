@@ -319,14 +319,25 @@ function M.generate_challenge(buf, ns_id)
   end
 
   local c = CHALLENGES[idx]
+
+  -- Compute where the marker should appear (actual insertion point).
+  -- For p: paste goes below cursor row = after paste_after_row (correct as-is).
+  -- For P: paste goes above cursor row = after paste_after_row - 1.
+  local paste_marker_after_row = c.paste_after_row
+  if c.key == "P" then
+    paste_marker_after_row = c.paste_after_row - 1
+  end
+
   return {
     snippet_lines = vim.deepcopy(c.snippet_lines),
     expected_lines = vim.deepcopy(c.expected_lines),
     target = { row = c.target.row, col = c.target.col },
     start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-    key = c.key,
+    goal_text = "Yank the highlighted line with yy, then paste it at the ▸ marker",
+    highlight_rows = { c.target.row },
     yank_row = c.yank_row,
     paste_after_row = c.paste_after_row,
+    paste_marker_after_row = paste_marker_after_row,
   }
 end
 

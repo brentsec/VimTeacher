@@ -66,11 +66,10 @@ assert_test(challenge.target ~= nil, "Missing target")
 assert_test(challenge.target.row ~= nil, "Missing target.row")
 assert_test(challenge.target.col ~= nil, "Missing target.col")
 assert_test(challenge.start_pos ~= nil, "Missing start_pos")
-assert_test(challenge.key ~= nil, "Missing key")
-assert_test(
-  challenge.key == "dj" or challenge.key == "dk" or challenge.key == "d2j" or challenge.key == "d2k",
-  "key must be 'dj', 'dk', 'd2j', or 'd2k', got '" .. tostring(challenge.key) .. "'"
-)
+assert_test(challenge.key == nil, "key should not be exposed in generated challenge")
+assert_test(challenge.goal_text ~= nil, "Missing goal_text")
+assert_test(type(challenge.highlight_rows) == "table", "Missing highlight_rows")
+assert_test(#challenge.highlight_rows >= 2, "highlight_rows must have at least 2 rows")
 
 -- Test 5: expected_lines has fewer lines than snippet_lines (multi-line deletion)
 assert_test(
@@ -221,6 +220,8 @@ for i = 1, 50 do
   assert_test(ch.expected_lines ~= nil, "Generation " .. i .. " returned nil expected_lines")
   assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
   assert_test(ch.start_pos ~= nil, "Generation " .. i .. " returned nil start_pos")
+  assert_test(ch.goal_text ~= nil, "Generation " .. i .. " returned nil goal_text")
+  assert_test(type(ch.highlight_rows) == "table", "Generation " .. i .. " missing highlight_rows")
   -- Verify line count difference
   assert_test(
     #ch.expected_lines < #ch.snippet_lines,

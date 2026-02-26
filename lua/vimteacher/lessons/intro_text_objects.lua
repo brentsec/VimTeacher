@@ -5,6 +5,7 @@ local M = {}
 
 M.title = "Intro to Text Objects"
 M.type = "info"
+M.sandbox_modify_keys = { "d", "c", "y", "u", "<C-r>" }
 
 M.description = {
   "Text objects let you act on structured chunks of text.",
@@ -14,7 +15,7 @@ M.description = {
   "  a = AROUND (contents AND the brackets/quotes)",
   "",
   "  di( = delete inside parentheses: (hello) → ()",
-  "  da( = delete around parentheses: (hello) → (gone entirely)",
+  "  da( = delete around parens AND contents: x(hello)y → xy",
   '  ci" = change inside quotes: "old" → "" (type new text)',
   "",
   "Text objects work from ANYWHERE inside the pair —",

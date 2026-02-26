@@ -192,7 +192,7 @@ local CHALLENGES = {
       "  return obj;",
       "}",
     },
-    target = { row = 1, col = 22 },
+    target = { row = 1, col = 23 },
     start_pos = { row = 3, col = 0 },
     key = "di{",
   },

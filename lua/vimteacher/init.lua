@@ -44,6 +44,16 @@ local state = {
   challenge_load_time = nil,  -- hrtime when challenge was loaded
 }
 
+-- ─── Helpers ──────────────────────────────────────────────────────────────
+
+--- Normalize spaces immediately inside bracket pairs for tolerant matching.
+--- Strips whitespace after ( [ { and before ) ] }.
+local function normalize_bracket_spaces(line)
+  line = line:gsub("([{%[%(])%s+", "%1")
+  line = line:gsub("%s+([}%]%)])", "%1")
+  return line
+end
+
 -- ─── Cleanup ───────────────────────────────────────────────────────────────
 
 local function cleanup()
@@ -124,7 +134,7 @@ end
 --- Block keys for insert-type lessons: allows specified insert keys, blocks the rest.
 --- @param allowed string[] Insert keys to leave unblocked (e.g., {"i", "a"})
 --- @param allowed_modify string[]|nil Modify keys to leave unblocked (e.g., {"x", "r"})
-local function block_keys_for_insert_lesson(allowed, allowed_modify)
+local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_visual)
   local buf = state.buf
   local opts = { buffer = buf, noremap = true, silent = true }
 
@@ -163,17 +173,32 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify)
   local modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
   for _, key in ipairs(modify_keys) do
     if modify_allowed_set[key] then
-      -- Map allowed key to its native command (noremap) to override global plugin keymaps
-      vim.keymap.set("n", key, key, opts)
+      -- Remove any stale buffer-local map so the built-in command works cleanly.
+      -- Don't re-map (e.g. d→d noremap); buffer-local mappings for operators
+      -- interfere with operator-pending text objects like di{, da[, etc.
+      pcall(vim.keymap.del, "n", key, { buffer = buf })
+    elseif #key > 1 and modify_allowed_set[key:sub(1, 1)] then
+      -- Clean up multi-char variants (e.g. "dd" when "d" is allowed) to avoid
+      -- mapping ambiguity in Neovim's key resolver.
+      pcall(vim.keymap.del, "n", key, { buffer = buf })
     else
       vim.keymap.set("n", key, "<Nop>", opts)
     end
   end
 
-  -- Block visual mode
+  -- Block visual mode (unless allowed by lesson)
+  local visual_allowed_set = {}
+  for _, key in ipairs(allowed_visual or {}) do
+    visual_allowed_set[key] = true
+  end
+
   local visual_keys = { "v", "V", "<C-v>" }
   for _, key in ipairs(visual_keys) do
-    vim.keymap.set("n", key, "<Nop>", opts)
+    if visual_allowed_set[key] then
+      pcall(vim.keymap.del, "n", key, { buffer = buf })
+    else
+      vim.keymap.set("n", key, "<Nop>", opts)
+    end
   end
 
   -- Block mouse clicks
@@ -280,6 +305,10 @@ local function clear_menu_keymaps()
 end
 
 local function show_menu()
+  if state.elapsed_timer then
+    vim.fn.timer_stop(state.elapsed_timer)
+    state.elapsed_timer = nil
+  end
   state.mode = "menu"
   state.target = nil
   clear_info_keymaps()
@@ -336,6 +365,8 @@ clear_playing_keymaps = function()
   local opts = { buffer = buf }
   pcall(vim.keymap.del, "n", "q", opts)
   pcall(vim.keymap.del, "n", "Q", opts)
+  pcall(vim.keymap.del, "n", "gg", opts)
+  pcall(vim.keymap.del, "n", "G", opts)
 end
 
 -- ─── Completion mode ───────────────────────────────────────────────────────
@@ -489,6 +520,26 @@ local function on_target_reached()
   end, 300)
 end
 
+--- Re-place all challenge highlights (multi-row, paste marker, or single target).
+--- Used after restoring a snippet on failed edit attempts.
+local function re_place_highlights()
+  if not state.target then return end
+  local challenge = state.current_challenge
+  if challenge and challenge.highlight_rows then
+    local buf_rows = {}
+    for _, r in ipairs(challenge.highlight_rows) do
+      buf_rows[#buf_rows + 1] = r + state.snippet_offset
+    end
+    highlight.place_target_rows(state.buf, buf_rows)
+    if challenge.paste_marker_after_row ~= nil then
+      highlight.place_paste_marker(state.buf, challenge.paste_marker_after_row + state.snippet_offset)
+    end
+  else
+    local target_buf_row = state.target.row + state.snippet_offset
+    highlight.place_target(state.buf, target_buf_row, state.target.col)
+  end
+end
+
 local function on_insert_leave()
   if state.mode ~= "playing" then return end
   if not state.lesson or state.lesson.type ~= "insert" then return end
@@ -507,6 +558,17 @@ local function on_insert_leave()
     end
   end
 
+  -- Fallback: tolerate spaces immediately inside brackets
+  if not match and #actual == #expected then
+    local norm_match = true
+    for i = 1, #expected do
+      if normalize_bracket_spaces(actual[i]) ~= normalize_bracket_spaces(expected[i]) then
+        norm_match = false; break
+      end
+    end
+    if norm_match then match = true end
+  end
+
   if match then
     on_target_reached()
   else
@@ -518,11 +580,8 @@ local function on_insert_leave()
       state.buf, state.snippet_offset, state.snippet_end + extra + 1, false,
       state.original_snippet
     )
-    -- Re-place target highlight
-    if state.target then
-      local target_buf_row = state.target.row + state.snippet_offset
-      highlight.place_target(state.buf, target_buf_row, state.target.col)
-    end
+    -- Re-place target highlight (multi-row, paste marker, or single target)
+    re_place_highlights()
     vim.notify("Not quite — try again!", vim.log.levels.INFO)
   end
 end
@@ -545,6 +604,17 @@ local function on_text_changed()
     for i = 1, #expected do
       if actual[i] ~= expected[i] then match = false; break end
     end
+  end
+
+  -- Fallback: tolerate spaces immediately inside brackets
+  if not match and #actual == #expected then
+    local norm_match = true
+    for i = 1, #expected do
+      if normalize_bracket_spaces(actual[i]) ~= normalize_bracket_spaces(expected[i]) then
+        norm_match = false; break
+      end
+    end
+    if norm_match then match = true end
   end
 
   if match then
@@ -572,12 +642,21 @@ local function on_text_changed()
     state.buf, state.snippet_offset, state.snippet_end + extra + 1, false,
     state.original_snippet
   )
-  -- Re-place target highlight
-  if state.target then
-    local target_buf_row = state.target.row + state.snippet_offset
-    highlight.place_target(state.buf, target_buf_row, state.target.col)
-  end
+  -- Re-place target highlight (multi-row, paste marker, or single target)
+  re_place_highlights()
   vim.notify("Not quite — try again!", vim.log.levels.INFO)
+end
+
+--- Check if cursor is on the target position.
+--- Uses row-only matching when challenge.row_only_check is true (e.g., gg/G lessons).
+local function is_on_target()
+  local target_buf_row = state.target.row + state.snippet_offset
+  if state.current_challenge and state.current_challenge.row_only_check then
+    local cursor = vim.api.nvim_win_get_cursor(state.win)
+    return (cursor[1] - 1) == target_buf_row
+  else
+    return validate.check_position(state.win, target_buf_row, state.target.col)
+  end
 end
 
 local function on_cursor_moved()
@@ -598,14 +677,24 @@ local function on_cursor_moved()
     state.win, state.snippet_offset, state.snippet_end
   )
 
-  -- Start timer on first move (even if constrained — user is actively playing)
-  if not state.timer_start then
+  -- Start timer on first real user move (skip any CursorMoved during load_challenge)
+  if not state.timer_start and not state.loading then
     state.timer_start = vim.loop.hrtime()
+    start_elapsed_timer()
   end
 
-  if was_constrained then return end
+  if was_constrained then
+    -- Normally, constrained moves are boundary bounces (don't count as moves).
+    -- But absolute jumps (gg/G) overshoot the snippet and get constrained back
+    -- to the boundary — which IS the target row. Check if we landed on target.
+    if state.lesson and state.lesson.type ~= "insert" and is_on_target() then
+      state.move_count = state.move_count + 1
+      on_target_reached()
+    end
+    return
+  end
 
-  -- Count the move (only non-constrained moves count)
+  -- Count the move (only non-constrained moves count for accuracy)
   state.move_count = state.move_count + 1
 
   -- Insert lessons: don't trigger completion on cursor position;
@@ -616,8 +705,7 @@ local function on_cursor_moved()
 
   -- Check target match with dwell-time validation (50ms)
   -- Prevents completing by holding a key and flying past the target
-  local target_buf_row = state.target.row + state.snippet_offset
-  if validate.check_position(state.win, target_buf_row, state.target.col) then
+  if is_on_target() then
     if not state.dwell_pending then
       state.dwell_pending = true
       vim.defer_fn(function()
@@ -626,8 +714,7 @@ local function on_cursor_moved()
         if not state.target then return end
         if not state.win or not vim.api.nvim_win_is_valid(state.win) then return end
         -- Re-verify cursor is still on target after dwell period
-        local tbr = state.target.row + state.snippet_offset
-        if validate.check_position(state.win, tbr, state.target.col) then
+        if is_on_target() then
           on_target_reached()
         end
       end, state.lesson.dwell_time or 50)
@@ -638,7 +725,168 @@ local function on_cursor_moved()
   end
 end
 
+--- Compute highlight end column from vim motion semantics.
+--- @param key string The vim key/motion (e.g., "dw", "cW", "dd", "D")
+--- @param snippet_line string The snippet line text
+--- @param target_col number 0-indexed target column
+--- @return number|nil end_col 0-indexed exclusive end column (nil for line-level ops)
+--- @return boolean full_line Whether to highlight the entire line
+--- @return number|nil start_col_override 0-indexed start column override (for bracket ops)
+local function compute_motion_end(key, snippet_line, target_col)
+  if key == "dd" then
+    return nil, true
+  end
+  if key == "D" then
+    return #snippet_line, false
+  end
+
+  -- Text objects: [operator][ia][object]
+  -- Handles brackets, quotes, and words for d/c + i/a combinations
+  local to_prefix = key:sub(1, 2)
+  local to_char = key:sub(3)
+  local is_inside = (to_prefix == "di" or to_prefix == "ci")
+  local is_around = (to_prefix == "da" or to_prefix == "ca")
+
+  if is_inside or is_around then
+    -- Bracket pairs
+    local bracket_map = {
+      ["("] = { "(", ")" }, [")"] = { "(", ")" },
+      ["["] = { "[", "]" }, ["]"] = { "[", "]" },
+      ["{"] = { "{", "}" }, ["}"] = { "{", "}" },
+    }
+    local pair = bracket_map[to_char]
+    if pair then
+      local open_ch, close_ch = pair[1], pair[2]
+      -- Scan left from target_col for opening bracket (0-indexed)
+      local open_pos
+      for i = target_col, 0, -1 do
+        if snippet_line:sub(i + 1, i + 1) == open_ch then
+          open_pos = i
+          break
+        end
+      end
+      -- Scan right from target_col for closing bracket (0-indexed)
+      local close_pos
+      for i = target_col, #snippet_line - 1 do
+        if snippet_line:sub(i + 1, i + 1) == close_ch then
+          close_pos = i
+          break
+        end
+      end
+      if open_pos and close_pos and close_pos > open_pos then
+        if is_inside then
+          -- Content between brackets: start after open, end before close
+          return close_pos, false, open_pos + 1
+        else
+          -- Brackets + content: include both brackets
+          return close_pos + 1, false, open_pos
+        end
+      end
+    end
+
+    -- Quote pairs
+    if to_char == '"' or to_char == "'" then
+      local q = to_char
+      -- Scan left from target_col for opening quote (0-indexed)
+      local open_pos
+      for i = target_col, 0, -1 do
+        if snippet_line:sub(i + 1, i + 1) == q then
+          open_pos = i
+          break
+        end
+      end
+      -- Scan right from opening quote for closing quote
+      local close_pos
+      if open_pos then
+        for i = open_pos + 1, #snippet_line - 1 do
+          if snippet_line:sub(i + 1, i + 1) == q then
+            close_pos = i
+            break
+          end
+        end
+      end
+      if open_pos and close_pos and close_pos > open_pos then
+        if is_inside then
+          return close_pos, false, open_pos + 1
+        else
+          return close_pos + 1, false, open_pos
+        end
+      end
+    end
+
+    -- Word text objects (diw, daw, ciw, caw)
+    if to_char == "w" then
+      local function char_at(idx)
+        return snippet_line:sub(idx + 1, idx + 1)
+      end
+      -- Find start of word (scan left, 0-indexed)
+      local ws = target_col
+      while ws > 0 and char_at(ws - 1):match("[%w_]") do
+        ws = ws - 1
+      end
+      -- Find end of word (scan right, 0-indexed inclusive)
+      local we = target_col
+      while we < #snippet_line - 1 and char_at(we + 1):match("[%w_]") do
+        we = we + 1
+      end
+      if is_inside then
+        return we + 1, false, ws
+      else
+        -- daw/caw: include trailing whitespace (or leading if no trailing)
+        local trail = we + 1
+        while trail < #snippet_line and char_at(trail):match("%s") do
+          trail = trail + 1
+        end
+        if trail > we + 1 then
+          return trail, false, ws
+        end
+        local lead = ws
+        while lead > 0 and char_at(lead - 1):match("%s") do
+          lead = lead - 1
+        end
+        return we + 1, false, lead
+      end
+    end
+  end
+
+  local rest = snippet_line:sub(target_col + 1)
+  if #rest == 0 then return target_col + 1, false end
+
+  local first = rest:sub(1, 1)
+  local word_len = 0
+
+  if key == "dw" or key == "cw" then
+    if first:match("[%w_]") then
+      word_len = #(rest:match("^[%w_]+") or "")
+    elseif first:match("%s") then
+      word_len = #(rest:match("^%s+") or "")
+    else
+      word_len = #(rest:match("^[^%w%s_]+") or "")
+    end
+    if key == "dw" then
+      local trailing = (rest:sub(word_len + 1)):match("^(%s+)") or ""
+      return target_col + word_len + #trailing, false
+    end
+    return target_col + word_len, false
+
+  elseif key == "dW" or key == "cW" then
+    if first:match("%s") then
+      word_len = #(rest:match("^%s+") or "")
+    else
+      word_len = #(rest:match("^%S+") or "")
+    end
+    if key == "dW" then
+      local trailing = (rest:sub(word_len + 1)):match("^(%s+)") or ""
+      return target_col + word_len + #trailing, false
+    end
+    return target_col + word_len, false
+  end
+
+  return nil, false
+end
+
 load_challenge = function()
+  state.loading = true
   state.challenge_num = state.challenge_num + 1
   state.mode = "playing"
   state.move_count = 0
@@ -667,6 +915,7 @@ load_challenge = function()
     max_progress = state.max_challenges,
     snippet_lines = challenge.snippet_lines,
     hint_lines = state.lesson.hint_lines,
+    goal_text = challenge.goal_text,
     goal = (function()
       if not challenge.key then return nil end
       local k = challenge.key
@@ -689,6 +938,49 @@ load_challenge = function()
         g.action, g.preposition = "delete", "under cursor"
       elseif k == "r" then
         g.action, g.preposition = "replace with", "under cursor"
+      elseif k == "cw" then
+        g.action, g.preposition = "change word to", "at cursor"
+      elseif k == "cW" then
+        g.action, g.preposition = "change WORD to", "at cursor"
+      -- Delete operators
+      elseif k == "dw" then
+        g.action, g.preposition = "delete word", "at cursor"
+      elseif k == "dW" then
+        g.action, g.preposition = "delete WORD", "at cursor"
+      elseif k == "dd" then
+        g.action, g.preposition = "delete", "entire line"
+      elseif k == "D" then
+        g.action, g.preposition = "delete to", "end of line"
+      elseif k:match("^d%d*j$") then
+        g.action, g.preposition = "delete lines", "downward"
+      elseif k:match("^d%d*k$") then
+        g.action, g.preposition = "delete lines", "upward"
+      -- Paste
+      elseif k == "p" then
+        g.action, g.preposition = "paste", "below current line"
+      elseif k == "P" then
+        g.action, g.preposition = "paste", "above current line"
+      -- Text objects: change inside/around
+      elseif k:match("^ci") then
+        g.action, g.preposition = "change inside " .. k:sub(3), "at cursor"
+      elseif k:match("^ca") then
+        g.action, g.preposition = "change around " .. k:sub(3), "at cursor"
+      -- Text objects: delete inside/around
+      elseif k:match("^di") then
+        g.action, g.preposition = "delete inside " .. k:sub(3), "at cursor"
+      elseif k:match("^da") then
+        g.action, g.preposition = "delete around " .. k:sub(3), "at cursor"
+      -- Visual mode
+      elseif k:match("^V.*c$") then
+        g.action, g.preposition = "visual line change to", "selected lines"
+      elseif k:match("^V.*d$") then
+        g.action, g.preposition = "visual line delete", "selected lines"
+      elseif k == "vd" then
+        g.action, g.preposition = "visual delete", "selected text"
+      elseif k == "vc" then
+        g.action, g.preposition = "visual change to", "selected text"
+      else
+        return nil
       end
       return g
     end)(),
@@ -703,9 +995,51 @@ load_challenge = function()
   -- Store target
   state.target = challenge.target
 
-  -- Place green target highlight
-  local target_buf_row = state.target.row + state.snippet_offset
-  highlight.place_target(state.buf, target_buf_row, state.target.col)
+  -- Place highlight(s) based on challenge type
+  if challenge.highlight_rows then
+    -- Multi-row highlight (e.g., delete_multiple_lines, copy_paste_lines)
+    local buf_rows = {}
+    for _, r in ipairs(challenge.highlight_rows) do
+      buf_rows[#buf_rows + 1] = r + state.snippet_offset
+    end
+    highlight.place_target_rows(state.buf, buf_rows)
+    -- Place paste destination marker if present (e.g., copy_paste_lines)
+    if challenge.paste_marker_after_row ~= nil then
+      highlight.place_paste_marker(state.buf, challenge.paste_marker_after_row + state.snippet_offset)
+    end
+  else
+    -- Compute highlight range from vim motion semantics
+    local target_end_col = challenge.target_end_col or nil
+    local full_line = false
+    local highlight_start_col = nil
+    if challenge.key then
+      local s_line = challenge.snippet_lines[state.target.row + 1]
+      if s_line then
+        target_end_col, full_line, highlight_start_col = compute_motion_end(challenge.key, s_line, state.target.col)
+      end
+    end
+
+    -- Fallback: backward-scan for keys not handled by compute_motion_end
+    if not target_end_col and not full_line and challenge.expected_lines then
+      local s_line = challenge.snippet_lines[state.target.row + 1]
+      local e_line = challenge.expected_lines[state.target.row + 1]
+      if s_line and e_line then
+        local si, ei = #s_line, #e_line
+        while si > state.target.col and ei > 0
+          and s_line:byte(si) == e_line:byte(ei) do
+          si = si - 1
+          ei = ei - 1
+        end
+        target_end_col = si
+      end
+    end
+
+    -- Place target highlight (use search-specific color for search lessons)
+    local target_buf_row = state.target.row + state.snippet_offset
+    local hl_group = challenge.search_word and "VimTeacherSearchTarget" or nil
+    local hl_col = highlight_start_col or state.target.col
+    highlight.place_target(state.buf, target_buf_row, hl_col, target_end_col, full_line, hl_group)
+  end
 
   -- Position cursor at start location
   local start_pos = challenge.start_pos or { row = 0, col = 0 }
@@ -718,8 +1052,9 @@ load_challenge = function()
     vim.bo[state.buf].modifiable = true
   end
 
-  -- Start elapsed timer display
-  start_elapsed_timer()
+  -- Show initial 00:00 (timer starts counting on first move)
+  buffer.update_timer(state.buf, 0)
+  state.loading = nil
 end
 
 setup_autocmds = function()
@@ -741,6 +1076,16 @@ setup_autocmds = function()
     group = state.augroup,
     buffer = state.buf,
     callback = on_text_changed,
+  })
+
+  -- Visual mode exit: schedule validation after buffer state settles
+  vim.api.nvim_create_autocmd("ModeChanged", {
+    group = state.augroup,
+    pattern = "[vV\x16]*:n*",
+    callback = function()
+      if vim.api.nvim_get_current_buf() ~= state.buf then return end
+      vim.schedule(on_text_changed)
+    end,
   })
 
   vim.api.nvim_create_autocmd("BufWipeout", {
@@ -788,12 +1133,33 @@ start_lesson = function(lesson_name)
     setup_autocmds()
   end
 
+  -- Remap gg/G to snippet-relative jumps
+  -- (prevents cursor escaping to buffer header/footer; reads state at keypress time)
+  local nav_opts = { buffer = state.buf, noremap = true, silent = true }
+  vim.keymap.set("n", "gg", function()
+    if state.snippet_offset and state.win and vim.api.nvim_win_is_valid(state.win) then
+      vim.api.nvim_win_set_cursor(state.win, { state.snippet_offset + 1, 0 })
+    end
+  end, nav_opts)
+  vim.keymap.set("n", "G", function()
+    if state.snippet_end and state.win and vim.api.nvim_win_is_valid(state.win) then
+      vim.api.nvim_win_set_cursor(state.win, { state.snippet_end + 1, 0 })
+    end
+  end, nav_opts)
+
   -- Info lessons: display description + sandbox, no challenges
   if lesson.type == "info" then
     state.mode = "info"
     block_insert_keys()
-    -- Unblock 'i' for sandbox practice
-    pcall(vim.keymap.del, "n", "i", { buffer = state.buf })
+    local remap_opts = { buffer = state.buf, noremap = true, silent = true }
+    -- Unblock 'i' for sandbox insert mode (override global plugin keymaps)
+    vim.keymap.set("n", "i", "i", remap_opts)
+    -- Unblock sandbox modify keys for info lesson free practice
+    if lesson.sandbox_modify_keys then
+      for _, key in ipairs(lesson.sandbox_modify_keys) do
+        vim.keymap.set("n", key, key, remap_opts)
+      end
+    end
     -- Render layout (no progress bar)
     buffer.render(state.buf, {
       title = lesson.title,
@@ -803,6 +1169,7 @@ start_lesson = function(lesson_name)
     })
     state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
     vim.bo[state.buf].modifiable = true
+    vim.bo[state.buf].undolevels = 1000
     vim.api.nvim_win_set_cursor(state.win, { state.snippet_offset + 1, 0 })
     -- Navigation keymaps
     local opts = { buffer = state.buf, noremap = true, silent = true }
@@ -819,7 +1186,7 @@ start_lesson = function(lesson_name)
   -- Apply appropriate key blocking for this lesson type
   -- (always re-apply; keymaps may be stale from a previous lesson or menu)
   if lesson.type == "insert" then
-    block_keys_for_insert_lesson(lesson.allowed_keys or {}, lesson.allowed_modify_keys)
+    block_keys_for_insert_lesson(lesson.allowed_keys or {}, lesson.allowed_modify_keys, lesson.allowed_visual_keys)
     -- Ensure autoindent for o/O lessons (new lines inherit current line's indent)
     vim.bo[state.buf].autoindent = true
   else
@@ -863,5 +1230,8 @@ function M.start(lesson_name)
     show_menu()
   end
 end
+
+-- Exposed for testing
+M._normalize_bracket_spaces = normalize_bracket_spaces
 
 return M

@@ -26,62 +26,64 @@ M.hint_lines = {
 -- Each challenge has key (ca(, ca[, or ca{) and char (replacement text)
 -- The operation deletes the bracket pair AND contents, then inserts char
 local CHALLENGES = {
-  -- Challenge 1: ca( — change (old_args) to new_args
+  -- Challenge 1: ca( — change (old_val + 1) to new_val
   {
     snippet_lines = {
-      "function process(old_args) {",
+      "function process(args) {",
+      "  const result = (old_val + 1);",
       "  return result;",
       "}",
     },
     expected_lines = {
-      "function processnew_args {",
+      "function process(args) {",
+      "  const result = new_val;",
       "  return result;",
       "}",
     },
-    target = { row = 0, col = 17 },
-    start_pos = { row = 2, col = 0 },
+    target = { row = 1, col = 19 },
+    start_pos = { row = 3, col = 0 },
     key = "ca(",
-    char = "new_args",
+    char = "new_val",
   },
 
-  -- Challenge 2: ca( — change (x, y) to coords
+  -- Challenge 2: ca( — change (x * scale) to offset
   {
     snippet_lines = {
       "function draw(x, y) {",
-      "  const canvas = getCanvas();",
-      "  render(canvas);",
+      "  const pos = (x * scale);",
+      "  render(pos);",
       "}",
     },
     expected_lines = {
-      "function drawcoords {",
-      "  const canvas = getCanvas();",
-      "  render(canvas);",
+      "function draw(x, y) {",
+      "  const pos = offset;",
+      "  render(pos);",
       "}",
     },
-    target = { row = 0, col = 14 },
+    target = { row = 1, col = 15 },
     start_pos = { row = 3, col = 0 },
     key = "ca(",
-    char = "coords",
+    char = "offset",
   },
 
-  -- Challenge 3: ca( — change (config) to options
+  -- Challenge 3: ca( — change (timeout / 1000) to seconds
   {
     snippet_lines = {
       "function init(config) {",
-      "  loadSettings(config);",
-      "  return true;",
+      "  const delay = (timeout / 1000);",
+      "  return delay;",
       "}",
     },
     expected_lines = {
-      "function initoptions {",
-      "  loadSettings(config);",
-      "  return true;",
+      "function init(config) {",
+      "  const delay = seconds;",
+      "  return delay;",
       "}",
     },
-    target = { row = 0, col = 14 },
+    target = { row = 1, col = 18 },
     start_pos = { row = 0, col = 0 },
     key = "ca(",
-    char = "options",
+    char = "seconds",
   },
 
   -- Challenge 4: ca[ — change [0] to .first

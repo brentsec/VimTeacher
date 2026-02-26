@@ -4,6 +4,7 @@ data/stats.json
 # Environment / secrets
 .env
 .env.*
+plans/
 
 # OS generated
 .DS_Store
@@ -37,3 +38,4 @@ logs/
 .cache/
 *.bak
 *.orig
+

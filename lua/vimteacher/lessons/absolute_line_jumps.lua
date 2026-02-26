@@ -26,24 +26,12 @@ M.hint_lines = {
 }
 
 --- Compute the minimum (optimal) moves between two positions.
---- For absolute line jumps (gg/G), vertical move costs 1, column adjustment costs 1.
+--- For absolute line jumps (gg/G), it's always 1 keypress.
 --- @param start_pos table {row=number, col=number} 0-indexed
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
 function M.compute_optimal(start_pos, target)
-  if start_pos.row == target.row and start_pos.col == target.col then
-    return 0
-  end
-
-  local moves = 0
-  if start_pos.row ~= target.row then
-    moves = moves + 1  -- gg or G
-  end
-  if start_pos.col ~= target.col then
-    moves = moves + 1  -- column adjustment (h/l)
-  end
-
-  return moves
+  return 1
 end
 
 --- Generate a new challenge: random snippet with target on first or last line.
@@ -57,23 +45,6 @@ function M.generate_challenge(buf, ns_id)
   -- Randomly choose first or last line for target
   local use_first = math.random() < 0.5
   local target_row = use_first and 0 or (#snippet - 1)
-  local target_line = snippet[target_row + 1]
-
-  -- Pick non-whitespace column on target line
-  local valid_cols = {}
-  for col = 0, #target_line - 1 do
-    local char = target_line:sub(col + 1, col + 1)
-    if char ~= " " and char ~= "\t" then
-      valid_cols[#valid_cols + 1] = col
-    end
-  end
-
-  -- Safety: if no valid columns (should never happen), retry
-  if #valid_cols == 0 then
-    return M.generate_challenge(buf, ns_id)
-  end
-
-  local target_col = valid_cols[math.random(1, #valid_cols)]
 
   -- Start position at opposite end
   local start_row = use_first and (#snippet - 1) or 0
@@ -95,10 +66,15 @@ function M.generate_challenge(buf, ns_id)
     start_col = start_valid_cols[math.random(1, #start_valid_cols)]
   end
 
+  local goal_text = use_first and "Move to the first line" or "Move to the last line"
+
   return {
     snippet_lines = snippet,
-    target = { row = target_row, col = target_col },
+    target = { row = target_row, col = 0 },
     start_pos = { row = start_row, col = start_col },
+    goal_text = goal_text,
+    row_only_check = true,
+    highlight_rows = { target_row },
   }
 end
 

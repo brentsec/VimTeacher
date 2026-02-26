@@ -117,6 +117,7 @@ function M.generate_challenge(buf, ns_id)
     snippet_lines = snippet,
     target = target,
     start_pos = start_pos,
+    goal_text = "Navigate to the green target",
   }
 end
 

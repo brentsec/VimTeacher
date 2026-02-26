@@ -26,9 +26,9 @@ assert_test(type(search.description) == "table", "description must be table")
 assert_test(type(search.hint_lines) == "table", "hint_lines must be table")
 assert_test(type(search.generate_challenge) == "function", "generate_challenge must be function")
 
--- Test 2: compute_optimal works (search is always 1 action)
+-- Test 2: compute_optimal works (search is always 2 actions: / + n)
 local opt = search.compute_optimal({ row = 0, col = 0 }, { row = 10, col = 20 })
-assert_test(opt == 1, "Search to different position should be 1, got " .. opt)
+assert_test(opt == 2, "Search to different position should be 2, got " .. opt)
 
 local opt2 = search.compute_optimal({ row = 2, col = 7 }, { row = 2, col = 7 })
 assert_test(opt2 == 0, "Same position should be 0, got " .. opt2)
@@ -43,6 +43,11 @@ assert_test(challenge.target ~= nil, "Missing target")
 assert_test(challenge.target.row ~= nil, "Missing target.row")
 assert_test(challenge.target.col ~= nil, "Missing target.col")
 assert_test(challenge.start_pos ~= nil, "Missing start_pos")
+assert_test(challenge.search_word ~= nil, "Missing search_word")
+assert_test(type(challenge.search_word) == "string", "search_word must be string")
+assert_test(#challenge.search_word >= 2, "search_word must be at least 2 chars, got " .. #challenge.search_word)
+assert_test(challenge.target_end_col ~= nil, "Missing target_end_col")
+assert_test(challenge.goal_text ~= nil, "Missing goal_text")
 
 -- Test 4: Target is within snippet bounds
 assert_test(challenge.target.row >= 0, "target.row must be >= 0")
@@ -57,11 +62,11 @@ assert_test(
   "target.col out of bounds: " .. challenge.target.col .. " >= " .. #target_line
 )
 
--- Test 5: Target is on a non-whitespace character
-local target_char = target_line:sub(challenge.target.col + 1, challenge.target.col + 1)
+-- Test 5: Target is on the search_word
+local target_substr = target_line:sub(challenge.target.col + 1, challenge.target.col + #challenge.search_word)
 assert_test(
-  target_char ~= " " and target_char ~= "\t",
-  "Target must be on non-whitespace, got '" .. target_char .. "'"
+  target_substr == challenge.search_word,
+  "Target must be on search_word '" .. challenge.search_word .. "', got '" .. target_substr .. "'"
 )
 
 -- Test 6: Start position is at least 3 rows from target
@@ -75,6 +80,9 @@ for i = 1, 50 do
   local ch = search.generate_challenge(buf, ns)
   assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
   assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
+  assert_test(ch.search_word ~= nil, "Generation " .. i .. " missing search_word")
+  assert_test(ch.target_end_col ~= nil, "Generation " .. i .. " missing target_end_col")
+  assert_test(ch.goal_text ~= nil, "Generation " .. i .. " missing goal_text")
 
   -- Verify target is always on non-whitespace
   local tl = ch.snippet_lines[ch.target.row + 1]
