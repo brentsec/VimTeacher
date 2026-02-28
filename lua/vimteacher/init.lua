@@ -436,6 +436,7 @@ clear_info_keymaps = function()
 	if not buf or not vim.api.nvim_buf_is_valid(buf) then
 		return
 	end
+	pcall(vim.keymap.del, "n", "n", { buffer = buf })
 	pcall(vim.keymap.del, "n", "<CR>", { buffer = buf })
 	pcall(vim.keymap.del, "n", "q", { buffer = buf })
 end
@@ -1082,18 +1083,21 @@ start_lesson = function(lesson_name)
 			snippet_lines = lesson.sandbox_snippet,
 			hint_lines = lesson.hint_lines,
 		})
-		state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
-		vim.bo[state.buf].modifiable = true
-		vim.bo[state.buf].undolevels = 1000
-		vim.api.nvim_win_set_cursor(state.win, { state.snippet_offset + 1, 0 })
+			state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
+			vim.bo[state.buf].modifiable = true
+			vim.bo[state.buf].undolevels = 1000
+			-- Start at the instruction block so step-by-step text is visible on smaller windows.
+			-- Users can move into the sandbox right below to practice.
+			local info_start_row = math.min(vim.api.nvim_buf_line_count(state.buf), 3)
+			vim.api.nvim_win_set_cursor(state.win, { info_start_row, 0 })
 		-- Navigation keymaps
 		local opts = { buffer = state.buf, noremap = true, silent = true }
-		vim.keymap.set("n", "<CR>", function()
-			local next_name = lessons.get_next(lesson_name)
-			if next_name then
-				start_lesson(next_name)
-			end
-		end, opts)
+			vim.keymap.set("n", "n", function()
+				local next_name = lessons.get_next(lesson_name)
+				if next_name then
+					start_lesson(next_name)
+				end
+			end, opts)
 		vim.keymap.set("n", "q", function()
 			show_menu()
 		end, opts)

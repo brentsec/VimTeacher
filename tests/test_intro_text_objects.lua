@@ -67,7 +67,7 @@ assert_test(
 	hint_text:find("di%(") ~= nil or hint_text:find("Delete inside") ~= nil,
 	"Hints should mention di( or delete inside"
 )
-assert_test(hint_text:find("Enter") ~= nil, "Hints should mention Enter (next lesson)")
+assert_test(hint_text:find("%[n%]") ~= nil, "Hints should mention [n] (next lesson)")
 
 -- Test 9: generate_challenge returns valid structure
 local challenge = intro.generate_challenge()

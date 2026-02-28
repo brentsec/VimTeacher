@@ -56,7 +56,7 @@ assert_test(desc_text:find("Esc") ~= nil, "Description should mention 'Esc'")
 local hint_text = table.concat(intro.hint_lines, " ")
 assert_test(hint_text:find("visual") ~= nil or hint_text:find("Visual") ~= nil, "Hints should mention visual mode")
 assert_test(hint_text:find("Esc") ~= nil, "Hints should mention Esc")
-assert_test(hint_text:find("Enter") ~= nil, "Hints should mention Enter (next lesson)")
+assert_test(hint_text:find("%[n%]") ~= nil, "Hints should mention [n] (next lesson)")
 
 -- Test 8: generate_challenge returns valid structure
 local challenge = intro.generate_challenge()

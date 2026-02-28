@@ -30,7 +30,7 @@ M.sandbox_snippet = {
 
 M.hint_lines = {
 	"[i] Enter insert mode    [Esc] Back to normal mode",
-	"[Enter] Next lesson      [q] Back to menu",
+	"[n] Next lesson      [q] Back to menu",
 }
 
 --- Generate a challenge (no-op for info lessons, satisfies registry validation).

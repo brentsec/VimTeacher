@@ -36,7 +36,7 @@ M.sandbox_snippet = {
 
 M.hint_lines = {
 	'[di(] Delete inside ()  [da(] Delete around ()  [ci"] Change inside ""',
-	"[Enter] Next lesson      [q] Back to menu",
+	"[n] Next lesson      [q] Back to menu",
 }
 
 --- Generate a challenge (no-op for info lessons, satisfies registry validation).

@@ -98,6 +98,8 @@ function M.create()
 	vim.wo[win].signcolumn = "no"
 	vim.wo[win].cursorline = true
 	vim.wo[win].wrap = false
+	vim.wo[win].scrolloff = 0
+	vim.wo[win].sidescrolloff = 0
 	vim.wo[win].colorcolumn = ""
 	vim.wo[win].foldmethod = "manual"
 	vim.wo[win].foldenable = false

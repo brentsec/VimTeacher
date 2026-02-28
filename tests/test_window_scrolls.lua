@@ -60,7 +60,7 @@ assert_test(
 -- Test 7: Hint lines mention key bindings
 local hint_text = table.concat(window_scrolls.hint_lines, " ")
 assert_test(hint_text:find("Ctrl") ~= nil, "Hints should mention Ctrl key")
-assert_test(hint_text:find("Enter") ~= nil, "Hints should mention Enter (next lesson)")
+assert_test(hint_text:find("%[n%]") ~= nil, "Hints should mention [n] (next lesson)")
 
 -- Test 8: generate_challenge returns valid structure
 local challenge = window_scrolls.generate_challenge()

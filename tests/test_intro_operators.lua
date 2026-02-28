@@ -56,7 +56,7 @@ assert_test(desc_text:find("dw") ~= nil or desc_text:find("d + w") ~= nil, "Desc
 local hint_text = table.concat(intro.hint_lines, " ")
 assert_test(hint_text:find("dw") ~= nil or hint_text:find("Delete") ~= nil, "Hints should mention delete/dw")
 assert_test(hint_text:find("u") ~= nil or hint_text:find("Undo") ~= nil, "Hints should mention undo")
-assert_test(hint_text:find("Enter") ~= nil, "Hints should mention Enter (next lesson)")
+assert_test(hint_text:find("%[n%]") ~= nil, "Hints should mention [n] (next lesson)")
 
 -- Test 8: generate_challenge returns valid structure
 local challenge = intro.generate_challenge()

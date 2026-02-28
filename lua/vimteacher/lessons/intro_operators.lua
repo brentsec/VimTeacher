@@ -33,7 +33,7 @@ M.sandbox_snippet = {
 
 M.hint_lines = {
 	"[dw] Delete word  [d$] Delete to end  [u] Undo",
-	"[Enter] Next lesson      [q] Back to menu",
+	"[n] Next lesson      [q] Back to menu",
 }
 
 --- Generate a challenge (no-op for info lessons, satisfies registry validation).
