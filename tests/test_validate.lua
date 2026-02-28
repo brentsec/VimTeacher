@@ -7,12 +7,12 @@ local pass_count = 0
 local fail_count = 0
 
 local function assert_test(condition, msg)
-  if condition then
-    pass_count = pass_count + 1
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: " .. msg)
-  end
+	if condition then
+		pass_count = pass_count + 1
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: " .. msg)
+	end
 end
 
 print("test_validate: running...")
@@ -38,12 +38,12 @@ assert_test(result3 == false, "Expected no match at (0, 4)")
 
 -- Test 4: Constrain cursor upward
 vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
-  "header line",
-  "separator",
-  "code line 1",
-  "code line 2",
-  "separator",
-  "footer line",
+	"header line",
+	"separator",
+	"code line 1",
+	"code line 2",
+	"separator",
+	"footer line",
 })
 vim.api.nvim_win_set_cursor(win, { 1, 0 }) -- line 1, in header zone
 local constrained = validate.constrain_to_snippet(win, 2, 3) -- snippet lines 2-3 (0-indexed)
@@ -68,5 +68,5 @@ vim.api.nvim_buf_delete(buf, { force = true })
 
 print(string.format("test_validate: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
-  vim.cmd("cquit! 1")
+	vim.cmd("cquit! 1")
 end

@@ -7,12 +7,12 @@ local pass_count = 0
 local fail_count = 0
 
 local function assert_test(condition, msg)
-  if condition then
-    pass_count = pass_count + 1
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: " .. msg)
-  end
+	if condition then
+		pass_count = pass_count + 1
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: " .. msg)
+	end
 end
 
 print("test_stats: running...")
@@ -72,5 +72,5 @@ assert_test(ls3.best_accuracy == 90, "Best accuracy should stay 90, got " .. ls3
 
 print(string.format("test_stats: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
-  vim.cmd("cquit! 1")
+	vim.cmd("cquit! 1")
 end

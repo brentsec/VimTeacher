@@ -7,12 +7,12 @@ local pass_count = 0
 local fail_count = 0
 
 local function assert_test(condition, msg)
-  if condition then
-    pass_count = pass_count + 1
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: " .. msg)
-  end
+	if condition then
+		pass_count = pass_count + 1
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: " .. msg)
+	end
 end
 
 print("test_repeat_search: running...")
@@ -56,95 +56,79 @@ assert_test(challenge.start_pos.col ~= nil, "Missing start_pos.col")
 -- Test 4: Custom snippets have repeated words
 -- Check that at least one word appears 2+ times in the snippet
 local function has_repeated_words(lines)
-  local word_counts = {}
-  for _, line in ipairs(lines) do
-    -- Extract words (alphanumeric sequences)
-    for word in line:gmatch("%w+") do
-      local lower_word = word:lower()
-      word_counts[lower_word] = (word_counts[lower_word] or 0) + 1
-    end
-  end
+	local word_counts = {}
+	for _, line in ipairs(lines) do
+		-- Extract words (alphanumeric sequences)
+		for word in line:gmatch("%w+") do
+			local lower_word = word:lower()
+			word_counts[lower_word] = (word_counts[lower_word] or 0) + 1
+		end
+	end
 
-  for _, count in pairs(word_counts) do
-    if count >= 2 then
-      return true
-    end
-  end
-  return false
+	for _, count in pairs(word_counts) do
+		if count >= 2 then
+			return true
+		end
+	end
+	return false
 end
 
-assert_test(
-  has_repeated_words(challenge.snippet_lines),
-  "Custom snippets must have at least one repeated word"
-)
+assert_test(has_repeated_words(challenge.snippet_lines), "Custom snippets must have at least one repeated word")
 
 -- Test 5: Target is within snippet bounds
 assert_test(challenge.target.row >= 0, "target.row must be >= 0")
 assert_test(
-  challenge.target.row < #challenge.snippet_lines,
-  "target.row out of bounds: " .. challenge.target.row .. " >= " .. #challenge.snippet_lines
+	challenge.target.row < #challenge.snippet_lines,
+	"target.row out of bounds: " .. challenge.target.row .. " >= " .. #challenge.snippet_lines
 )
 local target_line = challenge.snippet_lines[challenge.target.row + 1]
 assert_test(target_line ~= nil, "target_line is nil")
 assert_test(challenge.target.col >= 0, "target.col must be >= 0")
 assert_test(
-  challenge.target.col < #target_line,
-  "target.col out of bounds: " .. challenge.target.col .. " >= " .. #target_line
+	challenge.target.col < #target_line,
+	"target.col out of bounds: " .. challenge.target.col .. " >= " .. #target_line
 )
 
 -- Test 6: Target is on a non-whitespace character
 local target_char = target_line:sub(challenge.target.col + 1, challenge.target.col + 1)
 assert_test(
-  target_char ~= " " and target_char ~= "\t" and target_char ~= "",
-  "Target must be on non-whitespace, got '" .. target_char .. "'"
+	target_char ~= " " and target_char ~= "\t" and target_char ~= "",
+	"Target must be on non-whitespace, got '" .. target_char .. "'"
 )
 
 -- Test 7: Start position is at least 3 rows away from target
 local row_dist = math.abs(challenge.start_pos.row - challenge.target.row)
-assert_test(
-  row_dist >= 3,
-  "Start must be >= 3 rows from target, got " .. row_dist
-)
+assert_test(row_dist >= 3, "Start must be >= 3 rows from target, got " .. row_dist)
 
 -- Test 8: Snippet has at least 8 lines (requirement for custom snippets)
-assert_test(
-  #challenge.snippet_lines >= 8,
-  "Custom snippets must have 8+ lines, got " .. #challenge.snippet_lines
-)
+assert_test(#challenge.snippet_lines >= 8, "Custom snippets must have 8+ lines, got " .. #challenge.snippet_lines)
 
 -- Test 9: Run 50 generations without crashes (stress test)
 for i = 1, 50 do
-  local ch = repeat_search.generate_challenge(buf, ns)
-  assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
-  assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
-  assert_test(ch.start_pos ~= nil, "Generation " .. i .. " returned nil start_pos")
+	local ch = repeat_search.generate_challenge(buf, ns)
+	assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
+	assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
+	assert_test(ch.start_pos ~= nil, "Generation " .. i .. " returned nil start_pos")
 
-  -- Verify snippet has repeated words
-  assert_test(
-    has_repeated_words(ch.snippet_lines),
-    "Generation " .. i .. ": snippet missing repeated words"
-  )
+	-- Verify snippet has repeated words
+	assert_test(has_repeated_words(ch.snippet_lines), "Generation " .. i .. ": snippet missing repeated words")
 
-  -- Verify target is on non-whitespace
-  local tl = ch.snippet_lines[ch.target.row + 1]
-  if tl then
-    local tc = tl:sub(ch.target.col + 1, ch.target.col + 1)
-    assert_test(
-      tc ~= " " and tc ~= "\t" and tc ~= "",
-      "Generation " .. i .. ": target on whitespace/empty at ("
-        .. ch.target.row .. "," .. ch.target.col .. ")"
-    )
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: Generation " .. i .. ": target_line is nil at row " .. ch.target.row)
-  end
+	-- Verify target is on non-whitespace
+	local tl = ch.snippet_lines[ch.target.row + 1]
+	if tl then
+		local tc = tl:sub(ch.target.col + 1, ch.target.col + 1)
+		assert_test(
+			tc ~= " " and tc ~= "\t" and tc ~= "",
+			"Generation " .. i .. ": target on whitespace/empty at (" .. ch.target.row .. "," .. ch.target.col .. ")"
+		)
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: Generation " .. i .. ": target_line is nil at row " .. ch.target.row)
+	end
 
-  -- Verify start is 3+ rows away
-  local rd = math.abs(ch.start_pos.row - ch.target.row)
-  assert_test(
-    rd >= 3,
-    "Generation " .. i .. ": start must be >= 3 rows away, got " .. rd
-  )
+	-- Verify start is 3+ rows away
+	local rd = math.abs(ch.start_pos.row - ch.target.row)
+	assert_test(rd >= 3, "Generation " .. i .. ": start must be >= 3 rows away, got " .. rd)
 end
 
 -- Cleanup
@@ -152,5 +136,5 @@ vim.api.nvim_buf_delete(buf, { force = true })
 
 print(string.format("test_repeat_search: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
-  vim.cmd("cquit! 1")
+	vim.cmd("cquit! 1")
 end

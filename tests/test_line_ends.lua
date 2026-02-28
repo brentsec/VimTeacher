@@ -7,12 +7,12 @@ local pass_count = 0
 local fail_count = 0
 
 local function assert_test(condition, msg)
-  if condition then
-    pass_count = pass_count + 1
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: " .. msg)
-  end
+	if condition then
+		pass_count = pass_count + 1
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: " .. msg)
+	end
 end
 
 print("test_line_ends: running...")
@@ -84,57 +84,56 @@ assert_test(challenge.start_pos ~= nil, "Missing start_pos")
 local boundaries = line_ends._find_line_boundaries(challenge.snippet_lines)
 local target_is_boundary = false
 for _, b in ipairs(boundaries) do
-  if b.row == challenge.target.row then
-    if challenge.target.col == b.col_0
-      or challenge.target.col == b.col_end
-      or challenge.target.col == b.col_first_nonblank then
-      target_is_boundary = true
-    end
-    break
-  end
+	if b.row == challenge.target.row then
+		if
+			challenge.target.col == b.col_0
+			or challenge.target.col == b.col_end
+			or challenge.target.col == b.col_first_nonblank
+		then
+			target_is_boundary = true
+		end
+		break
+	end
 end
-assert_test(target_is_boundary,
-  "Target (" .. challenge.target.row .. "," .. challenge.target.col
-    .. ") must be at a line boundary (0, $, or _)")
+assert_test(
+	target_is_boundary,
+	"Target (" .. challenge.target.row .. "," .. challenge.target.col .. ") must be at a line boundary (0, $, or _)"
+)
 
 -- Test 9: Target row is within snippet bounds
 assert_test(challenge.target.row >= 0, "target.row must be >= 0")
 assert_test(
-  challenge.target.row < #challenge.snippet_lines,
-  "target.row out of bounds: " .. challenge.target.row .. " >= " .. #challenge.snippet_lines
+	challenge.target.row < #challenge.snippet_lines,
+	"target.row out of bounds: " .. challenge.target.row .. " >= " .. #challenge.snippet_lines
 )
 
 -- Test 10: Target col is within line bounds
 local tline = challenge.snippet_lines[challenge.target.row + 1]
 assert_test(challenge.target.col >= 0, "target.col must be >= 0")
-assert_test(
-  challenge.target.col < #tline,
-  "target.col out of bounds: " .. challenge.target.col .. " >= " .. #tline
-)
+assert_test(challenge.target.col < #tline, "target.col out of bounds: " .. challenge.target.col .. " >= " .. #tline)
 
 -- Test 11: Run 50 generations without crashes + verify all targets are boundaries
 for i = 1, 50 do
-  local ch = line_ends.generate_challenge(buf, ns)
-  assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
-  assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
-  assert_test(ch.start_pos ~= nil, "Generation " .. i .. " returned nil start_pos")
+	local ch = line_ends.generate_challenge(buf, ns)
+	assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
+	assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
+	assert_test(ch.start_pos ~= nil, "Generation " .. i .. " returned nil start_pos")
 
-  -- Verify target is at a valid boundary
-  local gen_bounds = line_ends._find_line_boundaries(ch.snippet_lines)
-  local is_boundary = false
-  for _, b in ipairs(gen_bounds) do
-    if b.row == ch.target.row then
-      if ch.target.col == b.col_0
-        or ch.target.col == b.col_end
-        or ch.target.col == b.col_first_nonblank then
-        is_boundary = true
-      end
-      break
-    end
-  end
-  assert_test(is_boundary,
-    "Generation " .. i .. ": target (" .. ch.target.row .. "," .. ch.target.col
-      .. ") not at a line boundary")
+	-- Verify target is at a valid boundary
+	local gen_bounds = line_ends._find_line_boundaries(ch.snippet_lines)
+	local is_boundary = false
+	for _, b in ipairs(gen_bounds) do
+		if b.row == ch.target.row then
+			if ch.target.col == b.col_0 or ch.target.col == b.col_end or ch.target.col == b.col_first_nonblank then
+				is_boundary = true
+			end
+			break
+		end
+	end
+	assert_test(
+		is_boundary,
+		"Generation " .. i .. ": target (" .. ch.target.row .. "," .. ch.target.col .. ") not at a line boundary"
+	)
 end
 
 -- Cleanup
@@ -142,5 +141,5 @@ vim.api.nvim_buf_delete(buf, { force = true })
 
 print(string.format("test_line_ends: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
-  vim.cmd("cquit! 1")
+	vim.cmd("cquit! 1")
 end

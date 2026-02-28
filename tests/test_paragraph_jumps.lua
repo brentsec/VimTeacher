@@ -7,12 +7,12 @@ local pass_count = 0
 local fail_count = 0
 
 local function assert_test(condition, msg)
-  if condition then
-    pass_count = pass_count + 1
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: " .. msg)
-  end
+	if condition then
+		pass_count = pass_count + 1
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: " .. msg)
+	end
 end
 
 print("test_paragraph_jumps: running...")
@@ -42,31 +42,16 @@ assert_test(challenge.highlight_rows ~= nil, "Missing highlight_rows")
 
 -- Test 3: Target is on a blank line at col 0
 local target_line = challenge.snippet_lines[challenge.target.row + 1]
-assert_test(
-  target_line == "",
-  "Target must be on a blank line, got '" .. tostring(target_line) .. "'"
-)
-assert_test(
-  challenge.target.col == 0,
-  "Target col must be 0 for blank line, got " .. challenge.target.col
-)
+assert_test(target_line == "", "Target must be on a blank line, got '" .. tostring(target_line) .. "'")
+assert_test(challenge.target.col == 0, "Target col must be 0 for blank line, got " .. challenge.target.col)
 
 -- Test 4: highlight_rows matches target row
-assert_test(
-  #challenge.highlight_rows == 1,
-  "highlight_rows should have 1 entry, got " .. #challenge.highlight_rows
-)
-assert_test(
-  challenge.highlight_rows[1] == challenge.target.row,
-  "highlight_rows[1] should match target.row"
-)
+assert_test(#challenge.highlight_rows == 1, "highlight_rows should have 1 entry, got " .. #challenge.highlight_rows)
+assert_test(challenge.highlight_rows[1] == challenge.target.row, "highlight_rows[1] should match target.row")
 
 -- Test 5: Start position is on a non-blank line, at least 3 rows from target
 local start_line = challenge.snippet_lines[challenge.start_pos.row + 1]
-assert_test(
-  start_line ~= "",
-  "Start must be on a non-blank line"
-)
+assert_test(start_line ~= "", "Start must be on a non-blank line")
 local row_dist = math.abs(challenge.start_pos.row - challenge.target.row)
 assert_test(row_dist >= 3, "Start must be >= 3 rows from target, got " .. row_dist)
 
@@ -82,52 +67,45 @@ assert_test(opt2 >= 1, "Start to target should need >= 1 jump, got " .. opt2)
 -- Test 7: Snippet has at least one blank line
 local has_blank = false
 for _, line in ipairs(challenge.snippet_lines) do
-  if line == "" then
-    has_blank = true
-    break
-  end
+	if line == "" then
+		has_blank = true
+		break
+	end
 end
 assert_test(has_blank, "Snippet must have at least one blank line for paragraph boundaries")
 
 -- Test 8: Run 50 generations without crashes
 for i = 1, 50 do
-  local ch = para.generate_challenge(buf, ns)
-  assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
-  assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
-  assert_test(ch.goal_text ~= nil, "Generation " .. i .. " missing goal_text")
-  assert_test(ch.highlight_rows ~= nil, "Generation " .. i .. " missing highlight_rows")
+	local ch = para.generate_challenge(buf, ns)
+	assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
+	assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
+	assert_test(ch.goal_text ~= nil, "Generation " .. i .. " missing goal_text")
+	assert_test(ch.highlight_rows ~= nil, "Generation " .. i .. " missing highlight_rows")
 
-  -- Verify target is always on a blank line at col 0
-  local tl = ch.snippet_lines[ch.target.row + 1]
-  assert_test(
-    tl == "",
-    "Generation " .. i .. ": target must be on blank line at row " .. ch.target.row
-      .. ", got '" .. tostring(tl) .. "'"
-  )
-  assert_test(
-    ch.target.col == 0,
-    "Generation " .. i .. ": target.col must be 0, got " .. ch.target.col
-  )
+	-- Verify target is always on a blank line at col 0
+	local tl = ch.snippet_lines[ch.target.row + 1]
+	assert_test(
+		tl == "",
+		"Generation "
+			.. i
+			.. ": target must be on blank line at row "
+			.. ch.target.row
+			.. ", got '"
+			.. tostring(tl)
+			.. "'"
+	)
+	assert_test(ch.target.col == 0, "Generation " .. i .. ": target.col must be 0, got " .. ch.target.col)
 
-  -- Verify highlight_rows matches target
-  assert_test(
-    ch.highlight_rows[1] == ch.target.row,
-    "Generation " .. i .. ": highlight_rows must match target row"
-  )
+	-- Verify highlight_rows matches target
+	assert_test(ch.highlight_rows[1] == ch.target.row, "Generation " .. i .. ": highlight_rows must match target row")
 
-  -- Verify start is on non-blank line
-  local sl = ch.snippet_lines[ch.start_pos.row + 1]
-  assert_test(
-    sl ~= "",
-    "Generation " .. i .. ": start must be on non-blank line"
-  )
+	-- Verify start is on non-blank line
+	local sl = ch.snippet_lines[ch.start_pos.row + 1]
+	assert_test(sl ~= "", "Generation " .. i .. ": start must be on non-blank line")
 
-  -- Verify compute_optimal returns reasonable value
-  local o = para.compute_optimal(ch.start_pos, ch.target)
-  assert_test(
-    o >= 1,
-    "Generation " .. i .. ": optimal must be >= 1, got " .. o
-  )
+	-- Verify compute_optimal returns reasonable value
+	local o = para.compute_optimal(ch.start_pos, ch.target)
+	assert_test(o >= 1, "Generation " .. i .. ": optimal must be >= 1, got " .. o)
 end
 
 -- Cleanup
@@ -135,5 +113,5 @@ vim.api.nvim_buf_delete(buf, { force = true })
 
 print(string.format("test_paragraph_jumps: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
-  vim.cmd("cquit! 1")
+	vim.cmd("cquit! 1")
 end

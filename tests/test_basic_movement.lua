@@ -7,12 +7,12 @@ local pass_count = 0
 local fail_count = 0
 
 local function assert_test(condition, msg)
-  if condition then
-    pass_count = pass_count + 1
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: " .. msg)
-  end
+	if condition then
+		pass_count = pass_count + 1
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: " .. msg)
+	end
 end
 
 print("test_basic_movement: running...")
@@ -47,46 +47,42 @@ assert_test(challenge.start_pos ~= nil, "Missing start_pos")
 -- Test 4: Target is within snippet bounds
 assert_test(challenge.target.row >= 0, "target.row must be >= 0")
 assert_test(
-  challenge.target.row < #challenge.snippet_lines,
-  "target.row out of bounds: " .. challenge.target.row .. " >= " .. #challenge.snippet_lines
+	challenge.target.row < #challenge.snippet_lines,
+	"target.row out of bounds: " .. challenge.target.row .. " >= " .. #challenge.snippet_lines
 )
 local target_line = challenge.snippet_lines[challenge.target.row + 1]
 assert_test(challenge.target.col >= 0, "target.col must be >= 0")
 assert_test(
-  challenge.target.col < #target_line,
-  "target.col out of bounds: " .. challenge.target.col .. " >= " .. #target_line
+	challenge.target.col < #target_line,
+	"target.col out of bounds: " .. challenge.target.col .. " >= " .. #target_line
 )
 
 -- Test 5: Target is on a non-whitespace character
 local target_char = target_line:sub(challenge.target.col + 1, challenge.target.col + 1)
-assert_test(
-  target_char ~= " " and target_char ~= "\t",
-  "Target must be on non-whitespace, got '" .. target_char .. "'"
-)
+assert_test(target_char ~= " " and target_char ~= "\t", "Target must be on non-whitespace, got '" .. target_char .. "'")
 
 -- Test 6: Start position has Manhattan distance >= 3 from target
 if challenge.start_pos then
-  local dist = math.abs(challenge.start_pos.row - challenge.target.row)
-    + math.abs(challenge.start_pos.col - challenge.target.col)
-  assert_test(dist >= 3, "Start must be >= 3 Manhattan distance, got " .. dist)
+	local dist = math.abs(challenge.start_pos.row - challenge.target.row)
+		+ math.abs(challenge.start_pos.col - challenge.target.col)
+	assert_test(dist >= 3, "Start must be >= 3 Manhattan distance, got " .. dist)
 end
 
 -- Test 7: Run 50 generations without crashes
 for i = 1, 50 do
-  local ch = basic.generate_challenge(buf, ns)
-  assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
-  assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
+	local ch = basic.generate_challenge(buf, ns)
+	assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
+	assert_test(ch.target ~= nil, "Generation " .. i .. " returned nil target")
 
-  -- Verify target is always on non-whitespace
-  local tl = ch.snippet_lines[ch.target.row + 1]
-  if tl then
-    local tc = tl:sub(ch.target.col + 1, ch.target.col + 1)
-    assert_test(
-      tc ~= " " and tc ~= "\t" and tc ~= "",
-      "Generation " .. i .. ": target on whitespace/empty at ("
-        .. ch.target.row .. "," .. ch.target.col .. ")"
-    )
-  end
+	-- Verify target is always on non-whitespace
+	local tl = ch.snippet_lines[ch.target.row + 1]
+	if tl then
+		local tc = tl:sub(ch.target.col + 1, ch.target.col + 1)
+		assert_test(
+			tc ~= " " and tc ~= "\t" and tc ~= "",
+			"Generation " .. i .. ": target on whitespace/empty at (" .. ch.target.row .. "," .. ch.target.col .. ")"
+		)
+	end
 end
 
 -- Cleanup
@@ -94,5 +90,5 @@ vim.api.nvim_buf_delete(buf, { force = true })
 
 print(string.format("test_basic_movement: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
-  vim.cmd("cquit! 1")
+	vim.cmd("cquit! 1")
 end
