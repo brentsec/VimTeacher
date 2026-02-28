@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+required=(
+  "docs/START.md"
+  "docs/ARCHITECTURE.md"
+  "docs/DEVELOPMENT.md"
+  "docs/VERIFICATION.md"
+)
+
+missing=0
+for f in "${required[@]}"; do
+  if [[ ! -f "$f" ]]; then
+    printf 'docs-verify: missing required file: %s\n' "$f" >&2
+    missing=1
+  fi
+done
+
+while IFS= read -r -d '' file; do
+  if ! head -n 1 "$file" | grep -q '^---$'; then
+    printf 'docs-verify: missing front matter start: %s\n' "$file" >&2
+    missing=1
+    continue
+  fi
+  if ! grep -q '^summary:' "$file"; then
+    printf 'docs-verify: missing summary field: %s\n' "$file" >&2
+    missing=1
+  fi
+  if ! grep -q '^read_when:' "$file"; then
+    printf 'docs-verify: missing read_when field: %s\n' "$file" >&2
+    missing=1
+  fi
+  if ! grep -q '^status:' "$file"; then
+    printf 'docs-verify: missing status field: %s\n' "$file" >&2
+    missing=1
+  fi
+done < <(find docs -type f -name '*.md' -print0)
+
+if [[ "$missing" -ne 0 ]]; then
+  exit 1
+fi
+
+printf 'docs-verify: OK\n'

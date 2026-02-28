@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+import json
+import re
+from pathlib import Path
+
+ROOT = Path('.').resolve()
+DOCS = ROOT / 'docs'
+AGENT = ROOT / '.agent'
+AGENT.mkdir(exist_ok=True)
+
+REQUIRED_ORDER = [
+    '.agent/context-pack.json',
+    'project.yaml',
+    'README.md',
+    'docs/START.md',
+    'docs/ARCHITECTURE.md',
+    'docs/DEVELOPMENT.md',
+    'docs/VERIFICATION.md',
+]
+
+def parse_front_matter(md_path: Path):
+    text = md_path.read_text(encoding='utf-8')
+    result = {'summary': '', 'read_when': [], 'status': ''}
+    if not text.startswith('---\n'):
+        return result
+    try:
+        _, fm, _ = text.split('---\n', 2)
+    except ValueError:
+        return result
+    lines = fm.splitlines()
+    in_read_when = False
+    for line in lines:
+        if re.match(r'^summary:\s*', line):
+            result['summary'] = line.split(':', 1)[1].strip()
+            in_read_when = False
+        elif line.startswith('read_when:'):
+            in_read_when = True
+        elif re.match(r'^status:\s*', line):
+            result['status'] = line.split(':', 1)[1].strip()
+            in_read_when = False
+        elif in_read_when:
+            m = re.match(r'^\s*-\s+(.*)$', line)
+            if m:
+                result['read_when'].append(m.group(1).strip())
+            elif line.strip():
+                in_read_when = False
+    return result
+
+def parse_project_yaml(path: Path):
+    facts = {'version': None, 'name': None, 'type': None, 'adapter': None}
+    if not path.exists():
+        return facts
+    for line in path.read_text(encoding='utf-8').splitlines():
+        m = re.match(r'^(version|name|type|adapter):\s*(.+?)\s*$', line)
+        if m:
+            key, val = m.groups()
+            facts[key] = val.strip().strip('"').strip("'")
+    return facts
+
+def parse_mise_tasks(path: Path):
+    tasks = []
+    if not path.exists():
+        return tasks
+    for line in path.read_text(encoding='utf-8').splitlines():
+        m = re.match(r'^\[tasks\.(?:"([^"]+)"|([A-Za-z0-9:_-]+))\]\s*$', line)
+        if m:
+            name = m.group(1) or m.group(2)
+            tasks.append(name)
+    return tasks
+
+docs_index = []
+if DOCS.exists():
+    for md in sorted(DOCS.rglob('*.md')):
+        rel = md.relative_to(ROOT).as_posix()
+        fm = parse_front_matter(md)
+        docs_index.append({
+            'path': rel,
+            'summary': fm['summary'],
+            'read_when': fm['read_when'],
+            'status': fm['status'],
+            'mtime': int(md.stat().st_mtime),
+        })
+
+project_facts = parse_project_yaml(ROOT / 'project.yaml')
+repo_facts = {
+    'repo_name': ROOT.name,
+    'project': project_facts,
+    'has_mise': (ROOT / 'mise.toml').exists(),
+    'generated_at_epoch': int(__import__('time').time()),
+}
+
+commands = {
+    'source': 'mise.toml',
+    'tasks': parse_mise_tasks(ROOT / 'mise.toml'),
+}
+
+context_pack = {
+    'version': 1,
+    'repo_name': ROOT.name,
+    'project_type': project_facts.get('type'),
+    'adapter': project_facts.get('adapter'),
+    'read_first': REQUIRED_ORDER,
+    'verification_hint': 'Run `mise run verify` before committing to main.',
+    'commands_file': '.agent/commands.json',
+    'docs_index_file': '.agent/docs-index.json',
+    'repo_facts_file': '.agent/repo-facts.json',
+}
+
+(AGENT / 'docs-index.json').write_text(json.dumps(docs_index, indent=2) + '\n', encoding='utf-8')
+(AGENT / 'repo-facts.json').write_text(json.dumps(repo_facts, indent=2) + '\n', encoding='utf-8')
+(AGENT / 'commands.json').write_text(json.dumps(commands, indent=2) + '\n', encoding='utf-8')
+(AGENT / 'context-pack.json').write_text(json.dumps(context_pack, indent=2) + '\n', encoding='utf-8')
+
+print('docs-build: OK')

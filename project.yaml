@@ -1,0 +1,23 @@
+version: 1
+name: VimTeacher
+type: lua-nvim-plugin
+adapter: lua-nvim-plugin
+
+commands:
+  fmt: "scripts/fmt"
+  lint: "scripts/lint"
+  test: "scripts/test"
+  docs:verify: "scripts/docs-verify"
+  docs:build: "scripts/docs-build"
+  verify: "mise run verify"
+
+artifact:
+  kind: plugin
+  path: "plugin/"
+  entrypoint: "plugin/vimteacher.lua"
+
+preview:
+  kind: none
+
+deploy:
+  adapter: unspecified

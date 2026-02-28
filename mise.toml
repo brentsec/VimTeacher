@@ -1,0 +1,23 @@
+[tasks.fmt]
+description = "Format source code"
+run = "scripts/fmt"
+
+[tasks.lint]
+description = "Run static checks"
+run = "scripts/lint"
+
+[tasks.test]
+description = "Run automated tests"
+run = "scripts/test"
+
+[tasks."docs:verify"]
+description = "Validate docs metadata and structure"
+run = "scripts/docs-verify"
+
+[tasks."docs:build"]
+description = "Generate .agent docs artifacts and indexes"
+run = "scripts/docs-build"
+
+[tasks.verify]
+description = "Main local commit gate"
+depends = ["fmt", "lint", "test", "docs:verify"]
