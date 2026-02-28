@@ -114,7 +114,7 @@ local CHALLENGES = {
 		char = "result",
 	},
 
-	-- Challenge 5: vd — delete "bad" in "const bad_value = 5;"
+	-- Challenge 5: vd — delete "bad_" in "const bad_value = 5;"
 	{
 		snippet_lines = {
 			"function process() {",
@@ -124,12 +124,12 @@ local CHALLENGES = {
 		},
 		expected_lines = {
 			"function process() {",
-			"  const _value = 5;",
+			"  const value = 5;",
 			"  return value;",
 			"}",
 		},
 		target = { row = 1, col = 8 },
-		select_end = { row = 1, col = 10 },
+		select_end = { row = 1, col = 11 },
 		start_pos = { row = 0, col = 0 },
 		key = "vd",
 		char = "",
