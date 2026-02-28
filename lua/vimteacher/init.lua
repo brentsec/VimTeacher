@@ -141,7 +141,8 @@ end
 --- Block keys for insert-type lessons: allows specified insert keys, blocks the rest.
 --- @param allowed string[] Insert keys to leave unblocked (e.g., {"i", "a"})
 --- @param allowed_modify string[]|nil Modify keys to leave unblocked (e.g., {"x", "r"})
-local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_visual)
+--- @param allowed_nav string[]|nil Navigation keys to leave unblocked (if set, disallow other nav keys)
+local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_visual, allowed_nav)
 	local buf = state.buf
 	local opts = { buffer = buf, noremap = true, silent = true }
 
@@ -155,6 +156,12 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_vis
 	local modify_allowed_set = {}
 	for _, key in ipairs(allowed_modify or {}) do
 		modify_allowed_set[key] = true
+	end
+
+	-- Build lookup of allowed navigation keys
+	local nav_allowed_set = {}
+	for _, key in ipairs(allowed_nav or {}) do
+		nav_allowed_set[key] = true
 	end
 
 	-- Build notification message with all allowed keys
@@ -228,6 +235,73 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_vis
 	}
 	for _, key in ipairs(mouse_keys) do
 		vim.keymap.set("n", key, "<Nop>", opts)
+	end
+
+	-- Optional strict nav profile for lessons that need deterministic movement scoring.
+	-- When enabled, only explicit nav keys remain usable.
+	if allowed_nav and #allowed_nav > 0 then
+		local nav_keys = {
+			"h",
+			"j",
+			"k",
+			"l",
+			"w",
+			"W",
+			"b",
+			"B",
+			"e",
+			"E",
+			"g",
+			"G",
+			"0",
+			"^",
+			"$",
+			"f",
+			"F",
+			"t",
+			"T",
+			";",
+			",",
+			"/",
+			"?",
+			"n",
+			"N",
+			"*",
+			"#",
+			"%",
+			"{",
+			"}",
+			"(",
+			")",
+			"H",
+			"M",
+			"L",
+			"+",
+			"-",
+			"_",
+			"|",
+			"`",
+			"'",
+			":",
+			"<C-d>",
+			"<C-u>",
+			"<C-f>",
+			"<C-b>",
+			"<Up>",
+			"<Down>",
+			"<Left>",
+			"<Right>",
+		}
+		for d = 1, 9 do
+			nav_keys[#nav_keys + 1] = tostring(d)
+		end
+		for _, key in ipairs(nav_keys) do
+			if nav_allowed_set[key] then
+				pcall(vim.keymap.del, "n", key, { buffer = buf })
+			else
+				vim.keymap.set("n", key, "<Nop>", opts)
+			end
+		end
 	end
 end
 
@@ -518,7 +592,7 @@ local function on_target_reached()
 				total_moves = total_moves + c.moves
 				total_optimal = total_optimal + c.optimal
 			end
-			local overall_accuracy = total_moves > 0 and math.floor((total_optimal / total_moves) * 100) or 100
+				local overall_accuracy = stats_mod.calc_overall_accuracy_pct(total_optimal, total_moves)
 
 			-- Record session in persistent stats
 			local ls = stats_mod.record_session(state.all_stats, state.lesson_name, total_time, overall_accuracy)
@@ -1077,12 +1151,12 @@ start_lesson = function(lesson_name)
 			end
 		end
 		-- Render layout (no progress bar)
-		buffer.render(state.buf, {
-			title = lesson.title,
-			description = lesson.description,
-			snippet_lines = lesson.sandbox_snippet,
-			hint_lines = lesson.hint_lines,
-		})
+			buffer.render(state.buf, {
+				title = lesson.title,
+				description = lesson.description,
+				snippet_lines = lesson.sandbox_snippet,
+				hint_lines = lesson.hint_lines,
+			})
 			state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
 			vim.bo[state.buf].modifiable = true
 			vim.bo[state.buf].undolevels = 1000
@@ -1107,8 +1181,13 @@ start_lesson = function(lesson_name)
 	-- Apply appropriate key blocking for this lesson type
 	-- (always re-apply; keymaps may be stale from a previous lesson or menu)
 	if lesson.type == "insert" then
-		block_keys_for_insert_lesson(lesson.allowed_keys or {}, lesson.allowed_modify_keys, lesson.allowed_visual_keys)
-		-- Ensure autoindent for o/O lessons (new lines inherit current line's indent)
+		block_keys_for_insert_lesson(
+			lesson.allowed_keys or {},
+			lesson.allowed_modify_keys,
+			lesson.allowed_visual_keys,
+			lesson.allowed_nav_keys
+		)
+			-- Ensure autoindent for o/O lessons (new lines inherit current line's indent)
 		vim.bo[state.buf].autoindent = true
 	else
 		block_insert_keys()

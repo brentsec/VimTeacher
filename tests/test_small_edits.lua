@@ -45,21 +45,37 @@ end
 assert_test(modify_set["x"] == true, "allowed_modify_keys must contain 'x'")
 assert_test(modify_set["r"] == true, "allowed_modify_keys must contain 'r'")
 
--- Test 3: compute_optimal works (Manhattan distance for s/x/r)
-local opt1 = small_edits.compute_optimal({ row = 0, col = 0 }, { row = 3, col = 5 })
-assert_test(opt1 == 8, "Row 0,Col 0 to Row 3,Col 5 should be 8, got " .. opt1)
+-- Verify allowed_nav_keys contains exactly h,j,k,l,w,b,e
+assert_test(type(small_edits.allowed_nav_keys) == "table", "allowed_nav_keys must be table")
+local nav_set = {}
+for _, key in ipairs(small_edits.allowed_nav_keys) do
+	nav_set[key] = true
+end
+assert_test(#small_edits.allowed_nav_keys == 7, "allowed_nav_keys must have 7 entries")
+for _, key in ipairs({ "h", "j", "k", "l", "w", "b", "e" }) do
+	assert_test(nav_set[key] == true, "allowed_nav_keys must contain '" .. key .. "'")
+end
 
-local opt2 = small_edits.compute_optimal({ row = 2, col = 7 }, { row = 2, col = 7 })
-assert_test(opt2 == 0, "Same position should be 0, got " .. opt2)
-
-local opt3 = small_edits.compute_optimal({ row = 2, col = 0 }, { row = 2, col = 10 })
-assert_test(opt3 == 10, "Same row, col 0 to 10 should be 10, got " .. opt3)
-
-local opt4 = small_edits.compute_optimal({ row = 0, col = 5 }, { row = 3, col = 5 })
-assert_test(opt4 == 3, "Row 0 to 3, same col should be 3, got " .. opt4)
-
-local opt5 = small_edits.compute_optimal({ row = 1, col = 3 }, { row = 4, col = 8 })
-assert_test(opt5 == 8, "Row 1,Col 3 to Row 4,Col 8 should be 8, got " .. opt5)
+-- Test 3: semantic optimal is computed across all lesson challenges
+local challenges = small_edits._get_challenges()
+assert_test(#challenges >= 10, "Must have at least 10 challenges, got " .. #challenges)
+local strictly_better_than_manhattan = false
+for idx, c in ipairs(challenges) do
+	local opt = small_edits._compute_nav_optimal(c.snippet_lines, c.start_pos, c.target)
+	local manhattan = math.abs(c.start_pos.row - c.target.row) + math.abs(c.start_pos.col - c.target.col)
+	assert_test(opt >= 0, "Challenge " .. idx .. ": optimal must be >= 0, got " .. opt)
+	assert_test(
+		opt <= manhattan,
+		"Challenge " .. idx .. ": semantic optimal should not exceed Manhattan (" .. opt .. " > " .. manhattan .. ")"
+	)
+	if opt < manhattan then
+		strictly_better_than_manhattan = true
+	end
+end
+assert_test(
+	strictly_better_than_manhattan,
+	"Expected at least one challenge where semantic optimal is better than Manhattan"
+)
 
 -- Test 4: generate_challenge returns valid structure
 local buf = vim.api.nvim_create_buf(false, true)
@@ -123,9 +139,6 @@ end
 -- x: deletes char at target col
 -- r: replaces char at target col with c.char (single char)
 -- s: deletes char at target col, inserts c.char (multi-char)
-local challenges = small_edits._get_challenges()
-assert_test(#challenges >= 10, "Must have at least 10 challenges, got " .. #challenges)
-
 for idx, c in ipairs(challenges) do
 	-- Validate required fields on each raw challenge
 	assert_test(c.snippet_lines ~= nil, "Challenge " .. idx .. ": missing snippet_lines")

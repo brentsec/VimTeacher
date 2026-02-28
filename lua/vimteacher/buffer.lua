@@ -2,6 +2,7 @@
 -- Buffer creation, layout rendering, and screen management
 
 local highlight = require("vimteacher.highlight")
+local stats = require("vimteacher.stats")
 
 local M = {}
 
@@ -506,8 +507,8 @@ function M.render_challenge_stats(buf, opts)
 	local best_str = opts.best_time and string.format("%.1fs", opts.best_time) or "--"
 	lines[#lines + 1] = string.format("  Time:      %.1fs        Best: %s", opts.time_secs, best_str)
 
-	local avg_str = opts.avg_time and string.format("%.1fs", opts.avg_time) or "--"
-	lines[#lines + 1] = string.format("  Speed:     %d%%          (vs your avg of %s)", opts.speed_pct, avg_str)
+	local best_str = opts.best_time and string.format("%.1fs", opts.best_time) or "--"
+	lines[#lines + 1] = string.format("  Speed:     %d%%          (vs PB of %s)", opts.speed_pct, best_str)
 
 	lines[#lines + 1] = string.format(
 		"  Accuracy:  %d%%          (%d moves / %d optimal)",
@@ -561,7 +562,7 @@ function M.render_completion(buf, opts)
 
 	local num_challenges = #(opts.session_challenges or {})
 	local avg_time = num_challenges > 0 and (total_time / num_challenges) or 0
-	local overall_accuracy = total_moves > 0 and math.floor((total_optimal / total_moves) * 100) or 100
+	local overall_accuracy = stats.calc_overall_accuracy_pct(total_optimal, total_moves)
 
 	local lines = {
 		"",
@@ -580,17 +581,14 @@ function M.render_completion(buf, opts)
 	lines[#lines + 1] =
 		string.format("  Total time:     %-12sPersonal best:  %s", string.format("%.1fs", total_time), pb_str)
 
-	-- Speed %: session total vs historical avg session time (>100% = faster than usual)
-	local speed_pct = 100
-	if opts.avg_time and opts.avg_time > 0 and total_time > 0 then
-		speed_pct = math.min(math.floor((opts.avg_time / total_time) * 100), 999)
-	end
-	local avg_hist_str = opts.avg_time and string.format("%.1fs", opts.avg_time) or "--"
+	-- Speed %: bounded score against personal-best lesson time.
+	local speed_pct = stats.calc_speed_pct(opts.best_time, total_time)
+	local pb_hist_str = opts.best_time and string.format("%.1fs", opts.best_time) or "--"
 	lines[#lines + 1] = string.format(
-		"  Avg/challenge:  %-12sSpeed: %d%% (vs avg of %s)",
+		"  Avg/challenge:  %-12sSpeed: %d%% (vs PB of %s)",
 		string.format("%.1fs", avg_time),
 		speed_pct,
-		avg_hist_str
+		pb_hist_str
 	)
 
 	lines[#lines + 1] = string.format(

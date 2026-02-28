@@ -3,6 +3,16 @@
 
 local M = {}
 
+--- Clamp an accuracy percentage to the user-facing 0-100 range.
+--- @param pct number
+--- @return number
+function M.clamp_accuracy_pct(pct)
+	if type(pct) ~= "number" then
+		return 0
+	end
+	return math.max(0, math.min(math.floor(pct), 100))
+end
+
 -- Resolve the data directory relative to this plugin
 local function get_data_dir()
 	local info = debug.getinfo(1, "S")
@@ -32,6 +42,12 @@ function M.load()
 	end
 	local ok, data = pcall(vim.fn.json_decode, content)
 	if ok and type(data) == "table" then
+		-- Normalize historical stats in case older versions stored out-of-range values.
+		for _, ls in pairs(data) do
+			if type(ls) == "table" and ls.best_accuracy ~= nil then
+				ls.best_accuracy = M.clamp_accuracy_pct(ls.best_accuracy)
+			end
+		end
 		return data
 	end
 	return {}
@@ -58,6 +74,8 @@ end
 --- @param accuracy number Overall accuracy percentage (0-100)
 --- @return table Updated lesson stats
 function M.record_session(all_stats, lesson_name, total_time, accuracy)
+	accuracy = M.clamp_accuracy_pct(accuracy)
+
 	local ls = all_stats[lesson_name]
 		or {
 			best_time = nil,
@@ -84,16 +102,22 @@ function M.record_session(all_stats, lesson_name, total_time, accuracy)
 end
 
 --- Calculate speed percentage.
---- 100% means at or better than running average.
---- @param avg_time number|nil Running average time
---- @param current_time number Current challenge time
---- @return number Speed percentage (0-999, capped)
-function M.calc_speed_pct(avg_time, current_time)
-	if not avg_time or avg_time <= 0 or current_time <= 0 then
+--- 100% means at or better than personal-best lesson time.
+--- @param best_time number|nil Best recorded lesson time
+--- @param current_time number Current lesson time
+--- @return number Speed percentage (0-100, capped)
+function M.clamp_speed_pct(pct)
+	if type(pct) ~= "number" then
+		return 0
+	end
+	return math.max(0, math.min(math.floor(pct), 100))
+end
+
+function M.calc_speed_pct(best_time, current_time)
+	if not best_time or best_time <= 0 or current_time <= 0 then
 		return 100
 	end
-	local pct = math.floor((avg_time / current_time) * 100)
-	return math.min(pct, 999) -- cap display at 999%
+	return M.clamp_speed_pct((best_time / current_time) * 100)
 end
 
 --- Calculate accuracy percentage.
@@ -108,8 +132,21 @@ function M.calc_accuracy_pct(optimal_moves, actual_moves)
 	if optimal_moves <= 0 then
 		return 100
 	end
-	local pct = math.floor((optimal_moves / actual_moves) * 100)
-	return math.min(pct, 100)
+	return M.clamp_accuracy_pct((optimal_moves / actual_moves) * 100)
+end
+
+--- Calculate overall/session accuracy percentage.
+--- @param total_optimal number Sum of optimal moves across challenges
+--- @param total_moves number Sum of actual moves across challenges
+--- @return number Accuracy percentage (0-100)
+function M.calc_overall_accuracy_pct(total_optimal, total_moves)
+	if total_moves <= 0 then
+		return 100
+	end
+	if total_optimal <= 0 then
+		return 100
+	end
+	return M.clamp_accuracy_pct((total_optimal / total_moves) * 100)
 end
 
 return M
