@@ -7,12 +7,12 @@ local pass_count = 0
 local fail_count = 0
 
 local function assert_test(condition, msg)
-  if condition then
-    pass_count = pass_count + 1
-  else
-    fail_count = fail_count + 1
-    print("  FAIL: " .. msg)
-  end
+	if condition then
+		pass_count = pass_count + 1
+	else
+		fail_count = fail_count + 1
+		print("  FAIL: " .. msg)
+	end
 end
 
 print("test_snippets: running...")
@@ -22,24 +22,21 @@ assert_test(#snippets.pool >= 10, "Pool must have at least 10 snippets, got " ..
 
 -- Test 2: Every snippet has 5-10 lines
 for i, snippet in ipairs(snippets.pool) do
-  assert_test(
-    #snippet >= 5 and #snippet <= 10,
-    "Snippet " .. i .. " has " .. #snippet .. " lines (expected 5-10)"
-  )
+	assert_test(#snippet >= 5 and #snippet <= 10, "Snippet " .. i .. " has " .. #snippet .. " lines (expected 5-10)")
 end
 
 -- Test 3: Every snippet has at least 15 non-whitespace positions
 for i, snippet in ipairs(snippets.pool) do
-  local count = 0
-  for _, line in ipairs(snippet) do
-    for c = 1, #line do
-      local char = line:sub(c, c)
-      if char ~= " " and char ~= "\t" then
-        count = count + 1
-      end
-    end
-  end
-  assert_test(count >= 15, "Snippet " .. i .. " has only " .. count .. " valid positions (need >= 15)")
+	local count = 0
+	for _, line in ipairs(snippet) do
+		for c = 1, #line do
+			local char = line:sub(c, c)
+			if char ~= " " and char ~= "\t" then
+				count = count + 1
+			end
+		end
+	end
+	assert_test(count >= 15, "Snippet " .. i .. " has only " .. count .. " valid positions (need >= 15)")
 end
 
 -- Test 4: get_random returns a table of strings
@@ -53,11 +50,11 @@ snippets.reset_recent()
 local prev_first_line = nil
 local repeat_count = 0
 for _ = 1, 20 do
-  local sn = snippets.get_random()
-  if sn[1] == prev_first_line then
-    repeat_count = repeat_count + 1
-  end
-  prev_first_line = sn[1]
+	local sn = snippets.get_random()
+	if sn[1] == prev_first_line then
+		repeat_count = repeat_count + 1
+	end
+	prev_first_line = sn[1]
 end
 assert_test(repeat_count == 0, "Got " .. repeat_count .. " immediate repeats in 20 draws")
 
@@ -70,7 +67,7 @@ assert_test(snippets.pool[1][1] == original_first, "get_random must return a cop
 
 -- Test 7: reset_recent works
 snippets.reset_recent()
-local a = snippets.get_random()
+snippets.get_random()
 snippets.reset_recent()
 -- After reset, no tracking should exist, so any snippet is available
 local b = snippets.get_random()
@@ -78,5 +75,5 @@ assert_test(type(b) == "table", "get_random works after reset_recent")
 
 print(string.format("test_snippets: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
-  vim.cmd("cquit! 1")
+	vim.cmd("cquit! 1")
 end
