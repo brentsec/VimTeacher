@@ -200,8 +200,19 @@ function M.place_target(buf, target_buf_row, target_col, target_end_col, full_li
 		return
 	end
 
+	-- Guard against invalid or zero-width ranges from challenge range computation.
+	-- Extmarks with end_col <= start_col are effectively invisible.
+	local end_col = target_end_col or (target_col + 1)
+	end_col = math.min(end_col, #line)
+	if end_col <= target_col then
+		end_col = math.min(#line, target_col + 1)
+		if end_col <= target_col then
+			return
+		end
+	end
+
 	vim.api.nvim_buf_set_extmark(buf, M.ns_target, target_buf_row, target_col, {
-		end_col = target_end_col or (target_col + 1),
+		end_col = end_col,
 		hl_group = hl_group,
 		priority = 200,
 	})

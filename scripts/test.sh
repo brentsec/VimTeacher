@@ -14,6 +14,8 @@ echo ""
 TESTS=(
   "test_snippets.lua"
   "test_validate.lua"
+  "test_highlight.lua"
+  "test_highlight_plan.lua"
   "test_stats.lua"
   "test_intro_modes.lua"
   "test_basic_movement.lua"

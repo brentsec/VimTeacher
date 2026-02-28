@@ -3,6 +3,7 @@
 
 local buffer = require("vimteacher.buffer")
 local highlight = require("vimteacher.highlight")
+local highlight_plan = require("vimteacher.highlight_plan")
 local validate = require("vimteacher.validate")
 local stats_mod = require("vimteacher.stats")
 local lessons = require("vimteacher.lessons")
@@ -557,7 +558,20 @@ local function re_place_highlights()
 		end
 	else
 		local target_buf_row = state.target.row + state.snippet_offset
-		highlight.place_target(state.buf, target_buf_row, state.target.col)
+		local plan = challenge and challenge._highlight_plan
+		if not plan and challenge then
+			plan = highlight_plan.compute_for_challenge(challenge)
+			challenge._highlight_plan = plan
+		end
+		local start_col = state.target.col
+		local end_col = nil
+		local full_line = false
+		if plan then
+			start_col = plan.start_col or start_col
+			end_col = plan.end_col
+			full_line = plan.full_line
+		end
+		highlight.place_target(state.buf, target_buf_row, start_col, end_col, full_line)
 	end
 end
 
@@ -799,171 +813,6 @@ local function on_cursor_moved()
 	end
 end
 
---- Compute highlight end column from vim motion semantics.
---- @param key string The vim key/motion (e.g., "dw", "cW", "dd", "D")
---- @param snippet_line string The snippet line text
---- @param target_col number 0-indexed target column
---- @return number|nil end_col 0-indexed exclusive end column (nil for line-level ops)
---- @return boolean full_line Whether to highlight the entire line
---- @return number|nil start_col_override 0-indexed start column override (for bracket ops)
-local function compute_motion_end(key, snippet_line, target_col)
-	if key == "dd" then
-		return nil, true
-	end
-	if key == "D" then
-		return #snippet_line, false
-	end
-
-	-- Text objects: [operator][ia][object]
-	-- Handles brackets, quotes, and words for d/c + i/a combinations
-	local to_prefix = key:sub(1, 2)
-	local to_char = key:sub(3)
-	local is_inside = (to_prefix == "di" or to_prefix == "ci")
-	local is_around = (to_prefix == "da" or to_prefix == "ca")
-
-	if is_inside or is_around then
-		-- Bracket pairs
-		local bracket_map = {
-			["("] = { "(", ")" },
-			[")"] = { "(", ")" },
-			["["] = { "[", "]" },
-			["]"] = { "[", "]" },
-			["{"] = { "{", "}" },
-			["}"] = { "{", "}" },
-		}
-		local pair = bracket_map[to_char]
-		if pair then
-			local open_ch, close_ch = pair[1], pair[2]
-			-- Scan left from target_col for opening bracket (0-indexed)
-			local open_pos
-			for i = target_col, 0, -1 do
-				if snippet_line:sub(i + 1, i + 1) == open_ch then
-					open_pos = i
-					break
-				end
-			end
-			-- Scan right from target_col for closing bracket (0-indexed)
-			local close_pos
-			for i = target_col, #snippet_line - 1 do
-				if snippet_line:sub(i + 1, i + 1) == close_ch then
-					close_pos = i
-					break
-				end
-			end
-			if open_pos and close_pos and close_pos > open_pos then
-				if is_inside then
-					-- Content between brackets: start after open, end before close
-					return close_pos, false, open_pos + 1
-				else
-					-- Brackets + content: include both brackets
-					return close_pos + 1, false, open_pos
-				end
-			end
-		end
-
-		-- Quote pairs
-		if to_char == '"' or to_char == "'" then
-			local q = to_char
-			-- Scan left from target_col for opening quote (0-indexed)
-			local open_pos
-			for i = target_col, 0, -1 do
-				if snippet_line:sub(i + 1, i + 1) == q then
-					open_pos = i
-					break
-				end
-			end
-			-- Scan right from opening quote for closing quote
-			local close_pos
-			if open_pos then
-				for i = open_pos + 1, #snippet_line - 1 do
-					if snippet_line:sub(i + 1, i + 1) == q then
-						close_pos = i
-						break
-					end
-				end
-			end
-			if open_pos and close_pos and close_pos > open_pos then
-				if is_inside then
-					return close_pos, false, open_pos + 1
-				else
-					return close_pos + 1, false, open_pos
-				end
-			end
-		end
-
-		-- Word text objects (diw, daw, ciw, caw)
-		if to_char == "w" then
-			local function char_at(idx)
-				return snippet_line:sub(idx + 1, idx + 1)
-			end
-			-- Find start of word (scan left, 0-indexed)
-			local ws = target_col
-			while ws > 0 and char_at(ws - 1):match("[%w_]") do
-				ws = ws - 1
-			end
-			-- Find end of word (scan right, 0-indexed inclusive)
-			local we = target_col
-			while we < #snippet_line - 1 and char_at(we + 1):match("[%w_]") do
-				we = we + 1
-			end
-			if is_inside then
-				return we + 1, false, ws
-			else
-				-- daw/caw: include trailing whitespace (or leading if no trailing)
-				local trail = we + 1
-				while trail < #snippet_line and char_at(trail):match("%s") do
-					trail = trail + 1
-				end
-				if trail > we + 1 then
-					return trail, false, ws
-				end
-				local lead = ws
-				while lead > 0 and char_at(lead - 1):match("%s") do
-					lead = lead - 1
-				end
-				return we + 1, false, lead
-			end
-		end
-	end
-
-	local rest = snippet_line:sub(target_col + 1)
-	if #rest == 0 then
-		return target_col + 1, false
-	end
-
-	local first = rest:sub(1, 1)
-
-	if key == "dw" or key == "cw" then
-		local word_len
-		if first:match("[%w_]") then
-			word_len = #(rest:match("^[%w_]+") or "")
-		elseif first:match("%s") then
-			word_len = #(rest:match("^%s+") or "")
-		else
-			word_len = #(rest:match("^[^%w%s_]+") or "")
-		end
-		if key == "dw" then
-			local trailing = (rest:sub(word_len + 1)):match("^(%s+)") or ""
-			return target_col + word_len + #trailing, false
-		end
-		return target_col + word_len, false
-	elseif key == "dW" or key == "cW" then
-		local word_len
-		if first:match("%s") then
-			word_len = #(rest:match("^%s+") or "")
-		else
-			word_len = #(rest:match("^%S+") or "")
-		end
-		if key == "dW" then
-			local trailing = (rest:sub(word_len + 1)):match("^(%s+)") or ""
-			return target_col + word_len + #trailing, false
-		end
-		return target_col + word_len, false
-	end
-
-	return nil, false
-end
-
 load_challenge = function()
 	state.loading = true
 	state.challenge_num = state.challenge_num + 1
@@ -1088,36 +937,20 @@ load_challenge = function()
 			highlight.place_paste_marker(state.buf, challenge.paste_marker_after_row + state.snippet_offset)
 		end
 	else
-		-- Compute highlight range from vim motion semantics
-		local target_end_col = challenge.target_end_col or nil
-		local full_line = false
-		local highlight_start_col = nil
-		if challenge.key then
-			local s_line = challenge.snippet_lines[state.target.row + 1]
-			if s_line then
-				target_end_col, full_line, highlight_start_col =
-					compute_motion_end(challenge.key, s_line, state.target.col)
-			end
-		end
-
-		-- Fallback: backward-scan for keys not handled by compute_motion_end
-		if not target_end_col and not full_line and challenge.expected_lines then
-			local s_line = challenge.snippet_lines[state.target.row + 1]
-			local e_line = challenge.expected_lines[state.target.row + 1]
-			if s_line and e_line then
-				local si, ei = #s_line, #e_line
-				while si > state.target.col and ei > 0 and s_line:byte(si) == e_line:byte(ei) do
-					si = si - 1
-					ei = ei - 1
-				end
-				target_end_col = si
-			end
-		end
+		challenge._highlight_plan = highlight_plan.compute_for_challenge(challenge)
 
 		-- Place target highlight (use search-specific color for search lessons)
 		local target_buf_row = state.target.row + state.snippet_offset
 		local hl_group = challenge.search_word and "VimTeacherSearchTarget" or nil
-		local hl_col = highlight_start_col or state.target.col
+		local plan = challenge._highlight_plan
+		local hl_col = state.target.col
+		local target_end_col = nil
+		local full_line = false
+		if plan then
+			hl_col = plan.start_col or hl_col
+			target_end_col = plan.end_col
+			full_line = plan.full_line
+		end
 		highlight.place_target(state.buf, target_buf_row, hl_col, target_end_col, full_line, hl_group)
 	end
 

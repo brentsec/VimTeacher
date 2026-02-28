@@ -198,7 +198,7 @@ local CHALLENGES = {
 		char = "+",
 	},
 
-	-- Challenge 9: i — insert 'm' before 'a' in 'ap'
+	-- Challenge 9: a — append 'i' after 'p' in 'ap'
 	{
 		snippet_lines = {
 			"function transform(data) {",
@@ -208,14 +208,14 @@ local CHALLENGES = {
 		},
 		expected_lines = {
 			"function transform(data) {",
-			"  const items = data.map(x => x * 2);",
+			"  const items = data.api(x => x * 2);",
 			"  return items;",
 			"}",
 		},
-		target = { row = 1, col = 21 }, -- the 'a' in 'ap'
+		target = { row = 1, col = 22 }, -- the 'p' in 'ap'
 		start_pos = { row = 2, col = 0 },
-		key = "i",
-		char = "m",
+		key = "a",
+		char = "i",
 	},
 
 	-- Challenge 10: a — append 'l' after 'i' in 'emai'
