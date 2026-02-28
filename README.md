@@ -8,6 +8,16 @@ Interactive Vim tutorial plugin that teaches Vim concepts directly inside Neovim
 
 ## Installation
 
+### Quick Setup
+
+Clone directly into Neovim's `pack/start` path:
+
+```bash
+git clone https://github.com/brentsec/VimTeacher.git ~/.local/share/nvim/site/pack/plugins/start/vim-teacher
+```
+
+Then open Neovim and run `:VimTeacher`.
+
 ### With lazy.nvim (LazyVim)
 
 Add to `~/.config/nvim/lua/plugins/vimteacher.lua`:
