@@ -36,6 +36,6 @@ logs/
 # Temp / cache
 .tmp/
 .cache/
+.agent/
 *.bak
 *.orig
-
