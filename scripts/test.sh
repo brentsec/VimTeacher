@@ -42,6 +42,7 @@ TESTS=(
   "test_repeat_search.lua"
   "test_quick_word_search.lua"
   "test_search_review.lua"
+  "test_search_replace.lua"
   "test_intro_text_objects.lua"
   "test_delete_inside_brackets.lua"
   "test_delete_around_brackets.lua"

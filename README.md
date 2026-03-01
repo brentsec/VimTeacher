@@ -113,28 +113,29 @@ To jump directly into a specific lesson:
 22. Search: /, n, N
 23. Word Search: *, #
 24. Search Review
+25. Search & Replace: :s, :%s
 
 ### Text Objects: Brackets
-25. Intro to Text Objects
-26. Delete Inside: di(, di[, di{
-27. Delete Around: da(, da[, da{
-28. Change Inside: ci(, ci[, ci{
-29. Change Around: ca(, ca[, ca{
+26. Intro to Text Objects
+27. Delete Inside: di(, di[, di{
+28. Delete Around: da(, da[, da{
+29. Change Inside: ci(, ci[, ci{
+30. Change Around: ca(, ca[, ca{
 
 ### Text Objects: Quotes, Words & Paragraphs
-30. Quote Objects: di", ci", da", ca"
-31. Word Objects: diw, daw, ciw, caw
-32. Paragraph Objects: dip, dap
-33. Text Objects: Mega Review
+31. Quote Objects: di", ci", da", ca"
+32. Word Objects: diw, daw, ciw, caw
+33. Paragraph Objects: dip, dap
+34. Text Objects: Mega Review
 
 ### Editing Efficiency
-34. Repeat Power: . and counts
+35. Repeat Power: . and counts
 
 ### Visual Mode
-35. Intro to Visual Mode
-36. Visual Operators: v + d, v + c
-37. Visual Line Mode: V + d, V + c
-38. Switch Selection Ends: o
+36. Intro to Visual Mode
+37. Visual Operators: v + d, v + c
+38. Visual Line Mode: V + d, V + c
+39. Switch Selection Ends: o
 
 ## Design Principles
 

@@ -12,7 +12,7 @@ local snippets = require("vimteacher.snippets")
 local M = {}
 
 -- Forward declarations for local functions referenced before definition
-local load_challenge, setup_autocmds, start_lesson
+local load_challenge, setup_autocmds, start_lesson, render_current_challenge
 local clear_stats_keymaps, clear_completion_keymaps, clear_info_keymaps
 local clear_playing_keymaps
 
@@ -44,6 +44,7 @@ local state = {
 	elapsed_timer = nil, -- repeating vim timer ID for display
 	challenge_load_time = nil, -- hrtime when challenge was loaded
 	pending_programmatic_cursor = nil, -- one synthetic CursorMoved position to ignore after render
+	saved_inccommand = nil, -- user's original inccommand option, restored on cleanup
 }
 
 -- ─── Helpers ──────────────────────────────────────────────────────────────
@@ -195,6 +196,10 @@ local function cleanup()
 	state.elapsed_timer = nil
 	state.challenge_load_time = nil
 	state.pending_programmatic_cursor = nil
+	if state.saved_inccommand ~= nil then
+		vim.o.inccommand = state.saved_inccommand
+		state.saved_inccommand = nil
+	end
 end
 
 -- ─── Key blocking ──────────────────────────────────────────────────────────
@@ -655,41 +660,6 @@ local function on_target_reached()
 	end, 300)
 end
 
---- Re-place all challenge highlights (multi-row, paste marker, or single target).
---- Used after restoring a snippet on failed edit attempts.
-local function re_place_highlights()
-	if not state.target then
-		return
-	end
-	local challenge = state.current_challenge
-	if challenge and challenge.highlight_rows then
-		local buf_rows = {}
-		for _, r in ipairs(challenge.highlight_rows) do
-			buf_rows[#buf_rows + 1] = r + state.snippet_offset
-		end
-		highlight.place_target_rows(state.buf, buf_rows)
-		if challenge.paste_marker_after_row ~= nil then
-			highlight.place_paste_marker(state.buf, challenge.paste_marker_after_row + state.snippet_offset)
-		end
-	else
-		local target_buf_row = state.target.row + state.snippet_offset
-		local plan = challenge and challenge._highlight_plan
-		if not plan and challenge then
-			plan = highlight_plan.compute_for_challenge(challenge)
-			challenge._highlight_plan = plan
-		end
-		local start_col = state.target.col
-		local end_col = nil
-		local full_line = false
-		if plan then
-			start_col = plan.start_col or start_col
-			end_col = plan.end_col
-			full_line = plan.full_line
-		end
-		highlight.place_target(state.buf, target_buf_row, start_col, end_col, full_line)
-	end
-end
-
 --- @param expected string[]
 --- @return boolean
 local function snippet_matches_expected(expected)
@@ -729,29 +699,25 @@ local function restore_original_snippet()
 	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
 		return
 	end
-	if not state.original_snippet then
+	if not state.original_snippet or not state.current_challenge then
 		return
 	end
 
-	vim.bo[state.buf].modifiable = true
-	local extra = vim.api.nvim_buf_line_count(state.buf) - (state.total_buf_lines or 0)
-	if extra < 0 then
-		extra = 0
+	local rel_cursor = nil
+	if state.win and vim.api.nvim_win_is_valid(state.win) then
+		local cur = vim.api.nvim_win_get_cursor(state.win)
+		rel_cursor = { row = cur[1] - 1 - state.snippet_offset, col = cur[2] }
 	end
-	vim.api.nvim_buf_set_lines(
-		state.buf,
-		state.snippet_offset,
-		state.snippet_end + extra + 1,
-		false,
-		state.original_snippet
-	)
-	re_place_highlights()
+
+	-- Re-render the full challenge layout so style + semantic highlights are restored,
+	-- even if an incorrect substitute touched instruction/goal lines.
+	render_current_challenge(rel_cursor)
 	vim.notify("Not quite — try again!", vim.log.levels.INFO)
 end
 
 --- Render current challenge UI + target highlight.
 --- @param cursor_rel table|nil optional snippet-relative cursor {row,col}
-local function render_current_challenge(cursor_rel)
+render_current_challenge = function(cursor_rel)
 	local challenge = state.current_challenge
 	if not challenge then
 		return
@@ -1222,6 +1188,15 @@ function M.start(lesson_name)
 
 	-- Initialize highlight groups
 	highlight.setup()
+
+	-- Disable live :substitute preview while tutoring to avoid commandline text
+	-- visually leaking into instructions/goal bars during typing.
+	if state.saved_inccommand == nil then
+		state.saved_inccommand = vim.o.inccommand
+	end
+	if vim.o.inccommand ~= "" then
+		vim.o.inccommand = ""
+	end
 
 	-- Load persistent stats
 	state.all_stats = stats_mod.load()
