@@ -15,6 +15,7 @@ local SINGLE_CHAR_KEYS = {
 	x = true,
 	r = true,
 	cl = true,
+	["."] = true,
 }
 
 local function assert_test(condition, msg)
@@ -105,7 +106,7 @@ local function assert_semantics(name, idx, challenge, plan)
 		assert_test(range.full_line, string.format("%s #%d: dd should highlight full line", name, idx))
 	end
 
-	if SINGLE_CHAR_KEYS[key] then
+	if SINGLE_CHAR_KEYS[key] or (type(key) == "string" and key:match("^%d+%.$")) then
 		assert_test(
 			not range.full_line,
 			string.format("%s #%d: %s should be single-char highlight, not full-line", name, idx, key)
@@ -130,6 +131,21 @@ local function assert_semantics(name, idx, challenge, plan)
 				key,
 				challenge.target.col + 1,
 				range.end_col
+			)
+		)
+	end
+
+	if type(key) == "string" and key:match("^%d+x$") then
+		local count = tonumber(key:match("^(%d+)x$")) or 1
+		assert_test(
+			(range.end_col - range.start_col) == count,
+			string.format(
+				"%s #%d: %s should highlight %d chars, got %d",
+				name,
+				idx,
+				key,
+				count,
+				range.end_col - range.start_col
 			)
 		)
 	end
@@ -310,6 +326,25 @@ do
 					local plan = highlight_plan.compute_for_challenge(c)
 					assert_visible(lesson_name, idx, c, plan)
 					assert_semantics(lesson_name, idx, c, plan)
+				end
+				if c.phases and c.snippet_lines then
+					local phase_lines = vim.deepcopy(c.snippet_lines)
+					for phase_idx, phase in ipairs(c.phases) do
+						local phase_challenge = {
+							snippet_lines = phase_lines,
+							target = phase.target,
+							key = phase.key,
+							target_end_col = phase.target_end_col,
+							expected_lines = phase.expected_lines,
+							select_end = phase.select_end,
+						}
+						local phase_plan = highlight_plan.compute_for_challenge(phase_challenge)
+						assert_visible(lesson_name .. "[phase]", idx * 100 + phase_idx, phase_challenge, phase_plan)
+						assert_semantics(lesson_name .. "[phase]", idx * 100 + phase_idx, phase_challenge, phase_plan)
+						if phase.expected_lines then
+							phase_lines = vim.deepcopy(phase.expected_lines)
+						end
+					end
 				end
 			end
 		end

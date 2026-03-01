@@ -507,7 +507,6 @@ function M.render_challenge_stats(buf, opts)
 	local best_str = opts.best_time and string.format("%.1fs", opts.best_time) or "--"
 	lines[#lines + 1] = string.format("  Time:      %.1fs        Best: %s", opts.time_secs, best_str)
 
-	local best_str = opts.best_time and string.format("%.1fs", opts.best_time) or "--"
 	lines[#lines + 1] = string.format("  Speed:     %d%%          (vs PB of %s)", opts.speed_pct, best_str)
 
 	lines[#lines + 1] = string.format(

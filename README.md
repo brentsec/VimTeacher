@@ -76,7 +76,7 @@ To jump directly into a specific lesson:
 | `m` | Return to topic menu |
 | `q` | Quit |
 
-## Available Topics (37 lessons)
+## Available Topics (38 lessons)
 
 ### Getting Started
 1. Intro to Modes
@@ -127,11 +127,14 @@ To jump directly into a specific lesson:
 32. Paragraph Objects: dip, dap
 33. Text Objects: Mega Review
 
+### Editing Efficiency
+34. Repeat Power: . and counts
+
 ### Visual Mode
-34. Intro to Visual Mode
-35. Visual Operators: v + d, v + c
-36. Visual Line Mode: V + d, V + c
-37. Switch Selection Ends: o
+35. Intro to Visual Mode
+36. Visual Operators: v + d, v + c
+37. Visual Line Mode: V + d, V + c
+38. Switch Selection Ends: o
 
 ## Design Principles
 

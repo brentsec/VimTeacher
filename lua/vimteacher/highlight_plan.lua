@@ -12,6 +12,7 @@ local SINGLE_CHAR_ANCHOR_KEYS = {
 	x = true,
 	r = true,
 	cl = true,
+	["."] = true,
 }
 
 -- Commands where the line anchor matters more than a single character.
@@ -212,7 +213,7 @@ function M.compute_for_challenge(challenge)
 		return plan
 	end
 
-	if key and SINGLE_CHAR_ANCHOR_KEYS[key] then
+	if key and (SINGLE_CHAR_ANCHOR_KEYS[key] or key:match("^%d+%.$")) then
 		plan.start_col = target.col
 		plan.end_col = target.col + 1
 		return plan

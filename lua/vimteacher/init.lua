@@ -55,6 +55,104 @@ local function normalize_bracket_spaces(line)
 	return line
 end
 
+--- Build goal bar metadata from a challenge key/char.
+--- @param key string|nil
+--- @param char string|nil
+--- @return table|nil
+local function build_goal(key, char)
+	if not key then
+		return nil
+	end
+	local g = { key = key, char = char }
+	if key == "i" then
+		g.action, g.preposition = "insert", "before cursor"
+	elseif key == "a" then
+		g.action, g.preposition = "append", "after cursor"
+	elseif key == "I" then
+		g.action, g.preposition = "insert", "at line start"
+	elseif key == "A" then
+		g.action, g.preposition = "append", "at line end"
+	elseif key == "o" then
+		g.action, g.preposition = "open below", "and type"
+	elseif key == "O" then
+		g.action, g.preposition = "open above", "and type"
+	elseif key == "cl" then
+		g.action, g.preposition = "change letter", "under cursor"
+	elseif key == "x" then
+		g.action, g.preposition = "delete", "under cursor"
+	elseif key:match("^%d+x$") then
+		g.action, g.preposition = "delete", key:sub(1, -2) .. " chars at cursor"
+	elseif key == "r" then
+		g.action, g.preposition = "replace with", "under cursor"
+	elseif key == "." then
+		g.action, g.preposition = "repeat last change", "at cursor"
+	elseif key:match("^%d+%.$") then
+		g.action, g.preposition = "repeat last change", key:sub(1, -2) .. " times"
+	elseif key == "cw" then
+		g.action, g.preposition = "change word to", "at cursor"
+	elseif key == "cW" then
+		g.action, g.preposition = "change WORD to", "at cursor"
+	-- Delete operators
+	elseif key == "dw" then
+		g.action, g.preposition = "delete word", "at cursor"
+	elseif key == "dW" then
+		g.action, g.preposition = "delete WORD", "at cursor"
+	elseif key == "dd" then
+		g.action, g.preposition = "delete", "entire line"
+	elseif key == "D" then
+		g.action, g.preposition = "delete to", "end of line"
+	elseif key:match("^d%d*j$") then
+		g.action, g.preposition = "delete lines", "downward"
+	elseif key:match("^d%d*k$") then
+		g.action, g.preposition = "delete lines", "upward"
+	-- Paste
+	elseif key == "p" then
+		g.action, g.preposition = "paste", "below current line"
+	elseif key == "P" then
+		g.action, g.preposition = "paste", "above current line"
+	-- Text objects: change inside/around
+	elseif key:match("^ci") then
+		g.action, g.preposition = "change inside " .. key:sub(3), "at cursor"
+	elseif key:match("^ca") then
+		g.action, g.preposition = "change around " .. key:sub(3), "at cursor"
+	-- Text objects: delete inside/around
+	elseif key:match("^di") then
+		g.action, g.preposition = "delete inside " .. key:sub(3), "at cursor"
+	elseif key:match("^da") then
+		g.action, g.preposition = "delete around " .. key:sub(3), "at cursor"
+	-- Visual mode
+	elseif key:match("^V.*c$") then
+		g.action, g.preposition = "visual line change to", "selected lines"
+	elseif key:match("^V.*d$") then
+		g.action, g.preposition = "visual line delete", "selected lines"
+	elseif key == "vd" then
+		g.action, g.preposition = "visual delete", "selected text"
+	elseif key == "vc" then
+		g.action, g.preposition = "visual change to", "selected text"
+	else
+		return nil
+	end
+	return g
+end
+
+local function apply_phase(challenge, phase_idx)
+	local phase = challenge and challenge.phases and challenge.phases[phase_idx]
+	if not phase then
+		return false
+	end
+	challenge.phase_index = phase_idx
+	challenge.target = { row = phase.target.row, col = phase.target.col }
+	challenge.key = phase.key
+	challenge.char = phase.char
+	challenge.goal_text = phase.goal_text
+	challenge.target_end_col = phase.target_end_col
+	if phase.start_pos then
+		challenge.start_pos = { row = phase.start_pos.row, col = phase.start_pos.col }
+	end
+	challenge.expected_lines = vim.deepcopy(phase.expected_lines or challenge.expected_lines)
+	return true
+end
+
 -- ─── Cleanup ───────────────────────────────────────────────────────────────
 
 local function cleanup()
@@ -141,8 +239,7 @@ end
 --- Block keys for insert-type lessons: allows specified insert keys, blocks the rest.
 --- @param allowed string[] Insert keys to leave unblocked (e.g., {"i", "a"})
 --- @param allowed_modify string[]|nil Modify keys to leave unblocked (e.g., {"x", "r"})
---- @param allowed_nav string[]|nil Navigation keys to leave unblocked (if set, disallow other nav keys)
-local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_visual, allowed_nav)
+local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_visual)
 	local buf = state.buf
 	local opts = { buffer = buf, noremap = true, silent = true }
 
@@ -156,12 +253,6 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_vis
 	local modify_allowed_set = {}
 	for _, key in ipairs(allowed_modify or {}) do
 		modify_allowed_set[key] = true
-	end
-
-	-- Build lookup of allowed navigation keys
-	local nav_allowed_set = {}
-	for _, key in ipairs(allowed_nav or {}) do
-		nav_allowed_set[key] = true
 	end
 
 	-- Build notification message with all allowed keys
@@ -235,73 +326,6 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_vis
 	}
 	for _, key in ipairs(mouse_keys) do
 		vim.keymap.set("n", key, "<Nop>", opts)
-	end
-
-	-- Optional strict nav profile for lessons that need deterministic movement scoring.
-	-- When enabled, only explicit nav keys remain usable.
-	if allowed_nav and #allowed_nav > 0 then
-		local nav_keys = {
-			"h",
-			"j",
-			"k",
-			"l",
-			"w",
-			"W",
-			"b",
-			"B",
-			"e",
-			"E",
-			"g",
-			"G",
-			"0",
-			"^",
-			"$",
-			"f",
-			"F",
-			"t",
-			"T",
-			";",
-			",",
-			"/",
-			"?",
-			"n",
-			"N",
-			"*",
-			"#",
-			"%",
-			"{",
-			"}",
-			"(",
-			")",
-			"H",
-			"M",
-			"L",
-			"+",
-			"-",
-			"_",
-			"|",
-			"`",
-			"'",
-			":",
-			"<C-d>",
-			"<C-u>",
-			"<C-f>",
-			"<C-b>",
-			"<Up>",
-			"<Down>",
-			"<Left>",
-			"<Right>",
-		}
-		for d = 1, 9 do
-			nav_keys[#nav_keys + 1] = tostring(d)
-		end
-		for _, key in ipairs(nav_keys) do
-			if nav_allowed_set[key] then
-				pcall(vim.keymap.del, "n", key, { buffer = buf })
-			else
-				vim.keymap.set("n", key, "<Nop>", opts)
-			end
-		end
 	end
 end
 
@@ -592,7 +616,7 @@ local function on_target_reached()
 				total_moves = total_moves + c.moves
 				total_optimal = total_optimal + c.optimal
 			end
-				local overall_accuracy = stats_mod.calc_overall_accuracy_pct(total_optimal, total_moves)
+			local overall_accuracy = stats_mod.calc_overall_accuracy_pct(total_optimal, total_moves)
 
 			-- Record session in persistent stats
 			local ls = stats_mod.record_session(state.all_stats, state.lesson_name, total_time, overall_accuracy)
@@ -650,23 +674,14 @@ local function re_place_highlights()
 	end
 end
 
-local function on_insert_leave()
-	if state.mode ~= "playing" then
-		return
+--- @param expected string[]
+--- @return boolean
+local function snippet_matches_expected(expected)
+	if not expected or not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+		return false
 	end
-	if not state.lesson or state.lesson.type ~= "insert" then
-		return
-	end
-	if not state.current_challenge or not state.current_challenge.expected_lines then
-		return
-	end
-	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
-		return
-	end
-
-	-- Read current snippet zone from buffer (use expected length for o/O compatibility)
-	local expected = state.current_challenge.expected_lines
 	local actual = vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_offset + #expected, false)
+
 	local match = #actual == #expected
 	if match then
 		for i = 1, #expected do
@@ -691,30 +706,159 @@ local function on_insert_leave()
 		end
 	end
 
-	if match then
-		on_target_reached()
-	else
-		-- Restore original snippet and let user try again
-		vim.bo[state.buf].modifiable = true
-		local extra = vim.api.nvim_buf_line_count(state.buf) - (state.total_buf_lines or 0)
-		if extra < 0 then
-			extra = 0
+	return match
+end
+
+local function restore_original_snippet()
+	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+		return
+	end
+	if not state.original_snippet then
+		return
+	end
+
+	vim.bo[state.buf].modifiable = true
+	local extra = vim.api.nvim_buf_line_count(state.buf) - (state.total_buf_lines or 0)
+	if extra < 0 then
+		extra = 0
+	end
+	vim.api.nvim_buf_set_lines(
+		state.buf,
+		state.snippet_offset,
+		state.snippet_end + extra + 1,
+		false,
+		state.original_snippet
+	)
+	re_place_highlights()
+	vim.notify("Not quite — try again!", vim.log.levels.INFO)
+end
+
+--- Render current challenge UI + target highlight.
+--- @param cursor_rel table|nil optional snippet-relative cursor {row,col}
+local function render_current_challenge(cursor_rel)
+	local challenge = state.current_challenge
+	if not challenge then
+		return
+	end
+
+	state.loading = true
+
+	buffer.render(state.buf, {
+		title = state.lesson.title,
+		description = state.lesson.description,
+		progress = state.challenge_num,
+		max_progress = state.max_challenges,
+		snippet_lines = challenge.snippet_lines,
+		hint_lines = state.lesson.hint_lines,
+		goal_text = challenge.goal_text,
+		goal = build_goal(challenge.key, challenge.char),
+	})
+
+	state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
+	state.total_buf_lines = vim.api.nvim_buf_line_count(state.buf)
+	state.target = challenge.target
+
+	if challenge.highlight_rows then
+		local buf_rows = {}
+		for _, r in ipairs(challenge.highlight_rows) do
+			buf_rows[#buf_rows + 1] = r + state.snippet_offset
 		end
-		vim.api.nvim_buf_set_lines(
-			state.buf,
-			state.snippet_offset,
-			state.snippet_end + extra + 1,
-			false,
-			state.original_snippet
-		)
-		-- Re-place target highlight (multi-row, paste marker, or single target)
-		re_place_highlights()
-		vim.notify("Not quite — try again!", vim.log.levels.INFO)
+		highlight.place_target_rows(state.buf, buf_rows)
+		if challenge.paste_marker_after_row ~= nil then
+			highlight.place_paste_marker(state.buf, challenge.paste_marker_after_row + state.snippet_offset)
+		end
+	else
+		challenge._highlight_plan = highlight_plan.compute_for_challenge(challenge)
+		local target_buf_row = state.target.row + state.snippet_offset
+		local hl_group = challenge.search_word and "VimTeacherSearchTarget" or nil
+		local plan = challenge._highlight_plan
+		local hl_col = state.target.col
+		local target_end_col = nil
+		local full_line = false
+		if plan then
+			hl_col = plan.start_col or hl_col
+			target_end_col = plan.end_col
+			full_line = plan.full_line
+		end
+		highlight.place_target(state.buf, target_buf_row, hl_col, target_end_col, full_line, hl_group)
+	end
+
+	local desired = cursor_rel or challenge.start_pos or { row = 0, col = 0 }
+	local max_row = math.max(0, (#challenge.snippet_lines or 1) - 1)
+	local row = math.max(0, math.min(desired.row or 0, max_row))
+	local line = challenge.snippet_lines[row + 1] or ""
+	local col = math.max(0, math.min(desired.col or 0, #line))
+	vim.api.nvim_win_set_cursor(state.win, { row + state.snippet_offset + 1, col })
+
+	if state.lesson.type == "insert" then
+		state.original_snippet =
+			vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_end + 1, false)
+		vim.bo[state.buf].modifiable = true
+	end
+
+	if state.timer_start and state.challenge_load_time then
+		local elapsed = (vim.loop.hrtime() - state.challenge_load_time) / 1e9
+		buffer.update_timer(state.buf, elapsed)
+	else
+		buffer.update_timer(state.buf, 0)
+	end
+
+	state.loading = nil
+end
+
+--- Advance to next in-challenge phase when configured.
+--- @return boolean advanced
+local function advance_challenge_phase()
+	local challenge = state.current_challenge
+	if not challenge or not challenge.phases then
+		return false
+	end
+
+	local current_idx = challenge.phase_index or 1
+	local next_idx = current_idx + 1
+	if not challenge.phases[next_idx] then
+		return false
+	end
+
+	local cursor = vim.api.nvim_win_get_cursor(state.win)
+	local rel_cursor = { row = cursor[1] - 1 - state.snippet_offset, col = cursor[2] }
+	challenge.snippet_lines = vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_end + 1, false)
+	if not apply_phase(challenge, next_idx) then
+		return false
+	end
+	challenge._highlight_plan = nil
+	render_current_challenge(rel_cursor)
+	return true
+end
+
+local function on_insert_leave()
+	if state.mode ~= "playing" then
+		return
+	end
+	if not state.lesson or state.lesson.type ~= "insert" then
+		return
+	end
+	if not state.current_challenge or not state.current_challenge.expected_lines then
+		return
+	end
+	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+		return
+	end
+
+	if snippet_matches_expected(state.current_challenge.expected_lines) then
+		if not advance_challenge_phase() then
+			on_target_reached()
+		end
+	else
+		restore_original_snippet()
 	end
 end
 
 local function on_text_changed()
 	if state.mode ~= "playing" then
+		return
+	end
+	if state.loading then
 		return
 	end
 	if not state.lesson or state.lesson.type ~= "insert" then
@@ -731,40 +875,21 @@ local function on_text_changed()
 		return
 	end
 
-	local expected = state.current_challenge.expected_lines
-	local actual = vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_offset + #expected, false)
-
-	local match = #actual == #expected
-	if match then
-		for i = 1, #expected do
-			if actual[i] ~= expected[i] then
-				match = false
-				break
-			end
+	if snippet_matches_expected(state.current_challenge.expected_lines) then
+		if not advance_challenge_phase() then
+			on_target_reached()
 		end
-	end
-
-	-- Fallback: tolerate spaces immediately inside brackets
-	if not match and #actual == #expected then
-		local norm_match = true
-		for i = 1, #expected do
-			if normalize_bracket_spaces(actual[i]) ~= normalize_bracket_spaces(expected[i]) then
-				norm_match = false
-				break
-			end
-		end
-		if norm_match then
-			match = true
-		end
-	end
-
-	if match then
-		on_target_reached()
 		return
 	end
 
 	-- Check if text is already the original (avoid double-restore from InsertLeave + TextChanged)
 	local orig = state.original_snippet
+	local actual = vim.api.nvim_buf_get_lines(
+		state.buf,
+		state.snippet_offset,
+		state.snippet_offset + #(state.current_challenge.expected_lines or {}),
+		false
+	)
 	if orig then
 		local is_orig = #actual == #orig
 		if is_orig then
@@ -780,22 +905,7 @@ local function on_text_changed()
 		end
 	end
 
-	-- Restore original snippet
-	vim.bo[state.buf].modifiable = true
-	local extra = vim.api.nvim_buf_line_count(state.buf) - (state.total_buf_lines or 0)
-	if extra < 0 then
-		extra = 0
-	end
-	vim.api.nvim_buf_set_lines(
-		state.buf,
-		state.snippet_offset,
-		state.snippet_end + extra + 1,
-		false,
-		state.original_snippet
-	)
-	-- Re-place target highlight (multi-row, paste marker, or single target)
-	re_place_highlights()
-	vim.notify("Not quite — try again!", vim.log.levels.INFO)
+	restore_original_snippet()
 end
 
 --- Check if cursor is on the target position.
@@ -889,7 +999,6 @@ local function on_cursor_moved()
 end
 
 load_challenge = function()
-	state.loading = true
 	state.challenge_num = state.challenge_num + 1
 	state.mode = "playing"
 	state.move_count = 0
@@ -898,151 +1007,21 @@ load_challenge = function()
 
 	-- Generate a fresh challenge
 	local challenge = state.lesson.generate_challenge(state.buf, highlight.ns_target)
+	if challenge.phases then
+		apply_phase(challenge, 1)
+	end
 	state.current_challenge = challenge
 
 	-- Compute optimal moves for this challenge
 	local start = challenge.start_pos or { row = 0, col = 0 }
 	if state.lesson.compute_optimal then
-		state.optimal_moves = state.lesson.compute_optimal(start, challenge.target)
+		state.optimal_moves = state.lesson.compute_optimal(start, challenge.target, challenge)
 	else
 		-- Default: Manhattan distance
 		state.optimal_moves = math.abs(start.row - challenge.target.row) + math.abs(start.col - challenge.target.col)
 	end
 
-	-- Render the lesson layout
-	buffer.render(state.buf, {
-		title = state.lesson.title,
-		description = state.lesson.description,
-		progress = state.challenge_num,
-		max_progress = state.max_challenges,
-		snippet_lines = challenge.snippet_lines,
-		hint_lines = state.lesson.hint_lines,
-		goal_text = challenge.goal_text,
-		goal = (function()
-			if not challenge.key then
-				return nil
-			end
-			local k = challenge.key
-			local g = { key = k, char = challenge.char }
-			if k == "i" then
-				g.action, g.preposition = "insert", "before cursor"
-			elseif k == "a" then
-				g.action, g.preposition = "append", "after cursor"
-			elseif k == "I" then
-				g.action, g.preposition = "insert", "at line start"
-			elseif k == "A" then
-				g.action, g.preposition = "append", "at line end"
-			elseif k == "o" then
-				g.action, g.preposition = "open below", "and type"
-			elseif k == "O" then
-				g.action, g.preposition = "open above", "and type"
-			elseif k == "cl" then
-				g.action, g.preposition = "change letter", "under cursor"
-			elseif k == "x" then
-				g.action, g.preposition = "delete", "under cursor"
-			elseif k == "r" then
-				g.action, g.preposition = "replace with", "under cursor"
-			elseif k == "cw" then
-				g.action, g.preposition = "change word to", "at cursor"
-			elseif k == "cW" then
-				g.action, g.preposition = "change WORD to", "at cursor"
-			-- Delete operators
-			elseif k == "dw" then
-				g.action, g.preposition = "delete word", "at cursor"
-			elseif k == "dW" then
-				g.action, g.preposition = "delete WORD", "at cursor"
-			elseif k == "dd" then
-				g.action, g.preposition = "delete", "entire line"
-			elseif k == "D" then
-				g.action, g.preposition = "delete to", "end of line"
-			elseif k:match("^d%d*j$") then
-				g.action, g.preposition = "delete lines", "downward"
-			elseif k:match("^d%d*k$") then
-				g.action, g.preposition = "delete lines", "upward"
-			-- Paste
-			elseif k == "p" then
-				g.action, g.preposition = "paste", "below current line"
-			elseif k == "P" then
-				g.action, g.preposition = "paste", "above current line"
-			-- Text objects: change inside/around
-			elseif k:match("^ci") then
-				g.action, g.preposition = "change inside " .. k:sub(3), "at cursor"
-			elseif k:match("^ca") then
-				g.action, g.preposition = "change around " .. k:sub(3), "at cursor"
-			-- Text objects: delete inside/around
-			elseif k:match("^di") then
-				g.action, g.preposition = "delete inside " .. k:sub(3), "at cursor"
-			elseif k:match("^da") then
-				g.action, g.preposition = "delete around " .. k:sub(3), "at cursor"
-			-- Visual mode
-			elseif k:match("^V.*c$") then
-				g.action, g.preposition = "visual line change to", "selected lines"
-			elseif k:match("^V.*d$") then
-				g.action, g.preposition = "visual line delete", "selected lines"
-			elseif k == "vd" then
-				g.action, g.preposition = "visual delete", "selected text"
-			elseif k == "vc" then
-				g.action, g.preposition = "visual change to", "selected text"
-			else
-				return nil
-			end
-			return g
-		end)(),
-	})
-
-	-- Get snippet boundaries
-	state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
-
-	-- Store total buffer line count (needed for o/O restore when lines are added)
-	state.total_buf_lines = vim.api.nvim_buf_line_count(state.buf)
-
-	-- Store target
-	state.target = challenge.target
-
-	-- Place highlight(s) based on challenge type
-	if challenge.highlight_rows then
-		-- Multi-row highlight (e.g., delete_multiple_lines, copy_paste_lines)
-		local buf_rows = {}
-		for _, r in ipairs(challenge.highlight_rows) do
-			buf_rows[#buf_rows + 1] = r + state.snippet_offset
-		end
-		highlight.place_target_rows(state.buf, buf_rows)
-		-- Place paste destination marker if present (e.g., copy_paste_lines)
-		if challenge.paste_marker_after_row ~= nil then
-			highlight.place_paste_marker(state.buf, challenge.paste_marker_after_row + state.snippet_offset)
-		end
-	else
-		challenge._highlight_plan = highlight_plan.compute_for_challenge(challenge)
-
-		-- Place target highlight (use search-specific color for search lessons)
-		local target_buf_row = state.target.row + state.snippet_offset
-		local hl_group = challenge.search_word and "VimTeacherSearchTarget" or nil
-		local plan = challenge._highlight_plan
-		local hl_col = state.target.col
-		local target_end_col = nil
-		local full_line = false
-		if plan then
-			hl_col = plan.start_col or hl_col
-			target_end_col = plan.end_col
-			full_line = plan.full_line
-		end
-		highlight.place_target(state.buf, target_buf_row, hl_col, target_end_col, full_line, hl_group)
-	end
-
-	-- Position cursor at start location
-	local start_pos = challenge.start_pos or { row = 0, col = 0 }
-	local buf_start_row = start_pos.row + state.snippet_offset
-	vim.api.nvim_win_set_cursor(state.win, { buf_start_row + 1, start_pos.col })
-
-	-- Insert lessons: store original snippet and enable editing
-	if state.lesson.type == "insert" then
-		state.original_snippet = vim.deepcopy(challenge.snippet_lines)
-		vim.bo[state.buf].modifiable = true
-	end
-
-	-- Show initial 00:00 (timer starts counting on first move)
-	buffer.update_timer(state.buf, 0)
-	state.loading = nil
+	render_current_challenge()
 end
 
 setup_autocmds = function()
@@ -1151,27 +1130,27 @@ start_lesson = function(lesson_name)
 			end
 		end
 		-- Render layout (no progress bar)
-			buffer.render(state.buf, {
-				title = lesson.title,
-				description = lesson.description,
-				snippet_lines = lesson.sandbox_snippet,
-				hint_lines = lesson.hint_lines,
-			})
-			state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
-			vim.bo[state.buf].modifiable = true
-			vim.bo[state.buf].undolevels = 1000
-			-- Start at the instruction block so step-by-step text is visible on smaller windows.
-			-- Users can move into the sandbox right below to practice.
-			local info_start_row = math.min(vim.api.nvim_buf_line_count(state.buf), 3)
-			vim.api.nvim_win_set_cursor(state.win, { info_start_row, 0 })
+		buffer.render(state.buf, {
+			title = lesson.title,
+			description = lesson.description,
+			snippet_lines = lesson.sandbox_snippet,
+			hint_lines = lesson.hint_lines,
+		})
+		state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
+		vim.bo[state.buf].modifiable = true
+		vim.bo[state.buf].undolevels = 1000
+		-- Start at the instruction block so step-by-step text is visible on smaller windows.
+		-- Users can move into the sandbox right below to practice.
+		local info_start_row = math.min(vim.api.nvim_buf_line_count(state.buf), 3)
+		vim.api.nvim_win_set_cursor(state.win, { info_start_row, 0 })
 		-- Navigation keymaps
 		local opts = { buffer = state.buf, noremap = true, silent = true }
-			vim.keymap.set("n", "n", function()
-				local next_name = lessons.get_next(lesson_name)
-				if next_name then
-					start_lesson(next_name)
-				end
-			end, opts)
+		vim.keymap.set("n", "n", function()
+			local next_name = lessons.get_next(lesson_name)
+			if next_name then
+				start_lesson(next_name)
+			end
+		end, opts)
 		vim.keymap.set("n", "q", function()
 			show_menu()
 		end, opts)
@@ -1181,13 +1160,8 @@ start_lesson = function(lesson_name)
 	-- Apply appropriate key blocking for this lesson type
 	-- (always re-apply; keymaps may be stale from a previous lesson or menu)
 	if lesson.type == "insert" then
-		block_keys_for_insert_lesson(
-			lesson.allowed_keys or {},
-			lesson.allowed_modify_keys,
-			lesson.allowed_visual_keys,
-			lesson.allowed_nav_keys
-		)
-			-- Ensure autoindent for o/O lessons (new lines inherit current line's indent)
+		block_keys_for_insert_lesson(lesson.allowed_keys or {}, lesson.allowed_modify_keys, lesson.allowed_visual_keys)
+		-- Ensure autoindent for o/O lessons (new lines inherit current line's indent)
 		vim.bo[state.buf].autoindent = true
 	else
 		block_insert_keys()

@@ -48,7 +48,10 @@ highlight.place_target(buf, 0, 2, 2)
 mark, count = get_target_mark(buf)
 assert_test(mark ~= nil, "Expected one target extmark for zero-width case, got " .. tostring(count))
 if mark then
-	assert_test(mark[4].end_col == 3, "Zero-width range should normalize to end_col 3, got " .. tostring(mark[4].end_col))
+	assert_test(
+		mark[4].end_col == 3,
+		"Zero-width range should normalize to end_col 3, got " .. tostring(mark[4].end_col)
+	)
 end
 
 -- Test 3: Negative-width range (end_col < start_col) is normalized to visible width
