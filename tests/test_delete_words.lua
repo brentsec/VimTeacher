@@ -38,15 +38,15 @@ assert_test(
 )
 assert_test(delete_words.allowed_modify_keys[1] == "d", "allowed_modify_keys[1] must be 'd'")
 
--- Test 3: compute_optimal works (Manhattan distance)
+-- Test 3: compute_optimal works (motion-aware nav distance)
 local opt1 = delete_words.compute_optimal({ row = 0, col = 0 }, { row = 3, col = 5 })
-assert_test(opt1 == 8, "Row 0,Col 0 to Row 3,Col 5 should be 8, got " .. opt1)
+assert_test(opt1 == 8, "Without snippet context, fallback should be Manhattan 8, got " .. opt1)
 
 local opt2 = delete_words.compute_optimal({ row = 2, col = 7 }, { row = 2, col = 7 })
 assert_test(opt2 == 0, "Same position should be 0, got " .. opt2)
 
 local opt3 = delete_words.compute_optimal({ row = 2, col = 0 }, { row = 2, col = 10 })
-assert_test(opt3 == 10, "Same row, col 0 to 10 should be 10, got " .. opt3)
+assert_test(opt3 == 10, "Without snippet context, same-row fallback should be 10, got " .. opt3)
 
 -- Test 4: generate_challenge returns valid structure
 local buf = vim.api.nvim_create_buf(false, true)
@@ -64,6 +64,11 @@ assert_test(
 	challenge.key == "dw" or challenge.key == "dW",
 	"key must be 'dw' or 'dW', got '" .. tostring(challenge.key) .. "'"
 )
+
+local nav_opt = delete_words.compute_optimal(challenge.start_pos, challenge.target)
+local manhattan_opt = math.abs(challenge.start_pos.row - challenge.target.row)
+	+ math.abs(challenge.start_pos.col - challenge.target.col)
+assert_test(nav_opt <= manhattan_opt, "Nav-optimal should be <= Manhattan for generated challenge")
 
 -- Test 5: snippet_lines and expected_lines have same length (no line additions/removals)
 assert_test(
@@ -186,6 +191,13 @@ for idx, c in ipairs(challenges) do
 				.. "'"
 		)
 	end
+
+	local nav_cost = delete_words._compute_nav_optimal(c.snippet_lines, c.start_pos, c.target)
+	local manhattan_cost = math.abs(c.start_pos.row - c.target.row) + math.abs(c.start_pos.col - c.target.col)
+	assert_test(
+		nav_cost <= manhattan_cost,
+		"Challenge " .. idx .. ": nav cost " .. nav_cost .. " should be <= Manhattan " .. manhattan_cost
+	)
 end
 
 -- Test 10: Run 50 generations without crashes

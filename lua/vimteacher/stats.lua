@@ -120,6 +120,31 @@ function M.calc_speed_pct(best_time, current_time)
 	return M.clamp_speed_pct((best_time / current_time) * 100)
 end
 
+--- Clamp an estimated optimal move count so it never exceeds actual moves.
+--- Keeps scoring/output internally consistent when heuristic optimal models are
+--- beaten by advanced motion chains.
+--- @param optimal_moves number
+--- @param actual_moves number
+--- @return number
+function M.normalize_optimal_moves(optimal_moves, actual_moves)
+	if type(optimal_moves) ~= "number" then
+		optimal_moves = 0
+	end
+	if type(actual_moves) ~= "number" then
+		actual_moves = 0
+	end
+	if actual_moves < 0 then
+		actual_moves = 0
+	end
+	if optimal_moves < 0 then
+		optimal_moves = 0
+	end
+	if optimal_moves > actual_moves then
+		return actual_moves
+	end
+	return optimal_moves
+end
+
 --- Calculate accuracy percentage.
 --- 100% means optimal path (minimum moves).
 --- @param optimal_moves number Minimum moves required

@@ -43,6 +43,7 @@ local state = {
 	total_buf_lines = nil, -- buffer line count at render time (for o/O restore)
 	elapsed_timer = nil, -- repeating vim timer ID for display
 	challenge_load_time = nil, -- hrtime when challenge was loaded
+	pending_programmatic_cursor = nil, -- one synthetic CursorMoved position to ignore after render
 }
 
 -- ─── Helpers ──────────────────────────────────────────────────────────────
@@ -189,6 +190,7 @@ local function cleanup()
 	state.total_buf_lines = nil
 	state.elapsed_timer = nil
 	state.challenge_load_time = nil
+	state.pending_programmatic_cursor = nil
 end
 
 -- ─── Key blocking ──────────────────────────────────────────────────────────
@@ -583,13 +585,18 @@ local function on_target_reached()
 		elapsed = elapsed / 1e9 -- convert to seconds
 	end
 
+	-- Estimated optimal can be beaten when users chain advanced motions that a
+	-- lesson's heuristic model doesn't fully cover. Clamp per-challenge optimal
+	-- for scoring/display so summaries stay internally consistent.
+	local scored_optimal = stats_mod.normalize_optimal_moves(state.optimal_moves, state.move_count)
+
 	-- Accumulate session stats for end-of-lesson summary
-	local accuracy_pct = stats_mod.calc_accuracy_pct(state.optimal_moves, state.move_count)
+	local accuracy_pct = stats_mod.calc_accuracy_pct(scored_optimal, state.move_count)
 	state.session_challenges[#state.session_challenges + 1] = {
 		time = elapsed,
 		accuracy_pct = accuracy_pct,
 		moves = state.move_count,
-		optimal = state.optimal_moves,
+		optimal = scored_optimal,
 	}
 
 	-- Flash success
@@ -789,6 +796,7 @@ local function render_current_challenge(cursor_rel)
 	local line = challenge.snippet_lines[row + 1] or ""
 	local col = math.max(0, math.min(desired.col or 0, #line))
 	vim.api.nvim_win_set_cursor(state.win, { row + state.snippet_offset + 1, col })
+	state.pending_programmatic_cursor = { row = row + state.snippet_offset + 1, col = col }
 
 	if state.lesson.type == "insert" then
 		state.original_snippet =
@@ -931,6 +939,9 @@ local function on_cursor_moved()
 	if state.mode ~= "playing" then
 		return
 	end
+	if state.loading then
+		return
+	end
 	if not state.target then
 		return
 	end
@@ -941,11 +952,21 @@ local function on_cursor_moved()
 		return
 	end
 
+	-- Ignore one synthetic event emitted at the programmatically positioned start cursor.
+	if state.pending_programmatic_cursor then
+		local cur = vim.api.nvim_win_get_cursor(state.win)
+		local p = state.pending_programmatic_cursor
+		state.pending_programmatic_cursor = nil
+		if cur[1] == p.row and cur[2] == p.col then
+			return
+		end
+	end
+
 	-- Constrain cursor to snippet zone
 	local was_constrained = validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
 
-	-- Start timer on first real user move (skip any CursorMoved during load_challenge)
-	if not state.timer_start and not state.loading then
+	-- Start timer on first real user move.
+	if not state.timer_start then
 		state.timer_start = vim.loop.hrtime()
 		start_elapsed_timer()
 	end

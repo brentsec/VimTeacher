@@ -2,6 +2,7 @@
 -- Eighth lesson: Moving by WORDs with W, E, B
 
 local snippets = require("vimteacher.snippets")
+local optimal = require("vimteacher.optimal")
 
 local M = {}
 
@@ -81,7 +82,7 @@ end
 --- @return number Optimal move count
 function M.compute_optimal(start_pos, target)
 	if not current_snippet then
-		return math.abs(start_pos.row - target.row) + math.abs(start_pos.col - target.col)
+		return optimal.manhattan(start_pos, target)
 	end
 
 	local word_starts = find_WORD_starts(current_snippet)
@@ -92,7 +93,7 @@ function M.compute_optimal(start_pos, target)
 		return math.abs(target_idx - start_idx)
 	end
 
-	return math.abs(start_pos.row - target.row) + math.abs(start_pos.col - target.col)
+	return optimal.nav_cost(current_snippet, start_pos, target, { "h", "j", "k", "l", "W", "B", "E", "0", "^", "$" })
 end
 
 --- Generate a new challenge: random snippet + random WORD-start target + start position.

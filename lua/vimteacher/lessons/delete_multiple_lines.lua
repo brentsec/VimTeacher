@@ -2,6 +2,7 @@
 -- Multi-line delete operations: dj, dk, d2j, d2k
 
 local M = {}
+local optimal = require("vimteacher.optimal")
 
 M.title = "Multi-Line Delete: dj, dk"
 M.type = "insert"
@@ -253,14 +254,18 @@ local CHALLENGES = {
 -- Track recently used challenges to avoid repetition
 local recent = {}
 local MAX_RECENT = 5
+local current_snippet = nil
 
 --- Compute the minimum (optimal) moves between two positions.
---- For multi-line delete, user must navigate to exact (row, col), so Manhattan distance applies.
+--- Uses motion-aware shortest-path scoring on the current snippet.
 --- @param start_pos table {row=number, col=number} 0-indexed
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
 function M.compute_optimal(start_pos, target)
-	return math.abs(start_pos.row - target.row) + math.abs(start_pos.col - target.col)
+	if not current_snippet then
+		return optimal.manhattan(start_pos, target)
+	end
+	return optimal.nav_cost(current_snippet, start_pos, target)
 end
 
 --- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
@@ -301,6 +306,7 @@ function M.generate_challenge(buf, ns_id)
 	end
 
 	local c = CHALLENGES[idx]
+	current_snippet = c.snippet_lines
 
 	-- Compute highlight_rows based on key
 	local highlight_rows = {}

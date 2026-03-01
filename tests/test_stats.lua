@@ -86,6 +86,20 @@ assert_test(clamped == 0, "Negative accuracy should clamp to 0, got " .. clamped
 local overall = stats.calc_overall_accuracy_pct(11, 10)
 assert_test(overall == 100, "Overall accuracy should cap at 100, got " .. overall)
 
+-- Test 16: normalize_optimal_moves clamps above actual
+local norm1 = stats.normalize_optimal_moves(12, 9)
+assert_test(norm1 == 9, "Optimal above actual should clamp to actual, got " .. norm1)
+
+-- Test 17: normalize_optimal_moves keeps valid values
+local norm2 = stats.normalize_optimal_moves(7, 9)
+assert_test(norm2 == 7, "Optimal below actual should stay unchanged, got " .. norm2)
+
+-- Test 18: normalize_optimal_moves clamps negatives/non-numbers
+local norm3 = stats.normalize_optimal_moves(-5, -2)
+assert_test(norm3 == 0, "Negative values should clamp to 0, got " .. norm3)
+local norm4 = stats.normalize_optimal_moves("bad", 5)
+assert_test(norm4 == 0, "Non-number optimal should clamp to 0, got " .. norm4)
+
 print(string.format("test_stats: %d passed, %d failed", pass_count, fail_count))
 if fail_count > 0 then
 	vim.cmd("cquit! 1")

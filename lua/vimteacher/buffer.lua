@@ -556,7 +556,7 @@ function M.render_completion(buf, opts)
 	for _, c in ipairs(opts.session_challenges or {}) do
 		total_time = total_time + c.time
 		total_moves = total_moves + c.moves
-		total_optimal = total_optimal + c.optimal
+		total_optimal = total_optimal + stats.normalize_optimal_moves(c.optimal, c.moves)
 	end
 
 	local num_challenges = #(opts.session_challenges or {})

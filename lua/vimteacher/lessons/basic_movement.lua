@@ -2,6 +2,7 @@
 -- First lesson: Basic cursor movement with h, j, k, l
 
 local snippets = require("vimteacher.snippets")
+local optimal = require("vimteacher.optimal")
 
 local M = {}
 
@@ -19,13 +20,18 @@ M.hint_lines = {
 	"[h] Left  [j] Down  [k] Up  [l] Right — Move to the green target",
 }
 
+local current_snippet = nil
+
 --- Compute the minimum (optimal) moves between two positions.
---- For basic movement (h/j/k/l), this is the Manhattan distance.
+--- Uses motion-aware shortest-path scoring on the current snippet.
 --- @param start_pos table {row=number, col=number} 0-indexed
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
 function M.compute_optimal(start_pos, target)
-	return math.abs(start_pos.row - target.row) + math.abs(start_pos.col - target.col)
+	if not current_snippet then
+		return optimal.manhattan(start_pos, target)
+	end
+	return optimal.nav_cost(current_snippet, start_pos, target, { "h", "j", "k", "l", "0", "^", "$" })
 end
 
 --- Generate a new challenge: random snippet + random target + start position.
@@ -34,6 +40,7 @@ end
 --- @return table challenge {snippet_lines, target, start_pos}
 function M.generate_challenge(buf, ns_id)
 	local snippet = snippets.get_random()
+	current_snippet = snippet
 
 	-- Build list of all valid target positions (non-whitespace characters)
 	local valid_positions = {}

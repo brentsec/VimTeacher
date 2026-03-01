@@ -2,6 +2,7 @@
 -- Second lesson: Moving by words with w, e, b
 
 local snippets = require("vimteacher.snippets")
+local optimal = require("vimteacher.optimal")
 
 local M = {}
 
@@ -108,7 +109,7 @@ end
 function M.compute_optimal(start_pos, target)
 	if not current_snippet then
 		-- Fallback to Manhattan distance
-		return math.abs(start_pos.row - target.row) + math.abs(start_pos.col - target.col)
+		return optimal.manhattan(start_pos, target)
 	end
 
 	local word_starts = find_word_starts(current_snippet)
@@ -120,7 +121,7 @@ function M.compute_optimal(start_pos, target)
 	end
 
 	-- Fallback
-	return math.abs(start_pos.row - target.row) + math.abs(start_pos.col - target.col)
+	return optimal.nav_cost(current_snippet, start_pos, target, { "h", "j", "k", "l", "w", "b", "e", "0", "^", "$" })
 end
 
 --- Generate a new challenge: random snippet + random word-start target + start position.
