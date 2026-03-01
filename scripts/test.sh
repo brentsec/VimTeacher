@@ -53,6 +53,7 @@ TESTS=(
   "test_paragraph_text_objects.lua"
   "test_text_objects_mega_review.lua"
   "test_repeat_power.lua"
+  "test_macro_repetition.lua"
   "test_intro_visual_mode.lua"
   "test_visual_mode_operators.lua"
   "test_visual_line_mode.lua"

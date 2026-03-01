@@ -57,7 +57,7 @@ M.sections = {
 	},
 	{
 		title = "Editing Efficiency",
-		lessons = { "repeat_power" },
+		lessons = { "repeat_power", "macro_repetition" },
 	},
 	{
 		title = "Visual Mode",

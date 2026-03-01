@@ -15,6 +15,7 @@ local M = {}
 local load_challenge, setup_autocmds, start_lesson, render_current_challenge
 local clear_stats_keymaps, clear_completion_keymaps, clear_info_keymaps
 local clear_playing_keymaps
+local on_text_changed
 
 -- Menu input timer (module-level for cleanup access)
 local menu_input_timer = nil
@@ -42,9 +43,12 @@ local state = {
 	original_snippet = nil, -- stored for restore on failed insert edit
 	total_buf_lines = nil, -- buffer line count at render time (for o/O restore)
 	elapsed_timer = nil, -- repeating vim timer ID for display
+	insert_validate_timer = nil, -- delayed validation timer while macro record/replay is active
 	challenge_load_time = nil, -- hrtime when challenge was loaded
 	pending_programmatic_cursor = nil, -- one synthetic CursorMoved position to ignore after render
 	saved_inccommand = nil, -- user's original inccommand option, restored on cleanup
+	play_menu_key = "q", -- per-lesson playing-mode key to return to menu
+	play_restart_key = "Q", -- per-lesson playing-mode key to restart current lesson
 }
 
 -- ─── Helpers ──────────────────────────────────────────────────────────────
@@ -166,6 +170,10 @@ local function cleanup()
 	if state.elapsed_timer then
 		vim.fn.timer_stop(state.elapsed_timer)
 	end
+	if state.insert_validate_timer then
+		vim.fn.timer_stop(state.insert_validate_timer)
+		state.insert_validate_timer = nil
+	end
 
 	if state.augroup then
 		pcall(vim.api.nvim_del_augroup_by_id, state.augroup)
@@ -194,8 +202,11 @@ local function cleanup()
 	state.original_snippet = nil
 	state.total_buf_lines = nil
 	state.elapsed_timer = nil
+	state.insert_validate_timer = nil
 	state.challenge_load_time = nil
 	state.pending_programmatic_cursor = nil
+	state.play_menu_key = "q"
+	state.play_restart_key = "Q"
 	if state.saved_inccommand ~= nil then
 		vim.o.inccommand = state.saved_inccommand
 		state.saved_inccommand = nil
@@ -474,12 +485,14 @@ end
 local function setup_playing_keymaps()
 	local buf = state.buf
 	local opts = { buffer = buf, noremap = true, silent = true }
+	local menu_key = state.play_menu_key or "q"
+	local restart_key = state.play_restart_key or "Q"
 
-	vim.keymap.set("n", "q", function()
+	vim.keymap.set("n", menu_key, function()
 		show_menu()
 	end, opts)
 
-	vim.keymap.set("n", "Q", function()
+	vim.keymap.set("n", restart_key, function()
 		start_lesson(state.lesson_name)
 	end, opts)
 end
@@ -490,8 +503,12 @@ clear_playing_keymaps = function()
 		return
 	end
 	local opts = { buffer = buf }
+	pcall(vim.keymap.del, "n", state.play_menu_key or "q", opts)
+	pcall(vim.keymap.del, "n", state.play_restart_key or "Q", opts)
 	pcall(vim.keymap.del, "n", "q", opts)
 	pcall(vim.keymap.del, "n", "Q", opts)
+	pcall(vim.keymap.del, "n", "m", opts)
+	pcall(vim.keymap.del, "n", "R", opts)
 	pcall(vim.keymap.del, "n", "gg", opts)
 	pcall(vim.keymap.del, "n", "G", opts)
 end
@@ -734,6 +751,11 @@ render_current_challenge = function(cursor_rel)
 		hint_lines = state.lesson.hint_lines,
 		goal_text = challenge.goal_text,
 		goal = build_goal(challenge.key, challenge.char),
+		nav_hint_line = string.format(
+			"[%s] Menu  [%s] Restart lesson",
+			state.play_menu_key or "q",
+			state.play_restart_key or "Q"
+		),
 	})
 
 	state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
@@ -842,7 +864,36 @@ local function on_insert_leave()
 	end
 end
 
-local function on_text_changed()
+local function macro_session_busy()
+	return vim.fn.reg_recording() ~= "" or vim.fn.reg_executing() ~= ""
+end
+
+local function schedule_insert_validation_retry()
+	if state.insert_validate_timer then
+		return
+	end
+	state.insert_validate_timer = vim.fn.timer_start(25, function()
+		state.insert_validate_timer = nil
+		vim.schedule(function()
+			if state.mode ~= "playing" then
+				return
+			end
+			if not state.lesson or state.lesson.type ~= "insert" then
+				return
+			end
+			if not state.lesson.allowed_modify_keys then
+				return
+			end
+			if macro_session_busy() then
+				schedule_insert_validation_retry()
+				return
+			end
+			on_text_changed()
+		end)
+	end)
+end
+
+on_text_changed = function()
 	if state.mode ~= "playing" then
 		return
 	end
@@ -860,6 +911,12 @@ local function on_text_changed()
 		return
 	end
 	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+		return
+	end
+	if macro_session_busy() then
+		-- While recording/executing macros, intermediate text states are expected.
+		-- Delay pass/fail validation until macro activity has fully settled.
+		schedule_insert_validation_retry()
 		return
 	end
 
@@ -1096,6 +1153,8 @@ start_lesson = function(lesson_name)
 	state.max_challenges = lesson.challenges_required or 10
 	state.session_challenges = {}
 	state.mode = "playing"
+	state.play_menu_key = lesson.play_menu_key or "q"
+	state.play_restart_key = lesson.play_restart_key or "Q"
 
 	-- Ensure buffer exists
 	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
@@ -1169,7 +1228,7 @@ start_lesson = function(lesson_name)
 		block_insert_keys()
 	end
 
-	-- Set up navigation keymaps (q=menu, Q=restart) for playing mode
+	-- Set up navigation keymaps for playing mode
 	setup_playing_keymaps()
 
 	-- Load first challenge

@@ -133,6 +133,11 @@ function M.render_menu(buf, sections, all_stats)
 
 	lines[#lines + 1] = bordered("")
 
+	-- Top hint bar
+	local hint_row = #lines
+	lines[#lines + 1] = bordered("Type a number to start, or q to quit")
+	lines[#lines + 1] = bordered("")
+
 	-- Column header
 	local header_row = #lines
 	lines[#lines + 1] = bordered(string.format("  %-4s%-35s%-12s%s", "#", "Topic", "Best Time", "Best Accuracy"))
@@ -180,10 +185,6 @@ function M.render_menu(buf, sections, all_stats)
 	-- Bottom separator inside box
 	local bottom_sep_row = #lines
 	lines[#lines + 1] = inner_separator()
-
-	-- Hint
-	local hint_row = #lines
-	lines[#lines + 1] = bordered("Type a number to start, or q to quit")
 
 	lines[#lines + 1] = bordered("")
 
@@ -293,6 +294,7 @@ end
 ---   opts.max_progress: number (total challenges)
 ---   opts.snippet_lines: string[]
 ---   opts.hint_lines: string[]
+---   opts.nav_hint_line: string|nil (custom bottom navigation hint during challenges)
 function M.render(buf, opts)
 	local lines = {}
 
@@ -415,7 +417,7 @@ function M.render(buf, opts)
 	end
 	-- Navigation hints (shown during challenges, not info lessons)
 	if opts.progress then
-		lines[#lines + 1] = "  [q] Menu  [Q] Restart lesson"
+		lines[#lines + 1] = "  " .. (opts.nav_hint_line or "[q] Menu  [Q] Restart lesson")
 	end
 	local hint_end = #lines
 

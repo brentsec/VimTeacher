@@ -2,6 +2,8 @@
 
 Interactive Vim tutorial plugin that teaches Vim concepts directly inside Neovim.
 
+![VimTeacher Demo](docs/static/Screencast_20260228_225033.gif)
+
 ## Requirements
 
 - Neovim >= 0.7 (tested on 0.11.6)
@@ -63,8 +65,10 @@ To jump directly into a specific lesson:
 
 | Key | Action |
 |-----|--------|
-| `q` | Return to topic menu |
+| `q` | Return to topic menu (default) |
 | `Q` | Restart current lesson (resets progress and stats) |
+
+Note: lessons that teach macros remap menu to `m` so `q` can be used for recording.
 
 ### After Completing a Lesson
 
@@ -76,7 +80,7 @@ To jump directly into a specific lesson:
 | `m` | Return to topic menu |
 | `q` | Quit |
 
-## Available Topics (38 lessons)
+## Available Topics (40 lessons)
 
 ### Getting Started
 1. Intro to Modes
@@ -130,12 +134,13 @@ To jump directly into a specific lesson:
 
 ### Editing Efficiency
 35. Repeat Power: . and counts
+36. Macros for Repetition: qa, q, @a, @@
 
 ### Visual Mode
-36. Intro to Visual Mode
-37. Visual Operators: v + d, v + c
-38. Visual Line Mode: V + d, V + c
-39. Switch Selection Ends: o
+37. Intro to Visual Mode
+38. Visual Operators: v + d, v + c
+39. Visual Line Mode: V + d, V + c
+40. Switch Selection Ends: o
 
 ## Design Principles
 
