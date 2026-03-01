@@ -446,6 +446,11 @@ local function show_menu()
 	-- Clear any playing keymaps
 	local all_sections = lessons.get_sections()
 	buffer.render_menu(state.buf, all_sections, state.all_stats)
+	if state.win and vim.api.nvim_win_is_valid(state.win) then
+		-- Reset inherited scroll from prior screens so menu always starts at top.
+		vim.fn.winrestview({ topline = 1, leftcol = 0 })
+		vim.api.nvim_win_set_cursor(state.win, { 1, 0 })
+	end
 	setup_menu_keymaps()
 end
 
@@ -801,6 +806,11 @@ local function render_current_challenge(cursor_rel)
 	local col = math.max(0, math.min(desired.col or 0, #line))
 	vim.api.nvim_win_set_cursor(state.win, { row + state.snippet_offset + 1, col })
 	state.pending_programmatic_cursor = { row = row + state.snippet_offset + 1, col = col }
+	if state.challenge_num == 1 and not cursor_rel then
+		-- Starting a lesson after a scrolled menu can inherit old view offsets.
+		-- Force first challenge to render from the top of the lesson layout.
+		vim.fn.winrestview({ topline = 1, leftcol = 0 })
+	end
 
 	if state.lesson.type == "insert" then
 		state.original_snippet =
@@ -1168,6 +1178,7 @@ start_lesson = function(lesson_name)
 		-- Users can move into the sandbox right below to practice.
 		local info_start_row = math.min(vim.api.nvim_buf_line_count(state.buf), 3)
 		vim.api.nvim_win_set_cursor(state.win, { info_start_row, 0 })
+		vim.fn.winrestview({ topline = 1, leftcol = 0 })
 		-- Navigation keymaps
 		local opts = { buffer = state.buf, noremap = true, silent = true }
 		vim.keymap.set("n", "n", function()
