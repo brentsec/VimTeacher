@@ -130,6 +130,10 @@ local function build_goal(key, char)
 		g.action, g.preposition = "visual delete", "selected text"
 	elseif key == "vc" then
 		g.action, g.preposition = "visual change to", "selected text"
+	elseif key:match("^v.*d$") then
+		g.action, g.preposition = "visual delete", "selected text"
+	elseif key:match("^v.*c$") then
+		g.action, g.preposition = "visual change to", "selected text"
 	else
 		return nil
 	end

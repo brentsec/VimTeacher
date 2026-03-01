@@ -220,7 +220,7 @@ function M.compute_for_challenge(challenge)
 	end
 
 	-- Visual character operations: highlight selected span directly.
-	if (key == "vd" or key == "vc") and challenge.select_end and challenge.select_end.row == target.row then
+	if key and key:match("^v.*[dc]$") and challenge.select_end and challenge.select_end.row == target.row then
 		local start_col = math.min(target.col, challenge.select_end.col)
 		local end_col = math.max(target.col, challenge.select_end.col) + 1
 		plan.start_col = start_col
