@@ -20,6 +20,64 @@ M.hint_lines = {
 	"[h] Left  [j] Down  [k] Up  [l] Right — Move to the green target",
 }
 
+M.adaptive_keys = { "h", "j", "k", "l" }
+
+--- Build lesson title with resolved movement keys.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local h = key_display["h"] or "h"
+	local j = key_display["j"] or "j"
+	local k = key_display["k"] or "k"
+	local l = key_display["l"] or "l"
+	return string.format("Basic Movement: %s, %s, %s, %s", h, j, k, l)
+end
+
+--- Build lesson description with resolved movement keys.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string[]
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local h = key_display["h"] or "h"
+	local j = key_display["j"] or "j"
+	local k = key_display["k"] or "k"
+	local l = key_display["l"] or "l"
+	return {
+		string.format("Vim uses %s, %s, %s, %s for cursor movement instead of arrow keys.", h, j, k, l),
+		"",
+		string.format("  %s = left    %s = down    %s = up    %s = right", h, j, k, l),
+		"",
+		"Move your cursor to the green highlighted target below.",
+	}
+end
+
+--- Build hint lines with resolved key displays when adaptive mode is enabled.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string[]
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local h = key_display["h"] or "h"
+	local j = key_display["j"] or "j"
+	local k = key_display["k"] or "k"
+	local l = key_display["l"] or "l"
+	return {
+		string.format("[%s] Left  [%s] Down  [%s] Up  [%s] Right — Move to the green target", h, j, k, l),
+	}
+end
+
+--- Build per-challenge helper goal text with resolved movement keys.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string
+function M.get_goal_text(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local h = key_display["h"] or "h"
+	local j = key_display["j"] or "j"
+	local k = key_display["k"] or "k"
+	local l = key_display["l"] or "l"
+	return string.format("Move to target using %s/%s/%s/%s", h, j, k, l)
+end
+
 local current_snippet = nil
 
 --- Compute the minimum (optimal) moves between two positions.

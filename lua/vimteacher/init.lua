@@ -8,13 +8,71 @@ local validate = require("vimteacher.validate")
 local stats_mod = require("vimteacher.stats")
 local lessons = require("vimteacher.lessons")
 local snippets = require("vimteacher.snippets")
+local keymaps = require("vimteacher.keymaps")
 
 local M = {}
+
+local DEFAULT_CONFIG = {
+	keymaps = {
+		mode = "adaptive_display", -- strict | adaptive_display | adaptive_runtime
+		distro = "auto",
+		overrides = {},
+	},
+}
+
+local GLOBAL_ADAPTIVE_KEYS = {
+	"h",
+	"j",
+	"k",
+	"l",
+	"w",
+	"e",
+	"b",
+	"W",
+	"E",
+	"B",
+	"0",
+	"$",
+	"_",
+	"f",
+	"F",
+	"t",
+	"T",
+	";",
+	"i",
+	"a",
+	"I",
+	"A",
+	"o",
+	"O",
+	"x",
+	"r",
+	"cl",
+	"cw",
+	"cW",
+	"dw",
+	"dW",
+	"dd",
+	"D",
+	"p",
+	"P",
+	"gg",
+	"G",
+	"{",
+	"}",
+	"n",
+	"N",
+	"*",
+	"#",
+	"v",
+	"V",
+	".",
+}
 
 -- Forward declarations for local functions referenced before definition
 local load_challenge, setup_autocmds, start_lesson, render_current_challenge
 local clear_stats_keymaps, clear_completion_keymaps, clear_info_keymaps
-local clear_playing_keymaps
+local clear_playing_keymaps, rerender_menu_layout
 local on_text_changed
 
 -- Menu input timer (module-level for cleanup access)
@@ -49,6 +107,9 @@ local state = {
 	saved_inccommand = nil, -- user's original inccommand option, restored on cleanup
 	play_menu_key = "q", -- per-lesson playing-mode key to return to menu
 	play_restart_key = "Q", -- per-lesson playing-mode key to restart current lesson
+	config = nil, -- merged plugin config for this session
+	key_display = nil, -- resolved display keys for this session
+	lesson_view = nil, -- resolved lesson text blocks (title/description/hints/goal)
 }
 
 -- ─── Helpers ──────────────────────────────────────────────────────────────
@@ -61,15 +122,124 @@ local function normalize_bracket_spaces(line)
 	return line
 end
 
+local function merged_config()
+	local stored = vim.g.vimteacher_config
+	if type(stored) ~= "table" then
+		stored = {}
+	end
+	return vim.tbl_deep_extend("force", vim.deepcopy(DEFAULT_CONFIG), stored)
+end
+
+local function escape_lua_pattern(s)
+	return s:gsub("(%W)", "%%%1")
+end
+
+local function apply_key_display_to_text(text, key_display)
+	if type(text) ~= "string" then
+		return text
+	end
+	if type(key_display) ~= "table" then
+		return text
+	end
+
+	local keys = {}
+	for canonical, _ in pairs(key_display) do
+		keys[#keys + 1] = canonical
+	end
+	table.sort(keys, function(a, b)
+		return #a > #b
+	end)
+
+	local out = text
+	for _, canonical in ipairs(keys) do
+		local display = key_display[canonical]
+		if type(display) == "string" and display ~= "" and display ~= canonical then
+			local escaped = escape_lua_pattern(canonical)
+			out = out:gsub("%[" .. escaped .. "%]", "[" .. display .. "]")
+			local single_alpha = canonical:match("^[%a]$") ~= nil
+			if (not single_alpha) and canonical:match("^[%w]+$") then
+				out = out:gsub("(%f[%w])" .. escaped .. "(%f[^%w])", display)
+			end
+		end
+	end
+	return out
+end
+
+local function apply_key_display_to_lines(lines, key_display)
+	if type(lines) ~= "table" then
+		return lines
+	end
+	local out = {}
+	for i, line in ipairs(lines) do
+		out[i] = apply_key_display_to_text(line, key_display)
+	end
+	return out
+end
+
+local function lesson_ctx()
+	return {
+		key_display = state.key_display or {},
+	}
+end
+
+local function build_lesson_view(lesson)
+	local ctx = lesson_ctx()
+	local view = {
+		title = apply_key_display_to_text(lesson.title, ctx.key_display),
+		description = apply_key_display_to_lines(lesson.description, ctx.key_display),
+		hint_lines = apply_key_display_to_lines(lesson.hint_lines, ctx.key_display),
+		goal_text = apply_key_display_to_text(lesson.goal_text, ctx.key_display),
+		sandbox_snippet = vim.deepcopy(lesson.sandbox_snippet),
+	}
+
+	if type(lesson.get_title) == "function" then
+		local ok, title = pcall(lesson.get_title, ctx)
+		if ok and type(title) == "string" and title ~= "" then
+			view.title = title
+		end
+	end
+
+	if type(lesson.get_description) == "function" then
+		local ok, lines = pcall(lesson.get_description, ctx)
+		if ok and type(lines) == "table" then
+			view.description = lines
+		end
+	end
+
+	if type(lesson.get_hint_lines) == "function" then
+		local ok, lines = pcall(lesson.get_hint_lines, ctx)
+		if ok and type(lines) == "table" then
+			view.hint_lines = lines
+		end
+	end
+
+	if type(lesson.get_goal_text) == "function" then
+		local ok, text = pcall(lesson.get_goal_text, ctx)
+		if ok and type(text) == "string" and text ~= "" then
+			view.goal_text = text
+		end
+	end
+
+	if type(lesson.get_sandbox_snippet) == "function" then
+		local ok, lines = pcall(lesson.get_sandbox_snippet, ctx)
+		if ok and type(lines) == "table" then
+			view.sandbox_snippet = lines
+		end
+	end
+
+	return view
+end
+
 --- Build goal bar metadata from a challenge key/char.
---- @param key string|nil
+--- @param key string|nil canonical key
 --- @param char string|nil
+--- @param display_key string|nil resolved display key
 --- @return table|nil
-local function build_goal(key, char)
+local function build_goal(key, char, display_key)
 	if not key then
 		return nil
 	end
-	local g = { key = key, char = char }
+	local g = { key = display_key or key, char = char }
 	if key == "i" then
 		g.action, g.preposition = "insert", "before cursor"
 	elseif key == "a" then
@@ -207,6 +377,9 @@ local function cleanup()
 	state.pending_programmatic_cursor = nil
 	state.play_menu_key = "q"
 	state.play_restart_key = "Q"
+	state.key_display = nil
+	state.lesson_view = nil
+	state.config = nil
 	if state.saved_inccommand ~= nil then
 		vim.o.inccommand = state.saved_inccommand
 		state.saved_inccommand = nil
@@ -215,28 +388,77 @@ end
 
 -- ─── Key blocking ──────────────────────────────────────────────────────────
 
-local function block_insert_keys()
+local function to_set(keys)
+	local s = {}
+	for _, k in ipairs(keys or {}) do
+		if type(k) == "string" and k ~= "" then
+			s[k] = true
+		end
+	end
+	return s
+end
+
+local function resolved_keys_for_lesson(lesson)
+	local out = {}
+	local seen = {}
+	for _, canonical in ipairs((lesson and lesson.adaptive_keys) or {}) do
+		local display = (state.key_display and state.key_display[canonical]) or canonical
+		if type(display) == "string" and display ~= "" and not seen[display] then
+			seen[display] = true
+			out[#out + 1] = display
+		end
+	end
+	return out
+end
+
+local function resolve_keys_list(canonical_keys)
+	local out = {}
+	local seen = {}
+	for _, canonical in ipairs(canonical_keys or {}) do
+		local display = (state.key_display and state.key_display[canonical]) or canonical
+		if type(display) == "string" and display ~= "" and not seen[display] then
+			seen[display] = true
+			out[#out + 1] = display
+		end
+	end
+	return out
+end
+
+local function block_insert_keys(exempt_keys)
 	local buf = state.buf
 	local opts = { buffer = buf, noremap = true, silent = true }
+	local exempt = to_set(exempt_keys)
 
 	-- Block insert-mode entry keys with a friendly message
 	local insert_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" }
 	for _, key in ipairs(insert_keys) do
-		vim.keymap.set("n", key, function()
-			vim.notify("VimTeacher: Insert mode disabled during tutorial", vim.log.levels.WARN)
-		end, opts)
+		if exempt[key] then
+			pcall(vim.keymap.del, "n", key, { buffer = buf })
+		else
+			vim.keymap.set("n", key, function()
+				vim.notify("VimTeacher: Insert mode disabled during tutorial", vim.log.levels.WARN)
+			end, opts)
+		end
 	end
 
 	-- Block text-modifying keys silently
 	local modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
 	for _, key in ipairs(modify_keys) do
-		vim.keymap.set("n", key, "<Nop>", opts)
+		if exempt[key] then
+			pcall(vim.keymap.del, "n", key, { buffer = buf })
+		else
+			vim.keymap.set("n", key, "<Nop>", opts)
+		end
 	end
 
 	-- Block visual mode
 	local visual_keys = { "v", "V", "<C-v>" }
 	for _, key in ipairs(visual_keys) do
-		vim.keymap.set("n", key, "<Nop>", opts)
+		if exempt[key] then
+			pcall(vim.keymap.del, "n", key, { buffer = buf })
+		else
+			vim.keymap.set("n", key, "<Nop>", opts)
+		end
 	end
 
 	-- Block mouse clicks (prevent bypassing keyboard navigation)
@@ -269,12 +491,15 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_vis
 	local allowed_set = {}
 	for _, key in ipairs(allowed) do
 		allowed_set[key] = true
+		-- Clear stale local blockers so user/global remaps still work.
+		pcall(vim.keymap.del, "n", key, { buffer = buf })
 	end
 
 	-- Build lookup of allowed modify keys
 	local modify_allowed_set = {}
 	for _, key in ipairs(allowed_modify or {}) do
 		modify_allowed_set[key] = true
+		pcall(vim.keymap.del, "n", key, { buffer = buf })
 	end
 
 	-- Build notification message with all allowed keys
@@ -295,20 +520,20 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_vis
 				vim.notify(hint_msg, vim.log.levels.WARN)
 			end, opts)
 		else
-			-- Map allowed key to its native command (noremap) to override global plugin keymaps
-			vim.keymap.set("n", key, key, opts)
+			-- Let built-in/user mappings pass through cleanly.
+			pcall(vim.keymap.del, "n", key, { buffer = buf })
 		end
 	end
 
 	-- Block text-modifying keys that are NOT in allowed_modify
 	local modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
 	for _, key in ipairs(modify_keys) do
-		if modify_allowed_set[key] then
+		if modify_allowed_set[key] or allowed_set[key] then
 			-- Remove any stale buffer-local map so the built-in command works cleanly.
 			-- Don't re-map (e.g. d→d noremap); buffer-local mappings for operators
 			-- interfere with operator-pending text objects like di{, da[, etc.
 			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		elseif #key > 1 and modify_allowed_set[key:sub(1, 1)] then
+		elseif #key > 1 and (modify_allowed_set[key:sub(1, 1)] or allowed_set[key:sub(1, 1)]) then
 			-- Clean up multi-char variants (e.g. "dd" when "d" is allowed) to avoid
 			-- mapping ambiguity in Neovim's key resolver.
 			pcall(vim.keymap.del, "n", key, { buffer = buf })
@@ -321,6 +546,7 @@ local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_vis
 	local visual_allowed_set = {}
 	for _, key in ipairs(allowed_visual or {}) do
 		visual_allowed_set[key] = true
+		pcall(vim.keymap.del, "n", key, { buffer = buf })
 	end
 
 	local visual_keys = { "v", "V", "<C-v>" }
@@ -443,6 +669,29 @@ local function clear_menu_keymaps()
 	pcall(vim.keymap.del, "n", "q", opts)
 end
 
+rerender_menu_layout = function()
+	if state.mode ~= "menu" then
+		return
+	end
+	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+		return
+	end
+	if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+		return
+	end
+
+	local cursor = vim.api.nvim_win_get_cursor(state.win)
+	local ok = pcall(buffer.render_menu, state.buf, lessons.get_sections(), state.all_stats, state.win)
+	if not ok then
+		return
+	end
+
+	local line_count = vim.api.nvim_buf_line_count(state.buf)
+	local row = math.max(1, math.min(cursor[1], line_count))
+	vim.api.nvim_win_set_cursor(state.win, { row, 0 })
+	vim.fn.winrestview({ leftcol = 0 })
+end
+
 local function show_menu()
 	if state.elapsed_timer then
 		vim.fn.timer_stop(state.elapsed_timer)
@@ -461,7 +710,10 @@ local function show_menu()
 
 	-- Clear any playing keymaps
 	local all_sections = lessons.get_sections()
-	buffer.render_menu(state.buf, all_sections, state.all_stats)
+	local ok = pcall(buffer.render_menu, state.buf, all_sections, state.all_stats, state.win)
+	if not ok then
+		return
+	end
 	if state.win and vim.api.nvim_win_is_valid(state.win) then
 		-- Reset inherited scroll from prior screens so menu always starts at top.
 		vim.fn.winrestview({ topline = 1, leftcol = 0 })
@@ -739,18 +991,22 @@ render_current_challenge = function(cursor_rel)
 	if not challenge then
 		return
 	end
+	local view = state.lesson_view or build_lesson_view(state.lesson)
+	local goal_text = challenge.goal_text or view.goal_text
+	goal_text = apply_key_display_to_text(goal_text, state.key_display or {})
+	local goal_display_key = (state.key_display and state.key_display[challenge.key]) or challenge.key
 
 	state.loading = true
 
 	buffer.render(state.buf, {
-		title = state.lesson.title,
-		description = state.lesson.description,
+		title = view.title,
+		description = view.description,
 		progress = state.challenge_num,
 		max_progress = state.max_challenges,
 		snippet_lines = challenge.snippet_lines,
-		hint_lines = state.lesson.hint_lines,
-		goal_text = challenge.goal_text,
-		goal = build_goal(challenge.key, challenge.char),
+		hint_lines = view.hint_lines,
+		goal_text = goal_text,
+		goal = build_goal(challenge.key, challenge.char, goal_display_key),
 		nav_hint_line = string.format(
 			"[%s] Menu  [%s] Restart lesson",
 			state.play_menu_key or "q",
@@ -1122,6 +1378,13 @@ setup_autocmds = function()
 			cleanup()
 		end,
 	})
+
+	vim.api.nvim_create_autocmd({ "WinResized", "VimResized" }, {
+		group = state.augroup,
+		callback = function()
+			rerender_menu_layout()
+		end,
+	})
 end
 
 start_lesson = function(lesson_name)
@@ -1155,6 +1418,7 @@ start_lesson = function(lesson_name)
 	state.mode = "playing"
 	state.play_menu_key = lesson.play_menu_key or "q"
 	state.play_restart_key = lesson.play_restart_key or "Q"
+	state.lesson_view = build_lesson_view(lesson)
 
 	-- Ensure buffer exists
 	if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
@@ -1179,22 +1443,26 @@ start_lesson = function(lesson_name)
 	-- Info lessons: display description + sandbox, no challenges
 	if lesson.type == "info" then
 		state.mode = "info"
-		block_insert_keys()
-		local remap_opts = { buffer = state.buf, noremap = true, silent = true }
-		-- Unblock 'i' for sandbox insert mode (override global plugin keymaps)
-		vim.keymap.set("n", "i", "i", remap_opts)
+		local info_exempt_keys = resolved_keys_for_lesson(lesson)
+		info_exempt_keys[#info_exempt_keys + 1] = "i"
+		local resolved_insert = (state.key_display and state.key_display["i"]) or nil
+		if type(resolved_insert) == "string" and resolved_insert ~= "" then
+			info_exempt_keys[#info_exempt_keys + 1] = resolved_insert
+		end
+		block_insert_keys(info_exempt_keys)
 		-- Unblock sandbox modify keys for info lesson free practice
 		if lesson.sandbox_modify_keys then
-			for _, key in ipairs(lesson.sandbox_modify_keys) do
-				vim.keymap.set("n", key, key, remap_opts)
+			local sandbox_keys = resolve_keys_list(lesson.sandbox_modify_keys)
+			for _, key in ipairs(sandbox_keys) do
+				pcall(vim.keymap.del, "n", key, { buffer = state.buf })
 			end
 		end
 		-- Render layout (no progress bar)
 		buffer.render(state.buf, {
-			title = lesson.title,
-			description = lesson.description,
-			snippet_lines = lesson.sandbox_snippet,
-			hint_lines = lesson.hint_lines,
+			title = state.lesson_view.title,
+			description = state.lesson_view.description,
+			snippet_lines = state.lesson_view.sandbox_snippet or lesson.sandbox_snippet,
+			hint_lines = state.lesson_view.hint_lines,
 		})
 		state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
 		vim.bo[state.buf].modifiable = true
@@ -1221,11 +1489,15 @@ start_lesson = function(lesson_name)
 	-- Apply appropriate key blocking for this lesson type
 	-- (always re-apply; keymaps may be stale from a previous lesson or menu)
 	if lesson.type == "insert" then
-		block_keys_for_insert_lesson(lesson.allowed_keys or {}, lesson.allowed_modify_keys, lesson.allowed_visual_keys)
+		block_keys_for_insert_lesson(
+			resolve_keys_list(lesson.allowed_keys or {}),
+			resolve_keys_list(lesson.allowed_modify_keys),
+			resolve_keys_list(lesson.allowed_visual_keys)
+		)
 		-- Ensure autoindent for o/O lessons (new lines inherit current line's indent)
 		vim.bo[state.buf].autoindent = true
 	else
-		block_insert_keys()
+		block_insert_keys(resolved_keys_for_lesson(lesson))
 	end
 
 	-- Set up navigation keymaps for playing mode
@@ -1236,6 +1508,12 @@ start_lesson = function(lesson_name)
 end
 
 -- ─── Public API ────────────────────────────────────────────────────────────
+
+--- Configure VimTeacher behavior.
+--- @param opts table|nil
+function M.setup(opts)
+	vim.g.vimteacher_config = vim.tbl_deep_extend("force", vim.deepcopy(DEFAULT_CONFIG), opts or {})
+end
 
 --- Start VimTeacher. Shows the topic menu.
 --- @param lesson_name string|nil Optional lesson name to jump directly into
@@ -1255,6 +1533,27 @@ function M.start(lesson_name)
 	end
 	if vim.o.inccommand ~= "" then
 		vim.o.inccommand = ""
+	end
+
+	state.config = merged_config()
+	keymaps.configure(state.config.keymaps)
+	state.key_display = nil
+	if keymaps.is_adaptive_mode() then
+		keymaps.capture()
+		keymaps.capture_deferred()
+		local diagnostics
+		state.key_display, diagnostics = keymaps.resolve_many(GLOBAL_ADAPTIVE_KEYS)
+		if diagnostics and #diagnostics.custom > 0 then
+			local preview = {}
+			for i = 1, math.min(8, #diagnostics.custom) do
+				preview[#preview + 1] = diagnostics.custom[i]
+			end
+			local suffix = (#diagnostics.custom > 8) and ", ..." or ""
+			vim.notify(
+				"VimTeacher adaptive keymaps (" .. table.concat(preview, ", ") .. suffix .. ")",
+				vim.log.levels.INFO
+			)
+		end
 	end
 
 	-- Load persistent stats

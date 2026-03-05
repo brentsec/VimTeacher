@@ -24,7 +24,9 @@ vim.api.nvim_create_user_command("VimTeacher", function(opts)
 	end
 
 	-- Launch
-	require("vimteacher").start(opts.args)
+	vim.schedule(function()
+		require("vimteacher").start(opts.args)
+	end)
 end, {
 	nargs = "?",
 	desc = "Launch VimTeacher interactive tutorial",

@@ -13,9 +13,12 @@ local layout_meta = {
 }
 
 local SEPARATOR = string.rep("─", 68)
+local build_menu_row
 
--- Box inner content width (chars between the │ borders)
-local BOX_WIDTH = 74
+-- Menu sizing heuristics
+local DEFAULT_MENU_BOX_WIDTH = 74 -- inner width (chars between the │ borders)
+local MENU_FILL_RATIO = 0.96
+local MENU_MIN_TOTAL_WIDTH = 40
 
 -- ASCII art logo: heavy blocks for "Vim", box-drawing for "Teacher"
 local LOGO = {
@@ -26,57 +29,161 @@ local LOGO = {
 	"    ╚═══╝  ╚═╝╚═╝     ╚═╝",
 }
 
+--- Compute menu width and side padding from current window width.
+--- @param win number|nil Window handle
+--- @return table { box_width: number, left_pad: number, right_pad: number }
+local function compute_menu_layout(win)
+	local target_win = win
+	if not target_win or not vim.api.nvim_win_is_valid(target_win) then
+		target_win = vim.api.nvim_get_current_win()
+	end
+
+	local win_width = vim.api.nvim_win_get_width(target_win)
+	if win_width < 4 then
+		win_width = 4
+	end
+
+	local desired_total = math.floor(win_width * MENU_FILL_RATIO)
+	local min_total = math.min(win_width, DEFAULT_MENU_BOX_WIDTH + 2)
+	if desired_total < min_total then
+		desired_total = min_total
+	end
+	if desired_total < MENU_MIN_TOTAL_WIDTH then
+		desired_total = math.min(win_width, MENU_MIN_TOTAL_WIDTH)
+	end
+	if desired_total > win_width then
+		desired_total = win_width
+	end
+	if desired_total < 4 then
+		desired_total = 4
+	end
+
+	local left_pad = math.max(0, math.floor((win_width - desired_total) / 2))
+	local right_pad = math.max(0, win_width - desired_total - left_pad)
+
+	return {
+		box_width = math.max(2, desired_total - 2),
+		left_pad = left_pad,
+		right_pad = right_pad,
+	}
+end
+
+--- Add horizontal outer padding so menu can be centered.
+--- @param line string
+--- @param layout table
+--- @return string
+local function with_outer_padding(line, layout)
+	return string.rep(" ", layout.left_pad) .. line .. string.rep(" ", layout.right_pad)
+end
+
+--- Truncate a string to max display width.
+--- @param s string
+--- @param width number
+--- @return string
+local function truncate_to_width(s, width)
+	if width <= 0 then
+		return ""
+	end
+	if vim.api.nvim_strwidth(s) <= width then
+		return s
+	end
+
+	local chars = vim.fn.strchars(s)
+	for n = chars, 0, -1 do
+		local candidate = vim.fn.strcharpart(s, 0, n)
+		if vim.api.nvim_strwidth(candidate) <= width then
+			return candidate
+		end
+	end
+	return ""
+end
+
+--- Coerce display values to strings for robust rendering.
+--- @param v any
+--- @return string
+local function as_text(v)
+	if type(v) == "string" then
+		return v
+	end
+	if v == nil then
+		return ""
+	end
+	return tostring(v)
+end
+
 --- Pad a string to exactly `width` display columns.
 --- @param s string Input string
 --- @param width number Desired display width
 --- @return string Padded string
 local function pad_to_width(s, width)
+	if width <= 0 then
+		return ""
+	end
 	local display_width = vim.api.nvim_strwidth(s)
 	if display_width >= width then
-		return s
+		return truncate_to_width(s, width)
 	end
 	return s .. string.rep(" ", width - display_width)
 end
 
+--- Build a menu row with stable column widths, avoiding string.format edge cases.
+--- @param num_text string
+--- @param topic_text string
+--- @param best_time_text string
+--- @param best_acc_text string
+--- @param topic_col_width number
+--- @return string
+build_menu_row = function(num_text, topic_text, best_time_text, best_acc_text, topic_col_width)
+	return pad_to_width("  " .. as_text(num_text), 6)
+		.. pad_to_width(as_text(topic_text), topic_col_width)
+		.. pad_to_width(as_text(best_time_text), 12)
+		.. as_text(best_acc_text)
+end
+
 --- Build a bordered content line: │  content...padded...  │
 --- @param content string The content (can be empty for blank line)
+--- @param layout table
 --- @return string
-local function bordered(content)
+local function bordered(content, layout)
 	local inner = "  " .. content
-	local padded = pad_to_width(inner, BOX_WIDTH)
-	return "│" .. padded .. "│"
+	local padded = pad_to_width(inner, layout.box_width)
+	return with_outer_padding("│" .. padded .. "│", layout)
 end
 
 --- Build the top border: ╭──...──╮
+--- @param layout table
 --- @return string
-local function border_top()
-	return "╭" .. string.rep("─", BOX_WIDTH) .. "╮"
+local function border_top(layout)
+	return with_outer_padding("╭" .. string.rep("─", layout.box_width) .. "╮", layout)
 end
 
 --- Build the bottom border: ╰──...──╯
+--- @param layout table
 --- @return string
-local function border_bottom()
-	return "╰" .. string.rep("─", BOX_WIDTH) .. "╯"
+local function border_bottom(layout)
+	return with_outer_padding("╰" .. string.rep("─", layout.box_width) .. "╯", layout)
 end
 
 --- Build an inner separator line inside the box.
+--- @param layout table
 --- @return string
-local function inner_separator()
-	return bordered(string.rep("─", BOX_WIDTH - 4))
+local function inner_separator(layout)
+	return bordered(string.rep("─", math.max(0, layout.box_width - 4)), layout)
 end
 
 --- Build a subtitle separator: │  ┈┈┈ Text ┈┈┈...┈  │
 --- @param text string The subtitle text
+--- @param layout table
 --- @return string
-local function subtitle_line(text)
+local function subtitle_line(text, layout)
 	local prefix = "┈┈┈ "
 	local content = prefix .. text .. " "
 	local display_width = vim.api.nvim_strwidth(content)
-	local remaining = BOX_WIDTH - 4 - display_width
+	local remaining = layout.box_width - 4 - display_width
 	if remaining > 0 then
 		content = content .. string.rep("┈", remaining)
 	end
-	return bordered(content)
+	return bordered(content, layout)
 end
 
 --- Create a scratch buffer and configure the window.
@@ -91,8 +198,39 @@ function M.create()
 	vim.bo[buf].filetype = "vimteacher"
 	vim.bo[buf].undolevels = -1
 
-	local win = vim.api.nvim_get_current_win()
-	vim.api.nvim_win_set_buf(win, buf)
+	local win = nil
+	do
+		local ok, cur = pcall(vim.api.nvim_get_current_win)
+		if ok and cur and vim.api.nvim_win_is_valid(cur) then
+			win = cur
+		else
+			for _, w in ipairs(vim.api.nvim_list_wins()) do
+				if vim.api.nvim_win_is_valid(w) then
+					win = w
+					break
+				end
+			end
+		end
+	end
+
+	if not win then
+		vim.cmd("enew")
+		win = vim.api.nvim_get_current_win()
+	end
+
+	local ok_set = pcall(vim.api.nvim_win_set_buf, win, buf)
+	if not ok_set then
+		if pcall(vim.api.nvim_set_current_win, win) then
+			ok_set = pcall(vim.api.nvim_set_current_buf, buf)
+		end
+	end
+	if not ok_set then
+		win = vim.api.nvim_get_current_win()
+		pcall(vim.api.nvim_set_current_buf, buf)
+	end
+	if not vim.api.nvim_win_is_valid(win) then
+		win = vim.api.nvim_get_current_win()
+	end
 
 	vim.wo[win].number = false
 	vim.wo[win].relativenumber = false
@@ -112,39 +250,46 @@ end
 --- @param buf number Buffer handle
 --- @param sections table Ordered list of {title, lessons={{name, title}}} section tables
 --- @param all_stats table Stats data keyed by lesson name
-function M.render_menu(buf, sections, all_stats)
+--- @param win number|nil Window handle (for responsive sizing)
+function M.render_menu(buf, sections, all_stats, win)
+	sections = type(sections) == "table" and sections or {}
+	all_stats = type(all_stats) == "table" and all_stats or {}
+
+	local menu_layout = compute_menu_layout(win)
+	local topic_col_width = math.max(20, menu_layout.box_width - 33)
 	local lines = {}
 
 	-- Top border
-	lines[#lines + 1] = border_top()
-	lines[#lines + 1] = bordered("")
+	lines[#lines + 1] = border_top(menu_layout)
+	lines[#lines + 1] = bordered("", menu_layout)
 
 	-- Logo (5 lines)
 	local logo_start = #lines -- 0-indexed first logo line
 	for _, logo_line in ipairs(LOGO) do
-		lines[#lines + 1] = bordered(logo_line)
+		lines[#lines + 1] = bordered(logo_line, menu_layout)
 	end
 
-	lines[#lines + 1] = bordered("")
+	lines[#lines + 1] = bordered("", menu_layout)
 
 	-- Subtitle separator
 	local subtitle_row = #lines
-	lines[#lines + 1] = subtitle_line("Select a Topic")
+	lines[#lines + 1] = subtitle_line("Select a Topic", menu_layout)
 
-	lines[#lines + 1] = bordered("")
+	lines[#lines + 1] = bordered("", menu_layout)
 
 	-- Top hint bar
 	local hint_row = #lines
-	lines[#lines + 1] = bordered("Type a number to start, or q to quit")
-	lines[#lines + 1] = bordered("")
+	lines[#lines + 1] = bordered("Type a number to start, or q to quit", menu_layout)
+	lines[#lines + 1] = bordered("", menu_layout)
 
 	-- Column header
 	local header_row = #lines
-	lines[#lines + 1] = bordered(string.format("  %-4s%-35s%-12s%s", "#", "Topic", "Best Time", "Best Accuracy"))
+	lines[#lines + 1] =
+		bordered(build_menu_row("#", "Topic", "Best Time", "Best Accuracy", topic_col_width), menu_layout)
 
 	-- Header underline
 	local header_sep_row = #lines
-	lines[#lines + 1] = inner_separator()
+	lines[#lines + 1] = inner_separator(menu_layout)
 
 	-- Menu items with section headers
 	local menu_start = #lines
@@ -152,44 +297,51 @@ function M.render_menu(buf, sections, all_stats)
 	local section_rows = {}
 
 	for sec_idx, section in ipairs(sections) do
+		local section_title = as_text(section.title)
+		local section_lessons = type(section.lessons) == "table" and section.lessons or {}
+
 		-- Blank line before section (except first)
 		if sec_idx > 1 then
-			lines[#lines + 1] = bordered("")
+			lines[#lines + 1] = bordered("", menu_layout)
 		end
 		-- Section header
 		section_rows[#section_rows + 1] = #lines
-		lines[#lines + 1] = bordered("  " .. section.title)
+		lines[#lines + 1] = bordered("  " .. section_title, menu_layout)
 
 		-- Lessons in this section
-		for _, lesson in ipairs(section.lessons) do
+		for _, lesson in ipairs(section_lessons) do
 			lesson_num = lesson_num + 1
 			local ls = all_stats[lesson.name]
 			local best_time = "  --"
 			local best_acc = "  --"
 			if ls then
-				if ls.best_time then
-					best_time = string.format("%.1fs", ls.best_time)
+				local best_time_num = tonumber(ls.best_time)
+				if best_time_num and best_time_num > 0 then
+					best_time = string.format("%.1fs", best_time_num)
 				end
-				if ls.best_accuracy and ls.best_accuracy > 0 then
-					best_acc = string.format("%d%%", ls.best_accuracy)
+				local best_acc_num = tonumber(ls.best_accuracy)
+				if best_acc_num and best_acc_num > 0 then
+					best_acc = string.format("%d%%", best_acc_num)
 				end
 			end
-			lines[#lines + 1] =
-				bordered(string.format("  %-4s%-35s%-12s%s", lesson_num .. ".", lesson.title, best_time, best_acc))
+			lines[#lines + 1] = bordered(
+				build_menu_row(lesson_num .. ".", as_text(lesson.title), best_time, best_acc, topic_col_width),
+				menu_layout
+			)
 		end
 	end
 	local menu_end = #lines
 
-	lines[#lines + 1] = bordered("")
+	lines[#lines + 1] = bordered("", menu_layout)
 
 	-- Bottom separator inside box
 	local bottom_sep_row = #lines
-	lines[#lines + 1] = inner_separator()
+	lines[#lines + 1] = inner_separator(menu_layout)
 
-	lines[#lines + 1] = bordered("")
+	lines[#lines + 1] = bordered("", menu_layout)
 
 	-- Bottom border
-	lines[#lines + 1] = border_bottom()
+	lines[#lines + 1] = border_bottom(menu_layout)
 
 	-- Write to buffer
 	vim.bo[buf].modifiable = true
@@ -206,12 +358,13 @@ function M.render_menu(buf, sections, all_stats)
 	for row = 1, #lines - 2 do
 		local line_text = lines[row + 1]
 		if line_text then
-			local byte_len = #line_text
-			-- Left │ (3 bytes UTF-8)
-			highlight.apply_col_highlight(buf, row, 0, 3, "VimTeacherBorder")
-			-- Right │ (last 3 bytes)
-			if byte_len >= 3 then
-				highlight.apply_col_highlight(buf, row, byte_len - 3, byte_len, "VimTeacherBorder")
+			local left_border = line_text:find("│", 1, true)
+			local right_border = line_text:match(".*()│")
+			if left_border then
+				highlight.apply_col_highlight(buf, row, left_border - 1, left_border + 2, "VimTeacherBorder")
+			end
+			if right_border and right_border ~= left_border then
+				highlight.apply_col_highlight(buf, row, right_border - 1, right_border + 2, "VimTeacherBorder")
 			end
 		end
 	end
@@ -226,10 +379,14 @@ function M.render_menu(buf, sections, all_stats)
 	}
 	for i = 1, #LOGO do
 		local row = logo_start + (i - 1)
-		-- Apply gradient to the content area (between the │ borders)
 		local line_text = lines[row + 1]
 		if line_text then
-			highlight.apply_col_highlight(buf, row, 3, #line_text - 3, logo_groups[i])
+			local left_border = line_text:find("│", 1, true)
+			local right_border = line_text:match(".*()│")
+			if left_border and right_border and right_border > left_border then
+				-- Apply gradient only inside the borders.
+				highlight.apply_col_highlight(buf, row, left_border + 2, right_border - 1, logo_groups[i])
+			end
 		end
 	end
 
@@ -267,7 +424,7 @@ function M.render_menu(buf, sections, all_stats)
 
 			-- Stat value overlays (time, percentage, dashes)
 			for _, pat in ipairs({ "%d+%.%d+s", "%d+%%", "%-%-" }) do
-				local s, e = item_line:find(pat, 40)
+				local s, e = item_line:find(pat, 1)
 				while s do
 					highlight.apply_col_highlight(buf, row, s - 1, e, "VimTeacherMenuStat")
 					s, e = item_line:find(pat, e + 1)

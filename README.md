@@ -150,10 +150,6 @@ All movement-based challenges require the cursor to **dwell** on the target posi
 
 The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handler, so it applies to **all lessons automatically**. No per-lesson opt-in is needed. If a future lesson type genuinely doesn't need dwell validation (e.g., a timed command execution lesson), it can set `dwell_ms = 0` in its lesson table to bypass it.
 
-### Non-Opinionated
-
-The tutorial teaches Vim concepts without prescribing how users should physically interact with their keyboard. No finger placement suggestions, hand position guidance, or ergonomic opinions.
-
 ### LazyVim-Compatible Keybindings
 
 All lessons must use keybindings compatible with the standard LazyVim distribution. When a vanilla Vim key conflicts with a LazyVim default (e.g., `s` is remapped to flash.nvim), use the LazyVim-equivalent motion instead (e.g., `cl` for substitute-character). Reference: https://www.lazyvim.org/keymaps

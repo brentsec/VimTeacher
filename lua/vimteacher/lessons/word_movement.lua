@@ -7,6 +7,7 @@ local optimal = require("vimteacher.optimal")
 local M = {}
 
 M.title = "Moving by Words: w, e, b"
+M.adaptive_keys = { "w", "e", "b" }
 
 M.description = {
 	"Jump by whole words instead of character by character.",
@@ -32,6 +33,69 @@ M.hint_lines = {
 }
 
 M.dwell_time = 200 -- ms; longer than basic_movement to prevent w/b spam-through
+
+--- Build lesson title with resolved word-motion keys.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local w = key_display["w"] or "w"
+	local e = key_display["e"] or "e"
+	local b = key_display["b"] or "b"
+	return string.format("Moving by Words: %s, %s, %s", w, e, b)
+end
+
+--- Build lesson description with resolved word-motion keys.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string[]
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local w = key_display["w"] or "w"
+	local e = key_display["e"] or "e"
+	local b = key_display["b"] or "b"
+	return {
+		"Jump by whole words instead of character by character.",
+		"",
+		string.format("  %s = next word    %s = end of word    %s = previous word", w, e, b),
+		"",
+		"A word is letters, digits, and underscores grouped together.",
+		"Whitespace between them creates separate words:",
+		"",
+		"  count one test1234 my_var",
+		"  ──1── ─2─ ───3──── ──4───",
+		"",
+		"Symbols create word boundaries too, even with no spaces:",
+		"  user.name   →  user | . | name     (3 words)",
+		"  get_data()  →  get_data | ()       (2 words)",
+		"  x += 1      →  x | += | 1         (3 words)",
+		"",
+		"Move your cursor to the green highlighted target below.",
+	}
+end
+
+--- Build hint lines with resolved key displays.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string[]
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local w = key_display["w"] or "w"
+	local e = key_display["e"] or "e"
+	local b = key_display["b"] or "b"
+	return {
+		string.format("[%s] Next word  [%s] End of word  [%s] Back a word — Move to the green target", w, e, b),
+	}
+end
+
+--- Build per-challenge helper goal text with resolved word-motion keys.
+--- @param ctx table|nil { key_display = { [canonical]=display } }
+--- @return string
+function M.get_goal_text(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local w = key_display["w"] or "w"
+	local e = key_display["e"] or "e"
+	local b = key_display["b"] or "b"
+	return string.format("Move to target using %s/%s/%s", w, e, b)
+end
 
 -- Module-level snippet storage so compute_optimal can access the current snippet
 local current_snippet = nil
