@@ -852,17 +852,15 @@ function M.start(lesson_name)
 	-- Load persistent stats
 	state.all_stats = stats_mod.load()
 
+	state.buf, state.win = buffer.create()
+	setup_autocmds()
+	block_insert_keys()
+
 	if lesson_name and lesson_name ~= "" then
 		-- Direct jump to a specific lesson
-		state.buf, state.win = buffer.create()
-		setup_autocmds()
-		block_insert_keys()
 		start_lesson(lesson_name)
 	else
 		-- Show topic menu
-		state.buf, state.win = buffer.create()
-		setup_autocmds()
-		block_insert_keys()
 		show_menu()
 	end
 end

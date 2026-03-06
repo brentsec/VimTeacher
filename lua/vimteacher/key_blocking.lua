@@ -93,7 +93,7 @@ function M.block_insert_keys(buf, exempt_keys)
 		else
 			vim.keymap.set("n", key, "<Nop>", opts)
 		end
-		end
+	end
 
 	clear_or_block_mouse(opts)
 end

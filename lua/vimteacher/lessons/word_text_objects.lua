@@ -1,29 +1,36 @@
 -- vimteacher/lessons/word_text_objects.lua
 -- Word text objects: diw, daw, ciw, caw
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local optimal = require("vimteacher.optimal")
 
-M.title = "Word Objects: diw, daw, ciw, caw"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
+local M = base.define({
+	title_template = "Word Objects: {{diw}}, {{daw}}, {{ciw}}, {{caw}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	template_tokens = {
+		diw = "diw",
+		daw = "daw",
+		ciw = "ciw",
+		caw = "caw",
+		Esc = "Esc",
+	},
+	description_template = {
 	"Word text objects let you operate on entire words efficiently:",
 	"",
-	"  diw = delete inner word (word only)",
-	"  daw = delete a word (word + trailing space)",
-	"  ciw = change inner word (delete word, insert replacement)",
-	"  caw = change a word (delete word + space, insert replacement)",
+	"  {{diw}} = delete inner word (word only)",
+	"  {{daw}} = delete a word (word + trailing space)",
+	"  {{ciw}} = change inner word (delete word, insert replacement)",
+	"  {{caw}} = change a word (delete word + space, insert replacement)",
 	"",
 	"Navigate to the green target (anywhere in the word) and use the indicated command.",
-}
-
-M.hint_lines = {
-	"[diw] Delete inner word  [daw] Delete a word  [ciw] Change inner word  [caw] Change a word  [Esc] Normal mode",
-}
+	},
+	hint_template = {
+		"[{{diw}}] Delete inner word  [{{daw}}] Delete a word  [{{ciw}}] Change inner word  [{{caw}}] Change a word  [{{Esc}}] Normal mode",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- target.col should be somewhere IN the target word (not necessarily at start)

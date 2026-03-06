@@ -1,26 +1,31 @@
 -- vimteacher/lessons/search.lua
 -- Search lesson: /, ?, n, N (merged with repeat_search)
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Search: /, n, N"
-
-M.dwell_time = 50
-
-M.description = {
+local M = base.define({
+	title_template = "Search: {{/}}, {{n}}, {{N}}",
+	template_tokens = {
+		["/"] = "/",
+		["?"] = "?",
+		n = "n",
+		N = "N",
+	},
+	dwell_time = 50,
+	description_template = {
 	"Search for text and cycle through matches:",
 	"",
-	"  /word  = search FORWARD for 'word' (type /, then the word, then Enter)",
-	"  ?word  = search BACKWARD (type ?, then the word, then Enter)",
-	"  n      = jump to the NEXT match (same direction as your search)",
-	"  N      = jump to the PREVIOUS match (opposite direction)",
+	"  {{/}}word  = search FORWARD for 'word' (type {{/}}, then the word, then Enter)",
+	"  {{?}}word  = search BACKWARD (type {{?}}, then the word, then Enter)",
+	"  {{n}}      = jump to the NEXT match (same direction as your search)",
+	"  {{N}}      = jump to the PREVIOUS match (opposite direction)",
 	"",
-	"Search for the highlighted word, then use n/N to reach the exact match.",
-}
-
-M.hint_lines = {
-	"[/word Enter] Search  [n] Next match  [N] Previous match  [?word] Backward",
-}
+	"Search for the highlighted word, then use {{n}}/{{N}} to reach the exact match.",
+	},
+	hint_template = {
+		"[{{/}}word Enter] Search  [{{n}}] Next match  [{{N}}] Previous match  [{{?}}word] Backward",
+	},
+})
 
 -- Custom snippets with deliberately repeated keywords for search practice
 local SNIPPETS = {

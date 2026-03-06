@@ -1,32 +1,38 @@
 -- vimteacher/lessons/switch_selection_ends.lua
 -- Lesson: Switch active visual selection end with 'o'
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local optimal = require("vimteacher.optimal")
 
-M.title = "Switch Selection Ends: o"
-M.type = "insert"
-M.allowed_keys = { "o" }
-M.allowed_modify_keys = { "d" }
-M.allowed_visual_keys = { "v" }
-M.challenges_required = 10
-
-M.description = {
-	"In Visual mode, 'o' swaps your cursor to the OTHER end of the selection.",
+local M = base.define({
+	title_template = "Switch Selection Ends: {{o}}",
+	type = "insert",
+	allowed_keys = { "o" },
+	allowed_modify_keys = { "d" },
+	allowed_visual_keys = { "v" },
+	challenges_required = 10,
+	template_tokens = {
+		o = "o",
+		v = "v",
+		d = "d",
+		Esc = "Esc",
+	},
+	description_template = {
+	"In Visual mode, '{{o}}' swaps your cursor to the OTHER end of the selection.",
 	"",
 	"Why this matters: after selecting text, you can jump to the far end and",
 	"fine-tune the opposite side without cancelling your selection.",
 	"",
 	"Challenge flow:",
 	"  1. Move to green target",
-	"  2. Press v and select text",
-	"  3. Press o to switch ends",
-	"  4. Adjust selection and press d",
-}
-
-M.hint_lines = {
-	"[v] Visual mode  [o] Switch selection end  [d] Delete selection  [Esc] Cancel selection",
-}
+	"  2. Press {{v}} and select text",
+	"  3. Press {{o}} to switch ends",
+	"  4. Adjust selection and press {{d}}",
+	},
+	hint_template = {
+		"[{{v}}] Visual mode  [{{o}}] Switch selection end  [{{d}}] Delete selection  [{{Esc}}] Cancel selection",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- Delete the highlighted span using visual mode; 'o' helps adjust the far end.

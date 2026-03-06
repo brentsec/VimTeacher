@@ -1,29 +1,35 @@
 -- vimteacher/lessons/visual_mode_operators.lua
 -- Visual mode operators: v + d, v + c
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local optimal = require("vimteacher.optimal")
 
-M.title = "Visual Operators: v + d, v + c"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = { "d" }
-M.allowed_visual_keys = { "v" }
-M.challenges_required = 10
-
-M.description = {
+local M = base.define({
+	title_template = "Visual Operators: {{v}} + {{d}}, {{v}} + {{c}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = { "d" },
+	allowed_visual_keys = { "v" },
+	challenges_required = 10,
+	template_tokens = {
+		v = "v",
+		d = "d",
+		c = "c",
+		Esc = "Esc",
+	},
+	description_template = {
 	"Visual mode operators for selecting and modifying text:",
 	"",
-	"  v  = enter visual mode (character-wise)",
-	"  d  = delete selected text",
-	"  c  = delete selected text and enter insert mode",
+	"  {{v}}  = enter visual mode (character-wise)",
+	"  {{d}}  = delete selected text",
+	"  {{c}}  = delete selected text and enter insert mode",
 	"",
-	"Navigate to the green target, press v, move to select, then d or c.",
-}
-
-M.hint_lines = {
-	"[v] Visual mode  [d] Delete selection  [c] Change selection  [Esc] Return to normal mode",
-}
+	"Navigate to the green target, press {{v}}, move to select, then {{d}} or {{c}}.",
+	},
+	hint_template = {
+		"[{{v}}] Visual mode  [{{d}}] Delete selection  [{{c}}] Change selection  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- vd: visual delete - select from target to select_end, then delete

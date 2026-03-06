@@ -1,29 +1,31 @@
 -- vimteacher/lessons/absolute_line_jumps.lua
 -- Lesson: Absolute line jumps with gg and G
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 
-local M = {}
-
-M.title = "Jump to Top/Bottom: gg, G"
-
-M.dwell_time = 50
-
-M.description = {
+local M = base.define({
+	title_template = "Jump to Top/Bottom: {{gg}}, {{G}}",
+	template_tokens = {
+		gg = "gg",
+		G = "G",
+	},
+	dwell_time = 50,
+	description_template = {
 	"Jump instantly to the top or bottom of the code:",
 	"",
-	"  gg = jump to the FIRST line",
-	"  G  = jump to the LAST line",
+	"  {{gg}} = jump to the FIRST line",
+	"  {{G}}  = jump to the LAST line",
 	"",
-	"In a real file, gg goes to line 1 and G goes to the end.",
+	"In a real file, {{gg}} goes to line 1 and {{G}} goes to the end.",
 	"These are essential for navigating large files quickly.",
 	"",
 	"Move your cursor to the green highlighted target.",
-}
-
-M.hint_lines = {
-	"[gg] Jump to top  [G] Jump to bottom",
-}
+	},
+	hint_template = {
+		"[{{gg}}] Jump to top  [{{G}}] Jump to bottom",
+	},
+})
 
 --- Compute the minimum (optimal) moves between two positions.
 --- For absolute line jumps (gg/G), it's always 1 keypress.

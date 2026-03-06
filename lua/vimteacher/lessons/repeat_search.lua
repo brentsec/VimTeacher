@@ -1,28 +1,33 @@
 -- vimteacher/lessons/repeat_search.lua
 -- Repeat Search: n, N
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Repeat Search: n, N"
-
-M.dwell_time = 50
-
-M.description = {
-	"After searching with / or ?, repeat the search instantly:",
+local M = base.define({
+	title_template = "Repeat Search: {{n}}, {{N}}",
+	template_tokens = {
+		["?"] = "?",
+		["/"] = "/",
+		n = "n",
+		N = "N",
+	},
+	dwell_time = 50,
+	description_template = {
+	"After searching with {{/}} or {{?}}, repeat the search instantly:",
 	"",
-	"  n = jump to the NEXT match (same direction)",
-	"  N = jump to the PREVIOUS match (opposite direction)",
+	"  {{n}} = jump to the NEXT match (same direction)",
+	"  {{N}} = jump to the PREVIOUS match (opposite direction)",
 	"",
-	"  Example: type /return then Enter to find 'return'.",
-	"  Now press n to jump to the next 'return' in the file.",
-	"  Press N to go back to the previous one.",
+	"  Example: type {{/}}return then Enter to find 'return'.",
+	"  Now press {{n}} to jump to the next 'return' in the file.",
+	"  Press {{N}} to go back to the previous one.",
 	"",
 	"Move your cursor to the green highlighted target.",
-}
-
-M.hint_lines = {
-	"[n] Next match  [N] Previous match  [/text] New search",
-}
+	},
+	hint_template = {
+		"[{{n}}] Next match  [{{N}}] Previous match  [{{/}}text] New search",
+	},
+})
 
 -- Custom snippets with deliberately repeated keywords
 local SNIPPETS = {

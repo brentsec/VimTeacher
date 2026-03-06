@@ -1,29 +1,34 @@
 -- vimteacher/lessons/change_words.lua
 -- Eighth lesson: Change words with cw, cW
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Change Words: cw, cW"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = {}
-M.challenges_required = 10
-
-M.description = {
+local M = base.define({
+	title_template = "Change Words: {{cw}}, {{cW}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = {},
+	challenges_required = 10,
+	template_tokens = {
+		cw = "cw",
+		cW = "cW",
+		Esc = "Esc",
+	},
+	description_template = {
 	"The change operator (c) deletes text AND enters insert mode,",
 	"so you can type a replacement in one smooth motion.",
 	"",
-	"  cw = change word: delete to next word, then type replacement",
-	"  cW = change WORD: delete to next WORD, then type replacement",
+	"  {{cw}} = change word: delete to next word, then type replacement",
+	"  {{cW}} = change WORD: delete to next WORD, then type replacement",
 	"",
 	"Think of it as: c = d (delete) + i (insert) combined.",
 	"",
-	"Navigate to the target, press cw, type the fix, press Esc.",
-}
-
-M.hint_lines = {
-	"[cw] Change word  [cW] Change WORD  [Esc] Return to normal mode",
-}
+	"Navigate to the target, press {{cw}}, type the fix, press {{Esc}}.",
+	},
+	hint_template = {
+		"[{{cw}}] Change word  [{{cW}}] Change WORD  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- cw: changes (deletes + insert) from cursor to next word boundary

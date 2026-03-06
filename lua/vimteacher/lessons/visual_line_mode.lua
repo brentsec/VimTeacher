@@ -1,30 +1,38 @@
 -- vimteacher/lessons/visual_line_mode.lua
 -- Visual Line Mode: V + d, V + c
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local optimal = require("vimteacher.optimal")
 
-M.title = "Visual Line Mode: V + d, V + c"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = { "d" }
-M.allowed_visual_keys = { "V" }
-M.challenges_required = 10
-
-M.description = {
+local M = base.define({
+	title_template = "Visual Line Mode: {{V}} + {{d}}, {{V}} + {{c}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = { "d" },
+	allowed_visual_keys = { "V" },
+	challenges_required = 10,
+	template_tokens = {
+		V = "V",
+		j = "j",
+		k = "k",
+		d = "d",
+		c = "c",
+		Esc = "Esc",
+	},
+	description_template = {
 	"Visual line mode lets you select and delete entire lines:",
 	"",
-	"  V    = enter visual line mode (select current line)",
-	"  j/k  = expand selection down/up",
-	"  d    = delete selected lines",
-	"  c    = delete selected lines and enter insert mode",
+	"  {{V}}    = enter visual line mode (select current line)",
+	"  {{j}}/{{k}}  = expand selection down/up",
+	"  {{d}}    = delete selected lines",
+	"  {{c}}    = delete selected lines and enter insert mode",
 	"",
 	"Navigate to the green target and use the indicated key sequence.",
-}
-
-M.hint_lines = {
-	"[V] Visual line  [j/k] Expand selection  [d] Delete  [c] Change  [Esc] Return to normal mode",
-}
+	},
+	hint_template = {
+		"[{{V}}] Visual line  [{{j}}/{{k}}] Expand selection  [{{d}}] Delete  [{{c}}] Change  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- Vd: select 1 line and delete (removes 1 line)

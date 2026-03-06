@@ -1,29 +1,35 @@
 -- vimteacher/lessons/quick_word_search.lua
 -- Lesson: Quick word search with * and #
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Word Search: *, #"
-
-M.dwell_time = 50
-
-M.description = {
+local M = base.define({
+	title_template = "Word Search: {{*}}, {{#}}",
+	template_tokens = {
+		["*"] = "*",
+		["#"] = "#",
+		["/"] = "/",
+		n = "n",
+		N = "N",
+	},
+	dwell_time = 50,
+	description_template = {
 	"Search for a word instantly without typing it:",
 	"",
-	"  * = search FORWARD for the word under your cursor",
-	"  # = search BACKWARD for the word under your cursor",
+	"  {{*}} = search FORWARD for the word under your cursor",
+	"  {{#}} = search BACKWARD for the word under your cursor",
 	"",
-	"  Put your cursor on any word, then press * to jump to",
-	"  the next time that word appears. Press # to go backward.",
+	"  Put your cursor on any word, then press {{*}} to jump to",
+	"  the next time that word appears. Press {{#}} to go backward.",
 	"",
-	"  Much faster than typing /word every time!",
+	"  Much faster than typing {{/}}word every time!",
 	"",
 	"Navigate to the highlighted target word.",
-}
-
-M.hint_lines = {
-	"[*] Search word forward  [#] Search word backward  [n/N] Repeat",
-}
+	},
+	hint_template = {
+		"[{{*}}] Search word forward  [{{#}}] Search word backward  [{{n}}/{{N}}] Repeat",
+	},
+})
 
 -- Custom snippets with repeated words for word search practice
 -- Each snippet should be 6+ lines with words appearing multiple times

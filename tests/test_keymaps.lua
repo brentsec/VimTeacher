@@ -2,9 +2,19 @@
 -- Tests for adaptive keymap resolution and Getting Started lesson rendering
 
 local keymaps = require("vimteacher.keymaps")
+local absolute_line_jumps = require("vimteacher.lessons.absolute_line_jumps")
 local basic_movement = require("vimteacher.lessons.basic_movement")
+local change_words = require("vimteacher.lessons.change_words")
 local intro_modes = require("vimteacher.lessons.intro_modes")
+local intro_operators = require("vimteacher.lessons.intro_operators")
+local quick_word_search = require("vimteacher.lessons.quick_word_search")
+local repeat_search = require("vimteacher.lessons.repeat_search")
+local search = require("vimteacher.lessons.search")
+local switch_selection_ends = require("vimteacher.lessons.switch_selection_ends")
+local visual_line_mode = require("vimteacher.lessons.visual_line_mode")
+local visual_mode_operators = require("vimteacher.lessons.visual_mode_operators")
 local word_movement = require("vimteacher.lessons.word_movement")
+local word_text_objects = require("vimteacher.lessons.word_text_objects")
 local insert_mode = require("vimteacher.lessons.insert_mode")
 
 local assertions = require("helpers.assertions")
@@ -186,5 +196,116 @@ local default_word_title = word_movement.get_title({ key_display = display_defau
 assert_test(default_word_title:find("w, e, b", 1, true) ~= nil, "Default word_movement title should be canonical")
 local default_insert_title = insert_mode.get_title({ key_display = display_default })
 assert_test(default_insert_title:find("i, a", 1, true) ~= nil, "Default insert_mode title should be canonical")
+
+local command_pairs = {
+	{ canonical = "gg", remap = "Z" },
+	{ canonical = "G", remap = "X" },
+	{ canonical = "dw", remap = "zg" },
+	{ canonical = "d$", remap = "zx" },
+	{ canonical = "u", remap = "zu" },
+	{ canonical = "c", remap = "zc" },
+	{ canonical = "y", remap = "zy" },
+	{ canonical = "/", remap = ";" },
+	{ canonical = "?", remap = "," },
+	{ canonical = "n", remap = "]" },
+	{ canonical = "N", remap = "[" },
+	{ canonical = "*", remap = "gs" },
+	{ canonical = "#", remap = "gS" },
+	{ canonical = "diw", remap = "ziw" },
+	{ canonical = "daw", remap = "zaw" },
+	{ canonical = "ciw", remap = "xiw" },
+	{ canonical = "caw", remap = "xaw" },
+	{ canonical = "v", remap = "zv" },
+	{ canonical = "V", remap = "zV" },
+	{ canonical = "d", remap = "zd" },
+	{ canonical = "o", remap = "zo" },
+}
+local command_cleanup_keys = {}
+for _, pair in ipairs(command_pairs) do
+	command_cleanup_keys[#command_cleanup_keys + 1] = pair.canonical
+	command_cleanup_keys[#command_cleanup_keys + 1] = pair.remap
+end
+clear_maps(command_cleanup_keys)
+for _, pair in ipairs(command_pairs) do
+	vim.keymap.set("n", pair.canonical, "<Nop>", { noremap = true, silent = true })
+	vim.keymap.set("n", pair.remap, pair.canonical, { noremap = true, silent = true })
+end
+keymaps.capture()
+local display_commands = keymaps.resolve_many(vim.tbl_map(function(pair)
+	return pair.canonical
+end, command_pairs))
+
+local absolute_title = absolute_line_jumps.get_title({ key_display = display_commands })
+assert_test(
+	absolute_title:find("Z, X", 1, true) ~= nil,
+	"absolute_line_jumps title should render remapped gg/G keys"
+)
+
+local operators_desc = intro_operators.get_description({ key_display = display_commands })
+assert_test(
+	operators_desc[11]:find("zc, zy", 1, true) ~= nil and operators_desc[13]:find("zg", 1, true) ~= nil,
+	"intro_operators description should render remapped operator motions"
+)
+local operators_hints = intro_operators.get_hint_lines({ key_display = display_commands })
+assert_test(
+	operators_hints[1]:find("%[zg%] Delete word") ~= nil and operators_hints[1]:find("%[zx%] Delete to end") ~= nil,
+	"intro_operators hints should render remapped delete commands"
+)
+
+local change_words_title = change_words.get_title({ key_display = display_commands })
+assert_test(
+	change_words_title:find("cw, cW", 1, true) ~= nil,
+	"change_words should preserve canonical cw/cW when unmapped"
+)
+
+local search_title = search.get_title({ key_display = display_commands })
+assert_test(
+	search_title:find(";, ], [", 1, true) ~= nil,
+	"search title should render remapped search and repeat keys"
+)
+local search_hints = search.get_hint_lines({ key_display = display_commands })
+assert_test(
+	search_hints[1]:find("%[;word Enter%] Search") ~= nil and search_hints[1]:find("%[,word%] Backward") ~= nil,
+	"search hints should render remapped forward and backward search commands"
+)
+
+local repeat_hints = repeat_search.get_hint_lines({ key_display = display_commands })
+assert_test(
+	repeat_hints[1]:find("%[%]%] Next match") ~= nil and repeat_hints[1]:find("%[%[%] Previous match") ~= nil,
+	"repeat_search hints should render remapped n/N commands"
+)
+
+local quick_hints = quick_word_search.get_hint_lines({ key_display = display_commands })
+assert_test(
+	quick_hints[1]:find("%[gs%] Search word forward") ~= nil and quick_hints[1]:find("%[gS%] Search word backward") ~= nil,
+	"quick_word_search hints should render remapped */# commands"
+)
+
+local word_objects_title = word_text_objects.get_title({ key_display = display_commands })
+assert_test(
+	word_objects_title:find("ziw, zaw, xiw, xaw", 1, true) ~= nil,
+	"word_text_objects title should render remapped text objects"
+)
+
+local visual_title = visual_mode_operators.get_title({ key_display = display_commands })
+assert_test(
+	visual_title:find("zv + zd, zv + zc", 1, true) ~= nil,
+	"visual_mode_operators title should render remapped visual/operator keys"
+)
+
+local visual_line_title = visual_line_mode.get_title({ key_display = display_commands })
+assert_test(
+	visual_line_title:find("zV + zd, zV + zc", 1, true) ~= nil,
+	"visual_line_mode title should render remapped visual-line/operator keys"
+)
+
+local switch_title = switch_selection_ends.get_title({ key_display = display_commands })
+assert_test(
+	switch_title:find("zo", 1, true) ~= nil,
+	"switch_selection_ends title should render remapped o key"
+)
+
+clear_maps(command_cleanup_keys)
+keymaps.capture()
 
 counter.finish("test_keymaps")
