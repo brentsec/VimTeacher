@@ -24,6 +24,40 @@ M.hint_lines = {
 	"[}] Next paragraph  [{] Previous paragraph — Move to the green target",
 }
 
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local forward = key_display["}"] or "}"
+	local backward = key_display["{"] or "{"
+	return string.format("Paragraph Jumps: %s, %s", forward, backward)
+end
+
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local forward = key_display["}"] or "}"
+	local backward = key_display["{"] or "{"
+	return {
+		"Jump between paragraphs using } and { commands.",
+		"",
+		string.format("  %s = jump to next blank line (paragraph forward)", forward),
+		string.format("  %s = jump to previous blank line (paragraph backward)", backward),
+		"",
+		"A paragraph is separated by blank lines (empty lines with no content).",
+		"This is useful for navigating through code blocks, function definitions,",
+		"and documentation comments.",
+		"",
+		"Move your cursor to the green highlighted target below.",
+	}
+end
+
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local forward = key_display["}"] or "}"
+	local backward = key_display["{"] or "{"
+	return {
+		string.format("[%s] Next paragraph  [%s] Previous paragraph — Move to the green target", forward, backward),
+	}
+end
+
 -- Local snippets with paragraph boundaries (blank lines)
 local SNIPPETS = {
 	{

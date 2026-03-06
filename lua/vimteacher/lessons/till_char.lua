@@ -24,6 +24,43 @@ M.hint_lines = {
 	"[t{c}] Till forward  [T{c}] Till backward  [;] Repeat last till",
 }
 
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local forward = key_display["t"] or "t"
+	local backward = key_display["T"] or "T"
+	local repeat_till = key_display[";"] or ";"
+	return string.format("Till Character: %s, %s, %s", forward, backward, repeat_till)
+end
+
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local forward = key_display["t"] or "t"
+	local backward = key_display["T"] or "T"
+	local repeat_till = key_display[";"] or ";"
+	return {
+		"Jump to just BEFORE a specific character on the current line.",
+		"",
+		string.format("  %s{char} = move forward TILL {char} (one BEFORE it)", forward),
+		string.format("  %s{char} = move backward TILL {char} (one AFTER it)", backward),
+		string.format("  %s       = repeat the last %s or %s motion", repeat_till, forward, backward),
+		"",
+		"Till motions are useful with operators like d or c:",
+		"  dt) = delete up to (but not including) the closing paren",
+		"",
+		"Move your cursor to the green highlighted target below.",
+	}
+end
+
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local forward = key_display["t"] or "t"
+	local backward = key_display["T"] or "T"
+	local repeat_till = key_display[";"] or ";"
+	return {
+		string.format("[%s{c}] Till forward  [%s{c}] Till backward  [%s] Repeat last till", forward, backward, repeat_till),
+	}
+end
+
 M.dwell_time = 50
 
 --- Compute the minimum (optimal) moves between two positions.

@@ -22,6 +22,36 @@ M.hint_lines = {
 	"[count+j] Jump down  [count+k] Jump up  [h/l] Adjust column — Move to the green target",
 }
 
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local j = key_display["j"] or "j"
+	local k = key_display["k"] or "k"
+	return string.format("Line Jumps: 5%s, 3%s", j, k)
+end
+
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local j = key_display["j"] or "j"
+	local k = key_display["k"] or "k"
+	return {
+		"Use count + j/k to jump multiple lines at once.",
+		"",
+		string.format("  5%s = jump 5 lines down", j),
+		string.format("  3%s = jump 3 lines up", k),
+		"",
+		"Move your cursor to the green highlighted target below.",
+	}
+end
+
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local j = key_display["j"] or "j"
+	local k = key_display["k"] or "k"
+	return {
+		string.format("[count+%s] Jump down  [count+%s] Jump up  [h/l] Adjust column — Move to the green target", j, k),
+	}
+end
+
 --- Compute the minimum (optimal) moves between two positions.
 --- For relative line jumps: row difference = 1 move (counted jump), col difference = 1 move.
 --- @param start_pos table {row=number, col=number} 0-indexed

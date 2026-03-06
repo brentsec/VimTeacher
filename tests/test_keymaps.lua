@@ -153,8 +153,28 @@ assert_test(type(insert_hints) == "table" and #insert_hints >= 1, "insert_mode.g
 assert_test(insert_hints[1]:find("%[u%] Insert before cursor") ~= nil, "insert_mode hint should resolve i")
 assert_test(insert_hints[1]:find("%[p%] Append after cursor") ~= nil, "insert_mode hint should resolve a")
 
+-- Case-sensitive reverse mappings must not collapse lowercase and uppercase commands.
+clear_maps({ "o", "O", "m", "M" })
+vim.keymap.set("n", "o", "<Nop>", { noremap = true, silent = true })
+vim.keymap.set("n", "O", "<Nop>", { noremap = true, silent = true })
+vim.keymap.set("n", "m", "o", { noremap = true, silent = true })
+vim.keymap.set("n", "M", "O", { noremap = true, silent = true })
+keymaps.capture()
+local open_display, open_diag = keymaps.resolve_many({ "o", "O" })
+assert_test(open_display["o"] == "m", "Expected lowercase o to resolve to lowercase m")
+assert_test(open_display["O"] == "M", "Expected uppercase O to resolve to uppercase M")
+assert_test(
+	vim.tbl_contains(open_diag.custom, "o->m"),
+	"Expected diagnostics.custom to include lowercase o remap"
+)
+assert_test(
+	vim.tbl_contains(open_diag.custom, "O->M"),
+	"Expected diagnostics.custom to include uppercase O remap"
+)
+
 -- Default baseline test: no custom mappings means canonical display keys.
 clear_maps(cleanup_keys)
+clear_maps({ "o", "O", "m", "M" })
 keymaps.capture()
 local display_default, diag_default = keymaps.resolve_many(canonical_keys)
 for _, key in ipairs(canonical_keys) do

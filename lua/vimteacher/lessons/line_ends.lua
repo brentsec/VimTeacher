@@ -21,6 +21,45 @@ M.hint_lines = {
 	"[0] Line start  [$] Line end  [_] First non-blank — Move to the green target",
 }
 
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local zero = key_display["0"] or "0"
+	local dollar = key_display["$"] or "$"
+	local first_nonblank = key_display["_"] or "_"
+	return string.format("Line Boundaries: %s, %s, %s", zero, dollar, first_nonblank)
+end
+
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local zero = key_display["0"] or "0"
+	local dollar = key_display["$"] or "$"
+	local first_nonblank = key_display["_"] or "_"
+	return {
+		"Jump to important positions on the current line.",
+		"",
+		string.format("  %s = beginning of line (column 0)", zero),
+		string.format("  %s = end of line (last character)", dollar),
+		string.format("  %s = first non-blank character", first_nonblank),
+		"",
+		"Move your cursor to the green highlighted target below.",
+	}
+end
+
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local zero = key_display["0"] or "0"
+	local dollar = key_display["$"] or "$"
+	local first_nonblank = key_display["_"] or "_"
+	return {
+		string.format(
+			"[%s] Line start  [%s] Line end  [%s] First non-blank — Move to the green target",
+			zero,
+			dollar,
+			first_nonblank
+		),
+	}
+end
+
 M.dwell_time = 50
 
 --- Find all line boundary positions in a snippet.

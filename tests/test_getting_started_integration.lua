@@ -1,4 +1,4 @@
--- tests/test_keymaps_integration.lua
+-- tests/test_getting_started_integration.lua
 -- Runtime integration coverage for adaptive keymaps in Getting Started lessons.
 
 local vimteacher = require("vimteacher")
@@ -11,7 +11,7 @@ local integration = require("helpers.integration")
 local counter = assertions.new_counter()
 local assert_test = counter.assert_test
 
-print("test_keymaps_integration: running...")
+print("test_getting_started_integration: running...")
 
 local remap_pairs = {
 	{ canonical = "h", remap = "z" },
@@ -337,4 +337,4 @@ run_insert_mode_case({
 })
 
 integration.clear_maps(remaps.cleanup_keys)
-counter.finish("test_keymaps_integration")
+counter.finish("test_getting_started_integration")
