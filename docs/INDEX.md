@@ -25,3 +25,4 @@ status: active
 - `docs/reference/project-manifest-v1.md`
 - `docs/reference/context-pack-contract.md`
 - `docs/reference/adaptive-keymapping.md`
+- `docs/reference/semantic-versioning.md`
