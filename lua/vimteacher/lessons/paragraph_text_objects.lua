@@ -2,6 +2,7 @@
 -- Eighth lesson: Paragraph text objects (dip, dap, cip, cap)
 
 local M = {}
+local pool = require("vimteacher.lessons.pool")
 
 M.title = "Paragraph Objects: dip, dap"
 M.type = "insert"
@@ -293,10 +294,33 @@ local CHALLENGES = {
 	},
 }
 
--- Track recently used challenges to avoid repetition
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
+local challenge_pool = pool.new(CHALLENGES, {
+	track_current_snippet = false,
+	transform_challenge = function(challenge)
+		local highlight_rows = {}
+		local top = 0
+		for i = 1, math.min(#challenge.snippet_lines, #challenge.expected_lines) do
+			if challenge.snippet_lines[i] == challenge.expected_lines[i] then
+				top = i
+			else
+				break
+			end
+		end
+		local bot = 0
+		for i = 0, math.min(#challenge.snippet_lines, #challenge.expected_lines) - top - 1 do
+			if challenge.snippet_lines[#challenge.snippet_lines - i] == challenge.expected_lines[#challenge.expected_lines - i] then
+				bot = i + 1
+			else
+				break
+			end
+		end
+		for i = top + 1, #challenge.snippet_lines - bot do
+			highlight_rows[#highlight_rows + 1] = i - 1
+		end
+		challenge.highlight_rows = highlight_rows
+		return challenge
+	end,
+})
 
 --- Compute the minimum (optimal) moves between two positions.
 --- For paragraph operations, user can be anywhere in target paragraph.
@@ -314,58 +338,7 @@ function M.compute_optimal(start_pos, target)
 	return moves + 1 -- navigation + 1 operation
 end
 
---- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
---- @param buf number Buffer handle (unused, part of interface)
---- @param ns_id number Namespace ID (unused, part of interface)
---- @return table challenge {snippet_lines, expected_lines, target, start_pos, key, char?}
-function M.generate_challenge(buf, ns_id)
-	-- Build list of eligible indices (not recently used)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-
-	-- Compute highlight_rows: paragraph ops delete/change entire lines,
-	-- so we need multi-row highlighting instead of single-char highlighting.
-	local highlight_rows = {}
-	local top = 0
-	for i = 1, math.min(#c.snippet_lines, #c.expected_lines) do
-		if c.snippet_lines[i] == c.expected_lines[i] then
-			top = i
-		else
-			break
-		end
-	end
-	local bot = 0
-	for i = 0, math.min(#c.snippet_lines, #c.expected_lines) - top - 1 do
-		if c.snippet_lines[#c.snippet_lines - i] == c.expected_lines[#c.expected_lines - i] then
-			bot = i + 1
-		else
-			break
-		end
-	end
-	for i = top + 1, #c.snippet_lines - bot do
-		highlight_rows[#highlight_rows + 1] = i - 1 -- 0-indexed
-	end
-
-	local result = {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		key = c.key,
-		highlight_rows = highlight_rows,
-	}
-
-	if c.char then
-		result.char = c.char
-	end
-
-	return result
-end
-
---- Expose challenge pool for testing.
-function M._get_challenges()
-	return CHALLENGES
-end
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M

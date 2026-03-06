@@ -2,7 +2,7 @@
 -- Lesson: Switch active visual selection end with 'o'
 
 local base = require("vimteacher.lessons.base")
-local optimal = require("vimteacher.optimal")
+local pool = require("vimteacher.lessons.pool")
 
 local M = base.define({
 	title_template = "Switch Selection Ends: {{o}}",
@@ -229,10 +229,7 @@ local CHALLENGES = {
 	},
 }
 
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
-local current_snippet = nil
+local challenge_pool = pool.new(CHALLENGES)
 
 --- Compute the minimum (optimal) moves between two positions.
 --- Uses motion-aware shortest-path scoring on the current snippet.
@@ -240,34 +237,9 @@ local current_snippet = nil
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
 function M.compute_optimal(start_pos, target)
-	if not current_snippet then
-		return optimal.manhattan(start_pos, target)
-	end
-	return optimal.nav_cost(current_snippet, start_pos, target)
+	return challenge_pool.nav_compute_optimal()(start_pos, target)
 end
-
---- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
---- @param _buf number Buffer handle (unused, part of interface)
---- @param _ns_id number Namespace ID (unused, part of interface)
---- @return table challenge
-function M.generate_challenge(_buf, _ns_id)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-	current_snippet = c.snippet_lines
-	return {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		select_end = { row = c.select_end.row, col = c.select_end.col },
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		key = c.key,
-		char = c.char,
-	}
-end
-
-function M._get_challenges()
-	return CHALLENGES
-end
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M

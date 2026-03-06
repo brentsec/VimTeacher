@@ -2,6 +2,7 @@
 -- Ninth lesson: Text Objects Mega Review - all types mixed
 
 local M = {}
+local pool = require("vimteacher.lessons.pool")
 
 M.title = "Text Objects: Mega Review"
 M.type = "insert"
@@ -371,10 +372,35 @@ local CHALLENGES = {
 	},
 }
 
--- Track recently used challenges to avoid repetition
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
+local challenge_pool = pool.new(CHALLENGES, {
+	track_current_snippet = false,
+	transform_challenge = function(challenge)
+		if challenge.key:match("^[dc][ia]p$") then
+			local highlight_rows = {}
+			local top = 0
+			for i = 1, math.min(#challenge.snippet_lines, #challenge.expected_lines) do
+				if challenge.snippet_lines[i] == challenge.expected_lines[i] then
+					top = i
+				else
+					break
+				end
+			end
+			local bot = 0
+			for i = 0, math.min(#challenge.snippet_lines, #challenge.expected_lines) - top - 1 do
+				if challenge.snippet_lines[#challenge.snippet_lines - i] == challenge.expected_lines[#challenge.expected_lines - i] then
+					bot = i + 1
+				else
+					break
+				end
+			end
+			for i = top + 1, #challenge.snippet_lines - bot do
+				highlight_rows[#highlight_rows + 1] = i - 1
+			end
+			challenge.highlight_rows = highlight_rows
+		end
+		return challenge
+	end,
+})
 
 --- Compute the minimum (optimal) moves between two positions.
 --- Navigation (row + col movement) + 1 operation.
@@ -392,56 +418,7 @@ function M.compute_optimal(start_pos, target)
 	return moves + 1 -- +1 for the text object operation
 end
 
---- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
---- @param buf number Buffer handle (unused, part of interface)
---- @param ns_id number Namespace ID (unused, part of interface)
---- @return table challenge {snippet_lines, expected_lines, target, start_pos, key, char}
-function M.generate_challenge(buf, ns_id)
-	-- Build list of eligible indices (not recently used)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-
-	-- Paragraph text objects need multi-row highlights (single-line fallback breaks
-	-- because entire lines are deleted, shifting different content into the target row)
-	local highlight_rows = nil
-	if c.key:match("^[dc][ia]p$") then
-		highlight_rows = {}
-		local top = 0
-		for i = 1, math.min(#c.snippet_lines, #c.expected_lines) do
-			if c.snippet_lines[i] == c.expected_lines[i] then
-				top = i
-			else
-				break
-			end
-		end
-		local bot = 0
-		for i = 0, math.min(#c.snippet_lines, #c.expected_lines) - top - 1 do
-			if c.snippet_lines[#c.snippet_lines - i] == c.expected_lines[#c.expected_lines - i] then
-				bot = i + 1
-			else
-				break
-			end
-		end
-		for i = top + 1, #c.snippet_lines - bot do
-			highlight_rows[#highlight_rows + 1] = i - 1 -- 0-indexed
-		end
-	end
-
-	return {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		key = c.key,
-		char = c.char,
-		highlight_rows = highlight_rows,
-	}
-end
-
---- Expose challenge pool for testing.
-function M._get_challenges()
-	return CHALLENGES
-end
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M

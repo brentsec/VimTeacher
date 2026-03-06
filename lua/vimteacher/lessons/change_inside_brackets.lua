@@ -2,7 +2,7 @@
 -- Lesson: Change inside brackets with ci(, ci[, ci{
 
 local M = {}
-local optimal = require("vimteacher.optimal")
+local pool = require("vimteacher.lessons.pool")
 
 M.title = "Change Inside: ci(, ci[, ci{"
 M.type = "insert"
@@ -226,11 +226,7 @@ local CHALLENGES = {
 	},
 }
 
--- Track recently used challenges to avoid repetition
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
-local current_snippet = nil
+local challenge_pool = pool.new(CHALLENGES)
 
 --- Compute the minimum (optimal) moves between two positions.
 --- Uses motion-aware shortest-path scoring on the current snippet.
@@ -238,35 +234,9 @@ local current_snippet = nil
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
 function M.compute_optimal(start_pos, target)
-	if not current_snippet then
-		return optimal.manhattan(start_pos, target)
-	end
-	return optimal.nav_cost(current_snippet, start_pos, target)
+	return challenge_pool.nav_compute_optimal()(start_pos, target)
 end
-
---- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
---- @param buf number Buffer handle (unused, part of interface)
---- @param ns_id number Namespace ID (unused, part of interface)
---- @return table challenge {snippet_lines, expected_lines, target, start_pos, key, char}
-function M.generate_challenge(buf, ns_id)
-	-- Build list of eligible indices (not recently used)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-	current_snippet = c.snippet_lines
-	return {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		key = c.key,
-		char = c.char,
-	}
-end
-
---- Expose challenge pool for testing.
-function M._get_challenges()
-	return CHALLENGES
-end
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M

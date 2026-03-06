@@ -2,6 +2,7 @@
 -- Lesson 11: Copy and paste lines with yy, p, P
 
 local base = require("vimteacher.lessons.base")
+local pool = require("vimteacher.lessons.pool")
 
 local M = base.define({
 	title_template = "Copy & Paste: {{yank}}, {{paste_below}}, {{paste_above}}",
@@ -272,10 +273,19 @@ local CHALLENGES = {
 	},
 }
 
--- Track recently used challenges to avoid repetition
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
+local challenge_pool = pool.new(CHALLENGES, {
+	track_current_snippet = false,
+	transform_challenge = function(challenge)
+		challenge.goal_text = "Yank the highlighted line with yy, then paste it at the ▸ marker"
+		challenge.highlight_rows = { challenge.target.row }
+		challenge.paste_marker_after_row = challenge.paste_after_row
+		if challenge.key == "P" then
+			challenge.paste_marker_after_row = challenge.paste_after_row - 1
+		end
+		challenge.key = nil
+		return challenge
+	end,
+})
 
 --- Compute the minimum (optimal) moves to complete the challenge.
 --- User must navigate to yank_row (target), yank with yy, then paste with p/P.
@@ -289,40 +299,7 @@ function M.compute_optimal(start_pos, target)
 	return nav_distance + 2
 end
 
---- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
---- @param buf number Buffer handle (unused, part of interface)
---- @param ns_id number Namespace ID (unused, part of interface)
---- @return table challenge {snippet_lines, expected_lines, target, start_pos, key, yank_row, paste_after_row}
-function M.generate_challenge(buf, ns_id)
-	-- Build list of eligible indices (not recently used)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-
-	-- Compute where the marker should appear (actual insertion point).
-	-- For p: paste goes below cursor row = after paste_after_row (correct as-is).
-	-- For P: paste goes above cursor row = after paste_after_row - 1.
-	local paste_marker_after_row = c.paste_after_row
-	if c.key == "P" then
-		paste_marker_after_row = c.paste_after_row - 1
-	end
-
-	return {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		goal_text = "Yank the highlighted line with yy, then paste it at the ▸ marker",
-		highlight_rows = { c.target.row },
-		yank_row = c.yank_row,
-		paste_after_row = c.paste_after_row,
-		paste_marker_after_row = paste_marker_after_row,
-	}
-end
-
---- Expose challenge pool for testing.
-function M._get_challenges()
-	return CHALLENGES
-end
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M
