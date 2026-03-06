@@ -2,18 +2,9 @@
 -- Tests for the window scrolls lesson module
 
 local window_scrolls = require("vimteacher.lessons.window_scrolls")
-
-local pass_count = 0
-local fail_count = 0
-
-local function assert_test(condition, msg)
-	if condition then
-		pass_count = pass_count + 1
-	else
-		fail_count = fail_count + 1
-		print("  FAIL: " .. msg)
-	end
-end
+local assertions = require("helpers.assertions")
+local counter = assertions.new_counter()
+local assert_test = counter.assert_test
 
 print("test_window_scrolls: running...")
 
@@ -83,15 +74,6 @@ assert_test(window_scrolls.compute_optimal == nil, "Info lesson should not have 
 assert_test(window_scrolls.allowed_keys == nil, "Info lesson should not have allowed_keys")
 
 -- Summary
-print(
-	string.format(
-		"test_window_scrolls: %d passed, %d failed (total: %d assertions)",
-		pass_count,
-		fail_count,
-		pass_count + fail_count
-	)
-)
-
-if fail_count > 0 then
-	os.exit(1)
-end
+counter.finish("test_window_scrolls", {
+	suffix = string.format("(total: %d assertions)", counter.state.pass_count + counter.state.fail_count),
+})

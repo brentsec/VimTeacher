@@ -19,3 +19,17 @@ Describe major components, boundaries, and data flow.
 
 - Update this file when major architecture boundaries change.
 - Keep this high-level and put procedures into runbooks.
+
+## Runtime Structure
+
+- `lua/vimteacher/init.lua`: entrypoint, setup, commands, and top-level wiring
+- `lua/vimteacher/state.lua`: shared session state and mode transitions
+- `lua/vimteacher/session.lua`: lesson/session lifecycle, challenge loading, completion flow
+- `lua/vimteacher/input.lua`: menu input buffering and menu rerender behavior
+- `lua/vimteacher/buffer.lua`: thin facade over UI renderers
+- `lua/vimteacher/ui/menu.lua`: topic menu layout and rendering
+- `lua/vimteacher/ui/lesson.lua`: active lesson/challenge rendering
+- `lua/vimteacher/ui/stats.lua`: between-challenge stats overlay
+- `lua/vimteacher/ui/completion.lua`: end-of-lesson summary screen
+- `lua/vimteacher/lessons/base.lua`: template-driven adaptive lesson text helpers
+- `lua/vimteacher/stats.lua`: stats calculations and persistence in `stdpath("data") .. "/vimteacher/stats.json"`

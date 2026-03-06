@@ -1,62 +1,17 @@
 -- vimteacher/lessons/word_movement.lua
 -- Second lesson: Moving by words with w, e, b
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 local optimal = require("vimteacher.optimal")
 
-local M = {}
-
-M.title = "Moving by Words: w, e, b"
-M.adaptive_keys = { "w", "e", "b" }
-
-M.description = {
-	"Jump by whole words instead of character by character.",
-	"",
-	"  w = next word    e = end of word    b = previous word",
-	"",
-	"A word is letters, digits, and underscores grouped together.",
-	"Whitespace between them creates separate words:",
-	"",
-	"  count one test1234 my_var",
-	"  ──1── ─2─ ───3──── ──4───",
-	"",
-	"Symbols create word boundaries too, even with no spaces:",
-	"  user.name   →  user | . | name     (3 words)",
-	"  get_data()  →  get_data | ()       (2 words)",
-	"  x += 1      →  x | += | 1         (3 words)",
-	"",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[w] Next word  [e] End of word  [b] Back a word — Move to the green target",
-}
-
-M.dwell_time = 200 -- ms; longer than basic_movement to prevent w/b spam-through
-
---- Build lesson title with resolved word-motion keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local w = key_display["w"] or "w"
-	local e = key_display["e"] or "e"
-	local b = key_display["b"] or "b"
-	return string.format("Moving by Words: %s, %s, %s", w, e, b)
-end
-
---- Build lesson description with resolved word-motion keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string[]
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local w = key_display["w"] or "w"
-	local e = key_display["e"] or "e"
-	local b = key_display["b"] or "b"
-	return {
+local M = base.define({
+	title_template = "Moving by Words: {{next_word}}, {{end_word}}, {{back_word}}",
+	adaptive_keys = { "w", "e", "b" },
+	description_template = {
 		"Jump by whole words instead of character by character.",
 		"",
-		string.format("  %s = next word    %s = end of word    %s = previous word", w, e, b),
+		"  {{next_word}} = next word    {{end_word}} = end of word    {{back_word}} = previous word",
 		"",
 		"A word is letters, digits, and underscores grouped together.",
 		"Whitespace between them creates separate words:",
@@ -70,33 +25,18 @@ function M.get_description(ctx)
 		"  x += 1      →  x | += | 1         (3 words)",
 		"",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
---- Build hint lines with resolved key displays.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string[]
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local w = key_display["w"] or "w"
-	local e = key_display["e"] or "e"
-	local b = key_display["b"] or "b"
-	return {
-		string.format("[%s] Next word  [%s] End of word  [%s] Back a word — Move to the green target", w, e, b),
-	}
-end
-
---- Build per-challenge helper goal text with resolved word-motion keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string
-function M.get_goal_text(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local w = key_display["w"] or "w"
-	local e = key_display["e"] or "e"
-	local b = key_display["b"] or "b"
-	return string.format("Move to target using %s/%s/%s", w, e, b)
-end
-
+	},
+	hint_template = {
+		"[{{next_word}}] Next word  [{{end_word}}] End of word  [{{back_word}}] Back a word — Move to the green target",
+	},
+	goal_text_template = "Move to target using {{next_word}}/{{end_word}}/{{back_word}}",
+	dwell_time = 200,
+	template_tokens = {
+		next_word = "w",
+		end_word = "e",
+		back_word = "b",
+	},
+})
 -- Module-level snippet storage so compute_optimal can access the current snippet
 local current_snippet = nil
 

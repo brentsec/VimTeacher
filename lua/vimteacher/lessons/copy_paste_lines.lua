@@ -1,62 +1,32 @@
 -- vimteacher/lessons/copy_paste_lines.lua
 -- Lesson 11: Copy and paste lines with yy, p, P
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Copy & Paste: yy, p, P"
-M.type = "insert"
-M.allowed_keys = {}
-M.allowed_modify_keys = { "p", "P" }
-M.challenges_required = 10
-
-M.description = {
-	"Copy and paste entire lines:",
-	"",
-	"  yy = yank (copy) the current line",
-	"  p  = paste below the current line",
-	"  P  = paste above the current line",
-	"",
-	"Navigate to the green target line, yank it with yy, then paste where needed.",
-}
-
-M.hint_lines = {
-	"[yy] Yank line  [p] Paste below  [P] Paste above  [hjkl] Navigate",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local yy = key_display["yy"] or "yy"
-	local p = key_display["p"] or "p"
-	local P = key_display["P"] or "P"
-	return string.format("Copy & Paste: %s, %s, %s", yy, p, P)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local yy = key_display["yy"] or "yy"
-	local p = key_display["p"] or "p"
-	local P = key_display["P"] or "P"
-	return {
+local M = base.define({
+	title_template = "Copy & Paste: {{yank}}, {{paste_below}}, {{paste_above}}",
+	type = "insert",
+	allowed_keys = {},
+	allowed_modify_keys = { "p", "P" },
+	challenges_required = 10,
+	description_template = {
 		"Copy and paste entire lines:",
 		"",
-		string.format("  %s = yank (copy) the current line", yy),
-		string.format("  %s  = paste below the current line", p),
-		string.format("  %s  = paste above the current line", P),
+		"  {{yank}} = yank (copy) the current line",
+		"  {{paste_below}}  = paste below the current line",
+		"  {{paste_above}}  = paste above the current line",
 		"",
-		"Navigate to the green target line, yank it with yy, then paste where needed.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local yy = key_display["yy"] or "yy"
-	local p = key_display["p"] or "p"
-	local P = key_display["P"] or "P"
-	return {
-		string.format("[%s] Yank line  [%s] Paste below  [%s] Paste above  [hjkl] Navigate", yy, p, P),
-	}
-end
-
+		"Navigate to the green target line, yank it with {{yank}}, then paste where needed.",
+	},
+	hint_template = {
+		"[{{yank}}] Yank line  [{{paste_below}}] Paste below  [{{paste_above}}] Paste above  [hjkl] Navigate",
+	},
+	template_tokens = {
+		yank = "yy",
+		paste_below = "p",
+		paste_above = "P",
+	},
+})
 -- Pre-defined challenge pool.
 -- Each challenge has:
 -- - snippet_lines: starting code (N lines)

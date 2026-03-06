@@ -15,8 +15,12 @@ function M.new_counter()
 		end
 	end
 
-	local function finish(label)
-		print(string.format("%s: %d passed, %d failed", label, state.pass_count, state.fail_count))
+	local function finish(label, opts)
+		local suffix = opts and opts.suffix or ""
+		if suffix ~= "" then
+			suffix = " " .. suffix
+		end
+		print(string.format("%s: %d passed, %d failed%s", label, state.pass_count, state.fail_count, suffix))
 		if state.fail_count > 0 then
 			vim.cmd("cquit! 1")
 		end

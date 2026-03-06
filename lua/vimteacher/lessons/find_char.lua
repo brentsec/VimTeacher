@@ -1,64 +1,31 @@
 -- vimteacher/lessons/find_char.lua
 -- Tenth lesson: Finding characters with f, F, ;
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 
-local M = {}
-
-M.title = "Find Character: f, F, ;"
-
-M.description = {
-	"Jump to a specific character on the current line.",
-	"",
-	"  f{char} = find FORWARD to {char} (lands ON the character)",
-	"  F{char} = find BACKWARD to {char}",
-	"  ;       = repeat the last f or F motion",
-	"",
-	"These motions only work within the current line.",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[f{c}] Find forward  [F{c}] Find backward  [;] Repeat last find",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["f"] or "f"
-	local backward = key_display["F"] or "F"
-	local repeat_find = key_display[";"] or ";"
-	return string.format("Find Character: %s, %s, %s", forward, backward, repeat_find)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["f"] or "f"
-	local backward = key_display["F"] or "F"
-	local repeat_find = key_display[";"] or ";"
-	return {
+local M = base.define({
+	title_template = "Find Character: {{forward}}, {{backward}}, {{repeat_find}}",
+	description_template = {
 		"Jump to a specific character on the current line.",
 		"",
-		string.format("  %s{char} = find FORWARD to {char} (lands ON the character)", forward),
-		string.format("  %s{char} = find BACKWARD to {char}", backward),
-		string.format("  %s       = repeat the last %s or %s motion", repeat_find, forward, backward),
+		"  {{forward}}{char} = find FORWARD to {char} (lands ON the character)",
+		"  {{backward}}{char} = find BACKWARD to {char}",
+		"  {{repeat_find}}       = repeat the last {{forward}} or {{backward}} motion",
 		"",
 		"These motions only work within the current line.",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["f"] or "f"
-	local backward = key_display["F"] or "F"
-	local repeat_find = key_display[";"] or ";"
-	return {
-		string.format("[%s{c}] Find forward  [%s{c}] Find backward  [%s] Repeat last find", forward, backward, repeat_find),
-	}
-end
-
-M.dwell_time = 50
-
+	},
+	hint_template = {
+		"[{{forward}}{c}] Find forward  [{{backward}}{c}] Find backward  [{{repeat_find}}] Repeat last find",
+	},
+	dwell_time = 50,
+	template_tokens = {
+		forward = "f",
+		backward = "F",
+		repeat_find = ";",
+	},
+})
 --- Compute the minimum (optimal) moves between two positions.
 --- For find-char: same pos = 0, same row = 1 (single f/F), different row = 2.
 --- @param start_pos table {row=number, col=number} 0-indexed

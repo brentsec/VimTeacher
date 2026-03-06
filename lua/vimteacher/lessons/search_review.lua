@@ -1,28 +1,35 @@
 -- vimteacher/lessons/search_review.lua
 -- Search review lesson: practice all search commands
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Search Review"
-
-M.dwell_time = 50
-
-M.description = {
-	"Practice all the search commands you have learned:",
-	"",
-	"  /text   = search forward     ?text   = search backward",
-	"  n       = next match         N       = previous match",
-	"  *       = search word forward  #     = search word backward",
-	"",
-	"Use whichever search method gets you to the target fastest.",
-	"",
-	"Move your cursor to the green highlighted target.",
-}
-
-M.hint_lines = {
-	"[/] Forward  [?] Backward  [n/N] Repeat  [*/#] Word search",
-}
-
+local M = base.define({
+	title = "Search Review",
+	adaptive_keys = { "/", "?", "n", "N", "*", "#" },
+	dwell_time = 50,
+	description_template = {
+		"Practice all the search commands you have learned:",
+		"",
+		"  {{forward}}text   = search forward     {{backward}}text   = search backward",
+		"  {{next_match}}       = next match         {{prev_match}}       = previous match",
+		"  {{word_forward}}       = search word forward  {{word_backward}}     = search word backward",
+		"",
+		"Use whichever search method gets you to the target fastest.",
+		"",
+		"Move your cursor to the green highlighted target.",
+	},
+	hint_template = {
+		"[{{forward}}] Forward  [{{backward}}] Backward  [{{next_match}}/{{prev_match}}] Repeat  [{{word_forward}}/{{word_backward}}] Word search",
+	},
+	template_tokens = {
+		forward = "/",
+		backward = "?",
+		next_match = "n",
+		prev_match = "N",
+		word_forward = "*",
+		word_backward = "#",
+	},
+})
 -- Custom snippets with repeated keywords for search practice
 local SEARCH_SNIPPETS = {
 	{

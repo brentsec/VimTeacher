@@ -1,83 +1,31 @@
 -- vimteacher/lessons/basic_movement.lua
 -- First lesson: Basic cursor movement with h, j, k, l
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 local optimal = require("vimteacher.optimal")
 
-local M = {}
-
-M.title = "Basic Movement: h, j, k, l"
-
-M.description = {
-	"Vim uses h, j, k, l for cursor movement instead of arrow keys.",
-	"",
-	"  h = left    j = down    k = up    l = right",
-	"",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[h] Left  [j] Down  [k] Up  [l] Right — Move to the green target",
-}
-
-M.adaptive_keys = { "h", "j", "k", "l" }
-
---- Build lesson title with resolved movement keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local h = key_display["h"] or "h"
-	local j = key_display["j"] or "j"
-	local k = key_display["k"] or "k"
-	local l = key_display["l"] or "l"
-	return string.format("Basic Movement: %s, %s, %s, %s", h, j, k, l)
-end
-
---- Build lesson description with resolved movement keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string[]
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local h = key_display["h"] or "h"
-	local j = key_display["j"] or "j"
-	local k = key_display["k"] or "k"
-	local l = key_display["l"] or "l"
-	return {
-		string.format("Vim uses %s, %s, %s, %s for cursor movement instead of arrow keys.", h, j, k, l),
+local M = base.define({
+	title_template = "Basic Movement: {{left}}, {{down}}, {{up}}, {{right}}",
+	description_template = {
+		"Vim uses {{left}}, {{down}}, {{up}}, {{right}} for cursor movement instead of arrow keys.",
 		"",
-		string.format("  %s = left    %s = down    %s = up    %s = right", h, j, k, l),
+		"  {{left}} = left    {{down}} = down    {{up}} = up    {{right}} = right",
 		"",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
---- Build hint lines with resolved key displays when adaptive mode is enabled.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string[]
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local h = key_display["h"] or "h"
-	local j = key_display["j"] or "j"
-	local k = key_display["k"] or "k"
-	local l = key_display["l"] or "l"
-	return {
-		string.format("[%s] Left  [%s] Down  [%s] Up  [%s] Right — Move to the green target", h, j, k, l),
-	}
-end
-
---- Build per-challenge helper goal text with resolved movement keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string
-function M.get_goal_text(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local h = key_display["h"] or "h"
-	local j = key_display["j"] or "j"
-	local k = key_display["k"] or "k"
-	local l = key_display["l"] or "l"
-	return string.format("Move to target using %s/%s/%s/%s", h, j, k, l)
-end
-
+	},
+	hint_template = {
+		"[{{left}}] Left  [{{down}}] Down  [{{up}}] Up  [{{right}}] Right — Move to the green target",
+	},
+	goal_text_template = "Move to target using {{left}}/{{down}}/{{up}}/{{right}}",
+	adaptive_keys = { "h", "j", "k", "l" },
+	template_tokens = {
+		left = "h",
+		down = "j",
+		up = "k",
+		right = "l",
+	},
+})
 local current_snippet = nil
 
 --- Compute the minimum (optimal) moves between two positions.

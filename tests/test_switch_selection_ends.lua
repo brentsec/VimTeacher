@@ -2,18 +2,9 @@
 -- Tests for the switch selection ends lesson module
 
 local switch_selection_ends = require("vimteacher.lessons.switch_selection_ends")
-
-local pass_count = 0
-local fail_count = 0
-
-local function assert_test(condition, msg)
-	if condition then
-		pass_count = pass_count + 1
-	else
-		fail_count = fail_count + 1
-		print("  FAIL: " .. msg)
-	end
-end
+local assertions = require("helpers.assertions")
+local counter = assertions.new_counter()
+local assert_test = counter.assert_test
 
 print("test_switch_selection_ends: running...")
 math.randomseed(12345)
@@ -138,15 +129,6 @@ end
 
 vim.api.nvim_buf_delete(buf, { force = true })
 
-print(
-	string.format(
-		"test_switch_selection_ends: %d passed, %d failed (total: %d assertions)",
-		pass_count,
-		fail_count,
-		pass_count + fail_count
-	)
-)
-
-if fail_count > 0 then
-	vim.cmd("cquit! 1")
-end
+counter.finish("test_switch_selection_ends", {
+	suffix = string.format("(total: %d assertions)", counter.state.pass_count + counter.state.fail_count),
+})

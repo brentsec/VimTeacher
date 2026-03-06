@@ -3,17 +3,9 @@
 
 local highlight = require("vimteacher.highlight")
 
-local pass_count = 0
-local fail_count = 0
-
-local function assert_test(condition, msg)
-	if condition then
-		pass_count = pass_count + 1
-	else
-		fail_count = fail_count + 1
-		print("  FAIL: " .. msg)
-	end
-end
+local assertions = require("helpers.assertions")
+local counter = assertions.new_counter()
+local assert_test = counter.assert_test
 
 local function get_target_mark(buf)
 	local marks = vim.api.nvim_buf_get_extmarks(buf, highlight.ns_target, 0, -1, { details = true })
@@ -90,7 +82,4 @@ assert_test(#marks == 0, "Out-of-bounds target should create no extmark, got " .
 
 vim.api.nvim_buf_delete(buf, { force = true })
 
-print(string.format("test_highlight: %d passed, %d failed", pass_count, fail_count))
-if fail_count > 0 then
-	vim.cmd("cquit! 1")
-end
+counter.finish("test_highlight")

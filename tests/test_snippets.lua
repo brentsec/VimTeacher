@@ -3,17 +3,9 @@
 
 local snippets = require("vimteacher.snippets")
 
-local pass_count = 0
-local fail_count = 0
-
-local function assert_test(condition, msg)
-	if condition then
-		pass_count = pass_count + 1
-	else
-		fail_count = fail_count + 1
-		print("  FAIL: " .. msg)
-	end
-end
+local assertions = require("helpers.assertions")
+local counter = assertions.new_counter()
+local assert_test = counter.assert_test
 
 print("test_snippets: running...")
 
@@ -73,7 +65,4 @@ snippets.reset_recent()
 local b = snippets.get_random()
 assert_test(type(b) == "table", "get_random works after reset_recent")
 
-print(string.format("test_snippets: %d passed, %d failed", pass_count, fail_count))
-if fail_count > 0 then
-	vim.cmd("cquit! 1")
-end
+counter.finish("test_snippets")

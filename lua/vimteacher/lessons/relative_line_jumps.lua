@@ -1,57 +1,28 @@
 -- vimteacher/lessons/relative_line_jumps.lua
 -- Lesson: Relative line jumps with count + j/k (e.g., 5j, 3k)
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 
-local M = {}
-
-M.title = "Line Jumps: 5j, 3k"
-
-M.dwell_time = 50
-
-M.description = {
-	"Use count + j/k to jump multiple lines at once.",
-	"",
-	"  5j = jump 5 lines down",
-	"  3k = jump 3 lines up",
-	"",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[count+j] Jump down  [count+k] Jump up  [h/l] Adjust column — Move to the green target",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local j = key_display["j"] or "j"
-	local k = key_display["k"] or "k"
-	return string.format("Line Jumps: 5%s, 3%s", j, k)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local j = key_display["j"] or "j"
-	local k = key_display["k"] or "k"
-	return {
+local M = base.define({
+	title_template = "Line Jumps: 5{{down}}, 3{{up}}",
+	dwell_time = 50,
+	description_template = {
 		"Use count + j/k to jump multiple lines at once.",
 		"",
-		string.format("  5%s = jump 5 lines down", j),
-		string.format("  3%s = jump 3 lines up", k),
+		"  5{{down}} = jump 5 lines down",
+		"  3{{up}} = jump 3 lines up",
 		"",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local j = key_display["j"] or "j"
-	local k = key_display["k"] or "k"
-	return {
-		string.format("[count+%s] Jump down  [count+%s] Jump up  [h/l] Adjust column — Move to the green target", j, k),
-	}
-end
-
+	},
+	hint_template = {
+		"[count+{{down}}] Jump down  [count+{{up}}] Jump up  [h/l] Adjust column — Move to the green target",
+	},
+	template_tokens = {
+		down = "j",
+		up = "k",
+	},
+})
 --- Compute the minimum (optimal) moves between two positions.
 --- For relative line jumps: row difference = 1 move (counted jump), col difference = 1 move.
 --- @param start_pos table {row=number, col=number} 0-indexed

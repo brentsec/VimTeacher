@@ -1,70 +1,32 @@
 -- vimteacher/lessons/insert_mode.lua
 -- Third lesson: Entering insert mode with i and a
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Insert Mode: i, a"
-M.type = "insert"
-M.allowed_keys = { "i", "a" }
-M.adaptive_keys = { "i", "a" }
-M.challenges_required = 10
-
-M.description = {
-	"Vim starts in normal mode. To type text, enter insert mode.",
-	"",
-	"  i = insert before cursor    a = append after cursor",
-	"",
-	"After editing, press <Esc> to return to normal mode.",
-	"",
-	"Navigate to the green target, use i or a to fix the code,",
-	"then press <Esc> when done.",
-}
-
-M.hint_lines = {
-	"[i] Insert before cursor  [a] Append after cursor  [Esc] Return to normal mode",
-}
-
---- Build lesson title with resolved insert keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local i_key = key_display["i"] or "i"
-	local a_key = key_display["a"] or "a"
-	return string.format("Insert Mode: %s, %s", i_key, a_key)
-end
-
---- Build lesson description with resolved insert keys.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string[]
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local i_key = key_display["i"] or "i"
-	local a_key = key_display["a"] or "a"
-	return {
+local M = base.define({
+	title_template = "Insert Mode: {{insert}}, {{append}}",
+	type = "insert",
+	allowed_keys = { "i", "a" },
+	adaptive_keys = { "i", "a" },
+	challenges_required = 10,
+	description_template = {
 		"Vim starts in normal mode. To type text, enter insert mode.",
 		"",
-		string.format("  %s = insert before cursor    %s = append after cursor", i_key, a_key),
+		"  {{insert}} = insert before cursor    {{append}} = append after cursor",
 		"",
 		"After editing, press <Esc> to return to normal mode.",
 		"",
-		string.format("Navigate to the green target, use %s or %s to fix the code,", i_key, a_key),
+		"Navigate to the green target, use {{insert}} or {{append}} to fix the code,",
 		"then press <Esc> when done.",
-	}
-end
-
---- Build hint lines with resolved insert key displays.
---- @param ctx table|nil { key_display = { [canonical]=display } }
---- @return string[]
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local i_key = key_display["i"] or "i"
-	local a_key = key_display["a"] or "a"
-	return {
-		string.format("[%s] Insert before cursor  [%s] Append after cursor  [Esc] Return to normal mode", i_key, a_key),
-	}
-end
-
+	},
+	hint_template = {
+		"[{{insert}}] Insert before cursor  [{{append}}] Append after cursor  [Esc] Return to normal mode",
+	},
+	template_tokens = {
+		insert = "i",
+		append = "a",
+	},
+})
 -- Pre-defined challenge pool. Each challenge has a "broken" snippet and the expected fix.
 -- target = where to navigate (0-indexed {row, col})
 -- For `i` challenges: target is the char AFTER the insertion point (i inserts before cursor)

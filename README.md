@@ -184,12 +184,13 @@ The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handle
    - `generate_challenge(buf, ns_id)` (function returning `{snippet_lines, target, start_pos}`)
    - `compute_optimal(start_pos, target)` (optional, defaults to Manhattan distance)
    - `dwell_ms` (optional number, defaults to 50; set to 0 to disable dwell validation)
+   - For adaptive text-heavy lessons, prefer `lua/vimteacher/lessons/base.lua` and define `*_template` fields instead of duplicating `get_title` / `get_description` / `get_hint_lines` boilerplate
 2. Add `"your_lesson"` to the `M.order` table in `lua/vimteacher/lessons/init.lua`
 3. Dwell-time validation is applied automatically by the orchestrator — no lesson-level code needed
 
 ## Stats
 
-Player stats are stored in `data/stats.json` (best times, averages, accuracy, speed).
+Player stats are stored in `stdpath("data") .. "/vimteacher/stats.json"` (best times, averages, accuracy, speed).
 
 ## Testing
 

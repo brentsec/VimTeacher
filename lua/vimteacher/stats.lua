@@ -13,19 +13,15 @@ function M.clamp_accuracy_pct(pct)
 	return math.max(0, math.min(math.floor(pct), 100))
 end
 
--- Resolve the data directory relative to this plugin
 local function get_data_dir()
-	local info = debug.getinfo(1, "S")
-	local script_path = info.source:sub(2) -- remove leading @
-	-- script_path = .../lua/vimteacher/stats.lua
-	-- plugin_root = .../
-	local lua_dir = vim.fn.fnamemodify(script_path, ":h:h:h") -- up 3 levels
-	return lua_dir .. "/data"
+	return vim.fn.stdpath("data") .. "/vimteacher"
 end
 
 local function get_stats_path()
 	return get_data_dir() .. "/stats.json"
 end
+
+M._get_stats_path = get_stats_path
 
 --- Load stats from disk. Returns a table (empty if file doesn't exist).
 --- @return table Stats table keyed by lesson name

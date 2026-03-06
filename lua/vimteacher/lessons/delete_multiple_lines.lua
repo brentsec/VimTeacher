@@ -1,72 +1,35 @@
 -- vimteacher/lessons/delete_multiple_lines.lua
 -- Multi-line delete operations: dj, dk, d2j, d2k
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local optimal = require("vimteacher.optimal")
 
-M.title = "Multi-Line Delete: dj, dk"
-M.type = "insert"
-M.allowed_keys = {}
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
-	"Delete multiple lines at once with d + motion:",
-	"",
-	"  dj  = delete current line and line below (2 lines)",
-	"  dk  = delete current line and line above (2 lines)",
-	"  d2j = delete current line and 2 lines below (3 lines)",
-	"  d2k = delete current line and 2 lines above (3 lines)",
-	"",
-	"Navigate to the green target and use the indicated key sequence.",
-}
-
-M.hint_lines = {
-	"[dj] Delete 2 lines down  [dk] Delete 2 lines up  [d2j] Delete 3 down  [d2k] Delete 3 up",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local dj = key_display["dj"] or "dj"
-	local dk = key_display["dk"] or "dk"
-	return string.format("Multi-Line Delete: %s, %s", dj, dk)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local dj = key_display["dj"] or "dj"
-	local dk = key_display["dk"] or "dk"
-	local d2j = key_display["d2j"] or "d2j"
-	local d2k = key_display["d2k"] or "d2k"
-	return {
+local M = base.define({
+	title_template = "Multi-Line Delete: {{delete_down}}, {{delete_up}}",
+	type = "insert",
+	allowed_keys = {},
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	description_template = {
 		"Delete multiple lines at once with d + motion:",
 		"",
-		string.format("  %s  = delete current line and line below (2 lines)", dj),
-		string.format("  %s  = delete current line and line above (2 lines)", dk),
-		string.format("  %s = delete current line and 2 lines below (3 lines)", d2j),
-		string.format("  %s = delete current line and 2 lines above (3 lines)", d2k),
+		"  {{delete_down}}  = delete current line and line below (2 lines)",
+		"  {{delete_up}}  = delete current line and line above (2 lines)",
+		"  {{delete_two_down}} = delete current line and 2 lines below (3 lines)",
+		"  {{delete_two_up}} = delete current line and 2 lines above (3 lines)",
 		"",
 		"Navigate to the green target and use the indicated key sequence.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local dj = key_display["dj"] or "dj"
-	local dk = key_display["dk"] or "dk"
-	local d2j = key_display["d2j"] or "d2j"
-	local d2k = key_display["d2k"] or "d2k"
-	return {
-		string.format(
-			"[%s] Delete 2 lines down  [%s] Delete 2 lines up  [%s] Delete 3 down  [%s] Delete 3 up",
-			dj,
-			dk,
-			d2j,
-			d2k
-		),
-	}
-end
-
+	},
+	hint_template = {
+		"[{{delete_down}}] Delete 2 lines down  [{{delete_up}}] Delete 2 lines up  [{{delete_two_down}}] Delete 3 down  [{{delete_two_up}}] Delete 3 up",
+	},
+	template_tokens = {
+		delete_down = "dj",
+		delete_up = "dk",
+		delete_two_down = "d2j",
+		delete_two_up = "d2k",
+	},
+})
 -- Pre-defined challenge pool with larger snippets to accommodate multi-line deletions.
 -- Each challenge removes multiple lines from the snippet.
 local CHALLENGES = {

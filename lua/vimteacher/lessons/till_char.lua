@@ -1,68 +1,33 @@
 -- vimteacher/lessons/till_char.lua
 -- Eleventh lesson: Till characters with t, T, ;
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 
-local M = {}
-
-M.title = "Till Character: t, T, ;"
-
-M.description = {
-	"Jump to just BEFORE a specific character on the current line.",
-	"",
-	"  t{char} = move forward TILL {char} (one BEFORE it)",
-	"  T{char} = move backward TILL {char} (one AFTER it)",
-	"  ;       = repeat the last t or T motion",
-	"",
-	"Till motions are useful with operators like d or c:",
-	"  dt) = delete up to (but not including) the closing paren",
-	"",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[t{c}] Till forward  [T{c}] Till backward  [;] Repeat last till",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["t"] or "t"
-	local backward = key_display["T"] or "T"
-	local repeat_till = key_display[";"] or ";"
-	return string.format("Till Character: %s, %s, %s", forward, backward, repeat_till)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["t"] or "t"
-	local backward = key_display["T"] or "T"
-	local repeat_till = key_display[";"] or ";"
-	return {
+local M = base.define({
+	title_template = "Till Character: {{forward}}, {{backward}}, {{repeat_till}}",
+	description_template = {
 		"Jump to just BEFORE a specific character on the current line.",
 		"",
-		string.format("  %s{char} = move forward TILL {char} (one BEFORE it)", forward),
-		string.format("  %s{char} = move backward TILL {char} (one AFTER it)", backward),
-		string.format("  %s       = repeat the last %s or %s motion", repeat_till, forward, backward),
+		"  {{forward}}{char} = move forward TILL {char} (one BEFORE it)",
+		"  {{backward}}{char} = move backward TILL {char} (one AFTER it)",
+		"  {{repeat_till}}       = repeat the last {{forward}} or {{backward}} motion",
 		"",
 		"Till motions are useful with operators like d or c:",
 		"  dt) = delete up to (but not including) the closing paren",
 		"",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["t"] or "t"
-	local backward = key_display["T"] or "T"
-	local repeat_till = key_display[";"] or ";"
-	return {
-		string.format("[%s{c}] Till forward  [%s{c}] Till backward  [%s] Repeat last till", forward, backward, repeat_till),
-	}
-end
-
-M.dwell_time = 50
-
+	},
+	hint_template = {
+		"[{{forward}}{c}] Till forward  [{{backward}}{c}] Till backward  [{{repeat_till}}] Repeat last till",
+	},
+	dwell_time = 50,
+	template_tokens = {
+		forward = "t",
+		backward = "T",
+		repeat_till = ";",
+	},
+})
 --- Compute the minimum (optimal) moves between two positions.
 --- For till-char: same pos = 0, same row = 1 (single t/T), different row = 2.
 --- @param start_pos table {row=number, col=number} 0-indexed

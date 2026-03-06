@@ -2,18 +2,9 @@
 -- Tests for the intro to modes lesson module
 
 local intro = require("vimteacher.lessons.intro_modes")
-
-local pass_count = 0
-local fail_count = 0
-
-local function assert_test(condition, msg)
-	if condition then
-		pass_count = pass_count + 1
-	else
-		fail_count = fail_count + 1
-		print("  FAIL: " .. msg)
-	end
-end
+local assertions = require("helpers.assertions")
+local counter = assertions.new_counter()
+local assert_test = counter.assert_test
 
 print("test_intro_modes: running...")
 
@@ -76,15 +67,6 @@ assert_test(intro.compute_optimal == nil, "Info lesson should not have compute_o
 assert_test(intro.allowed_keys == nil, "Info lesson should not have allowed_keys")
 
 -- Summary
-print(
-	string.format(
-		"test_intro_modes: %d passed, %d failed (total: %d assertions)",
-		pass_count,
-		fail_count,
-		pass_count + fail_count
-	)
-)
-
-if fail_count > 0 then
-	os.exit(1)
-end
+counter.finish("test_intro_modes", {
+	suffix = string.format("(total: %d assertions)", counter.state.pass_count + counter.state.fail_count),
+})

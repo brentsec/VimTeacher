@@ -1,48 +1,16 @@
 -- vimteacher/lessons/upper_word_movement.lua
 -- Eighth lesson: Moving by WORDs with W, E, B
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 local optimal = require("vimteacher.optimal")
 
-local M = {}
-
-M.title = "Moving by WORDs: W, E, B"
-
-M.description = {
-	"Uppercase WORD motions treat anything between spaces as one WORD.",
-	"",
-	"  W = next WORD    E = end of WORD    B = previous WORD",
-	"",
-	"A WORD is any group of non-space characters. Unlike w/e/b,",
-	"symbols don't create boundaries:",
-	"",
-	"  user.getName()   →  1 WORD  (w/e/b sees 6 words)",
-	"  arr[idx] += 1    →  3 WORDs (w/e/b sees 7 words)",
-	"",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[W] Next WORD  [E] End of WORD  [B] Back a WORD — Move to the green target",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local w = key_display["W"] or "W"
-	local e = key_display["E"] or "E"
-	local b = key_display["B"] or "B"
-	return string.format("Moving by WORDs: %s, %s, %s", w, e, b)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local w = key_display["W"] or "W"
-	local e = key_display["E"] or "E"
-	local b = key_display["B"] or "B"
-	return {
+local M = base.define({
+	title_template = "Moving by WORDs: {{next_word}}, {{end_word}}, {{back_word}}",
+	description_template = {
 		"Uppercase WORD motions treat anything between spaces as one WORD.",
 		"",
-		string.format("  %s = next WORD    %s = end of WORD    %s = previous WORD", w, e, b),
+		"  {{next_word}} = next WORD    {{end_word}} = end of WORD    {{back_word}} = previous WORD",
 		"",
 		"A WORD is any group of non-space characters. Unlike w/e/b,",
 		"symbols don't create boundaries:",
@@ -51,21 +19,17 @@ function M.get_description(ctx)
 		"  arr[idx] += 1    →  3 WORDs (w/e/b sees 7 words)",
 		"",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local w = key_display["W"] or "W"
-	local e = key_display["E"] or "E"
-	local b = key_display["B"] or "B"
-	return {
-		string.format("[%s] Next WORD  [%s] End of WORD  [%s] Back a WORD — Move to the green target", w, e, b),
-	}
-end
-
-M.dwell_time = 200 -- ms; same as word_movement
-
+	},
+	hint_template = {
+		"[{{next_word}}] Next WORD  [{{end_word}}] End of WORD  [{{back_word}}] Back a WORD — Move to the green target",
+	},
+	dwell_time = 200,
+	template_tokens = {
+		next_word = "W",
+		end_word = "E",
+		back_word = "B",
+	},
+})
 -- Module-level snippet storage so compute_optimal can access the current snippet
 local current_snippet = nil
 

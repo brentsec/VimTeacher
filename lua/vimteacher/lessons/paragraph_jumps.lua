@@ -1,63 +1,31 @@
 -- vimteacher/lessons/paragraph_jumps.lua
 -- Lesson: Jumping between paragraphs with } and {
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Paragraph Jumps: }, {"
-
-M.dwell_time = 50
-
-M.description = {
-	"Jump between paragraphs using } and { commands.",
-	"",
-	"  } = jump to next blank line (paragraph forward)",
-	"  { = jump to previous blank line (paragraph backward)",
-	"",
-	"A paragraph is separated by blank lines (empty lines with no content).",
-	"This is useful for navigating through code blocks, function definitions,",
-	"and documentation comments.",
-	"",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[}] Next paragraph  [{] Previous paragraph — Move to the green target",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["}"] or "}"
-	local backward = key_display["{"] or "{"
-	return string.format("Paragraph Jumps: %s, %s", forward, backward)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["}"] or "}"
-	local backward = key_display["{"] or "{"
-	return {
-		"Jump between paragraphs using } and { commands.",
+local M = base.define({
+	title_template = "Paragraph Jumps: {{forward}}, {{backward}}",
+	dwell_time = 50,
+	description_template = {
+		"Jump between paragraphs using {{forward}} and {{backward}} commands.",
 		"",
-		string.format("  %s = jump to next blank line (paragraph forward)", forward),
-		string.format("  %s = jump to previous blank line (paragraph backward)", backward),
+		"  {{forward}} = jump to next blank line (paragraph forward)",
+		"  {{backward}} = jump to previous blank line (paragraph backward)",
 		"",
 		"A paragraph is separated by blank lines (empty lines with no content).",
 		"This is useful for navigating through code blocks, function definitions,",
 		"and documentation comments.",
 		"",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local forward = key_display["}"] or "}"
-	local backward = key_display["{"] or "{"
-	return {
-		string.format("[%s] Next paragraph  [%s] Previous paragraph — Move to the green target", forward, backward),
-	}
-end
-
+	},
+	hint_template = {
+		"[{{forward}}] Next paragraph  [{{backward}}] Previous paragraph — Move to the green target",
+	},
+	template_tokens = {
+		forward = "}",
+		backward = "{",
+	},
+})
 -- Local snippets with paragraph boundaries (blank lines)
 local SNIPPETS = {
 	{

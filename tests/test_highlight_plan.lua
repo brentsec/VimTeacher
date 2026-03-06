@@ -3,9 +3,9 @@
 
 local highlight_plan = require("vimteacher.highlight_plan")
 local lessons = require("vimteacher.lessons")
-
-local pass_count = 0
-local fail_count = 0
+local assertions = require("helpers.assertions")
+local counter = assertions.new_counter()
+local assert_test = counter.assert_test
 
 local SINGLE_CHAR_KEYS = {
 	i = true,
@@ -17,15 +17,6 @@ local SINGLE_CHAR_KEYS = {
 	cl = true,
 	["."] = true,
 }
-
-local function assert_test(condition, msg)
-	if condition then
-		pass_count = pass_count + 1
-	else
-		fail_count = fail_count + 1
-		print("  FAIL: " .. msg)
-	end
-end
 
 local function effective_range(challenge, plan)
 	if not challenge or not challenge.target then
@@ -374,7 +365,4 @@ do
 	vim.api.nvim_buf_delete(buf, { force = true })
 end
 
-print(string.format("test_highlight_plan: %d passed, %d failed", pass_count, fail_count))
-if fail_count > 0 then
-	vim.cmd("cquit! 1")
-end
+counter.finish("test_highlight_plan")

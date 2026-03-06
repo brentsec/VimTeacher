@@ -1,67 +1,30 @@
 -- vimteacher/lessons/line_ends.lua
 -- Ninth lesson: Moving to line boundaries with 0, $, _
 
+local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 
-local M = {}
-
-M.title = "Line Boundaries: 0, $, _"
-
-M.description = {
-	"Jump to important positions on the current line.",
-	"",
-	"  0 = beginning of line (column 0)",
-	"  $ = end of line (last character)",
-	"  _ = first non-blank character",
-	"",
-	"Move your cursor to the green highlighted target below.",
-}
-
-M.hint_lines = {
-	"[0] Line start  [$] Line end  [_] First non-blank — Move to the green target",
-}
-
-function M.get_title(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local zero = key_display["0"] or "0"
-	local dollar = key_display["$"] or "$"
-	local first_nonblank = key_display["_"] or "_"
-	return string.format("Line Boundaries: %s, %s, %s", zero, dollar, first_nonblank)
-end
-
-function M.get_description(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local zero = key_display["0"] or "0"
-	local dollar = key_display["$"] or "$"
-	local first_nonblank = key_display["_"] or "_"
-	return {
+local M = base.define({
+	title_template = "Line Boundaries: {{line_start}}, {{line_end}}, {{first_nonblank}}",
+	description_template = {
 		"Jump to important positions on the current line.",
 		"",
-		string.format("  %s = beginning of line (column 0)", zero),
-		string.format("  %s = end of line (last character)", dollar),
-		string.format("  %s = first non-blank character", first_nonblank),
+		"  {{line_start}} = beginning of line (column 0)",
+		"  {{line_end}} = end of line (last character)",
+		"  {{first_nonblank}} = first non-blank character",
 		"",
 		"Move your cursor to the green highlighted target below.",
-	}
-end
-
-function M.get_hint_lines(ctx)
-	local key_display = (ctx and ctx.key_display) or {}
-	local zero = key_display["0"] or "0"
-	local dollar = key_display["$"] or "$"
-	local first_nonblank = key_display["_"] or "_"
-	return {
-		string.format(
-			"[%s] Line start  [%s] Line end  [%s] First non-blank — Move to the green target",
-			zero,
-			dollar,
-			first_nonblank
-		),
-	}
-end
-
-M.dwell_time = 50
-
+	},
+	hint_template = {
+		"[{{line_start}}] Line start  [{{line_end}}] Line end  [{{first_nonblank}}] First non-blank — Move to the green target",
+	},
+	dwell_time = 50,
+	template_tokens = {
+		line_start = "0",
+		line_end = "$",
+		first_nonblank = "_",
+	},
+})
 --- Find all line boundary positions in a snippet.
 --- Returns one entry per non-empty line with col_0, col_end, col_first_nonblank.
 --- @param lines string[] Snippet lines
