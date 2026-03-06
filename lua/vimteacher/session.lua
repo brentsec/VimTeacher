@@ -1,13 +1,22 @@
 -- vimteacher/session.lua
 -- Session lifecycle helpers for the active VimTeacher run.
 
+local buffer = require("vimteacher.buffer")
+local highlight = require("vimteacher.highlight")
+local key_blocking = require("vimteacher.key_blocking")
+local lessons = require("vimteacher.lessons")
+local snippets = require("vimteacher.snippets")
+local state_mod = require("vimteacher.state")
+local stats_mod = require("vimteacher.stats")
+
 local M = {}
 
 --- Build a session controller around the shared plugin dependencies.
---- @param deps table
+--- @param deps table|nil
 --- @return table
 function M.new(deps)
-	local state = deps.state
+	deps = deps or {}
+	local state = deps.state or state_mod.session
 	local controller = {}
 
 	local function stop_elapsed_timer()
@@ -25,13 +34,13 @@ function M.new(deps)
 			return
 		end
 		local elapsed = (vim.loop.hrtime() - state.challenge_load_time) / 1e9
-		deps.buffer.update_timer(state.buf, elapsed)
+		buffer.update_timer(state.buf, elapsed)
 	end
 
 	local function start_elapsed_timer()
 		stop_elapsed_timer()
 		state.challenge_load_time = vim.loop.hrtime()
-		deps.buffer.update_timer(state.buf, 0)
+		buffer.update_timer(state.buf, 0)
 		state.elapsed_timer = vim.fn.timer_start(1000, function()
 			vim.schedule(update_timer_display)
 		end, { ["repeat"] = -1 })
@@ -56,24 +65,24 @@ function M.new(deps)
 		if state.saved_inccommand ~= nil then
 			vim.o.inccommand = state.saved_inccommand
 		end
-		deps.state_mod.reset()
+		state_mod.reset()
 	end
 
 	function controller.show_menu()
 		stop_elapsed_timer()
-		deps.state_mod.transition(nil, "menu")
+		state_mod.transition(nil, "menu")
 		state.target = nil
 		deps.clear_info_keymaps()
 		deps.clear_playing_keymaps()
 
 		if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
-			state.buf, state.win = deps.buffer.create()
+			state.buf, state.win = buffer.create()
 			deps.setup_autocmds()
-			deps.block_insert_keys()
+			key_blocking.block_insert_keys(state.buf)
 		end
 
-		local all_sections = deps.lessons.get_sections()
-		local ok = pcall(deps.buffer.render_menu, state.buf, all_sections, state.all_stats, state.win)
+		local all_sections = lessons.get_sections()
+		local ok = pcall(buffer.render_menu, state.buf, all_sections, state.all_stats, state.win)
 		if not ok then
 			return
 		end
@@ -92,8 +101,8 @@ function M.new(deps)
 			elapsed = (vim.loop.hrtime() - state.timer_start) / 1e9
 		end
 
-		local scored_optimal = deps.stats_mod.normalize_optimal_moves(state.optimal_moves, state.move_count)
-		local accuracy_pct = deps.stats_mod.calc_accuracy_pct(scored_optimal, state.move_count)
+		local scored_optimal = stats_mod.normalize_optimal_moves(state.optimal_moves, state.move_count)
+		local accuracy_pct = stats_mod.calc_accuracy_pct(scored_optimal, state.move_count)
 		state.session_challenges[#state.session_challenges + 1] = {
 			time = elapsed,
 			accuracy_pct = accuracy_pct,
@@ -102,10 +111,10 @@ function M.new(deps)
 		}
 
 		local target_buf_row = state.target.row + state.snippet_offset
-		deps.highlight.flash_success(state.buf, target_buf_row, state.target.col)
+		highlight.flash_success(state.buf, target_buf_row, state.target.col)
 
 		state.target = nil
-		deps.state_mod.transition("playing", "stats")
+		state_mod.transition("playing", "stats")
 
 		vim.defer_fn(function()
 			if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
@@ -121,13 +130,12 @@ function M.new(deps)
 					total_moves = total_moves + challenge.moves
 					total_optimal = total_optimal + challenge.optimal
 				end
-				local overall_accuracy = deps.stats_mod.calc_overall_accuracy_pct(total_optimal, total_moves)
-				local lesson_stats =
-					deps.stats_mod.record_session(state.all_stats, state.lesson_name, total_time, overall_accuracy)
-				deps.stats_mod.save(state.all_stats)
+				local overall_accuracy = stats_mod.calc_overall_accuracy_pct(total_optimal, total_moves)
+				local lesson_stats = stats_mod.record_session(state.all_stats, state.lesson_name, total_time, overall_accuracy)
+				stats_mod.save(state.all_stats)
 
-				deps.state_mod.transition("stats", "complete")
-				deps.buffer.render_completion(state.buf, {
+				state_mod.transition("stats", "complete")
+				buffer.render_completion(state.buf, {
 					title = state.lesson.title,
 					max_challenges = state.max_challenges,
 					session_challenges = state.session_challenges,
@@ -143,12 +151,12 @@ function M.new(deps)
 
 	function controller.load_challenge()
 		state.challenge_num = state.challenge_num + 1
-		deps.state_mod.transition(nil, "playing")
+		state_mod.transition(nil, "playing")
 		state.move_count = 0
 		state.timer_start = nil
 		state.dwell_pending = false
 
-		local challenge = state.lesson.generate_challenge(state.buf, deps.highlight.ns_target)
+		local challenge = state.lesson.generate_challenge(state.buf, highlight.ns_target)
 		if challenge.phases then
 			deps.apply_phase(challenge, 1)
 		end
@@ -166,34 +174,30 @@ function M.new(deps)
 
 	function controller.start(lesson_name)
 		if state.buf and vim.api.nvim_buf_is_valid(state.buf) then
-			deps.clear_menu_keymaps()
-			deps.clear_stats_keymaps()
-			deps.clear_completion_keymaps()
-			deps.clear_info_keymaps()
-			deps.clear_playing_keymaps()
+			deps.clear_mode_keymaps()
 		end
 
-		local lesson = deps.lessons.get_lesson(lesson_name)
+		local lesson = lessons.get_lesson(lesson_name)
 		if not lesson then
 			vim.notify("VimTeacher: Unknown lesson '" .. lesson_name .. "'", vim.log.levels.ERROR)
 			return
 		end
 
 		math.randomseed(os.time() + math.floor(os.clock() * 1000))
-		deps.snippets.reset_recent()
+		snippets.reset_recent()
 
 		state.lesson = lesson
 		state.lesson_name = lesson_name
 		state.challenge_num = 0
 		state.max_challenges = lesson.challenges_required or 10
 		state.session_challenges = {}
-		deps.state_mod.transition(nil, "playing")
+		state_mod.transition(nil, "playing")
 		state.play_menu_key = lesson.play_menu_key or "q"
 		state.play_restart_key = lesson.play_restart_key or "Q"
 		state.lesson_view = deps.build_lesson_view(lesson)
 
 		if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
-			state.buf, state.win = deps.buffer.create()
+			state.buf, state.win = buffer.create()
 			deps.setup_autocmds()
 		end
 
@@ -218,27 +222,27 @@ function M.new(deps)
 		end, nav_opts)
 
 		if lesson.type == "info" then
-			deps.state_mod.transition(nil, "info")
-			local info_exempt_keys = deps.resolved_keys_for_lesson(lesson)
+			state_mod.transition(nil, "info")
+			local info_exempt_keys = key_blocking.resolve_keys_for_lesson(lesson, state.key_display)
 			info_exempt_keys[#info_exempt_keys + 1] = "i"
 			local resolved_insert = (state.key_display and state.key_display["i"]) or nil
 			if type(resolved_insert) == "string" and resolved_insert ~= "" then
 				info_exempt_keys[#info_exempt_keys + 1] = resolved_insert
 			end
-			deps.block_insert_keys(info_exempt_keys)
+			key_blocking.block_insert_keys(state.buf, info_exempt_keys)
 			if lesson.sandbox_modify_keys then
-				local sandbox_keys = deps.resolve_keys_list(lesson.sandbox_modify_keys)
+				local sandbox_keys = key_blocking.resolve_keys(state.key_display, lesson.sandbox_modify_keys)
 				for _, key in ipairs(sandbox_keys) do
 					pcall(vim.keymap.del, "n", key, { buffer = state.buf })
 				end
 			end
-			deps.buffer.render(state.buf, {
+			buffer.render(state.buf, {
 				title = state.lesson_view.title,
 				description = state.lesson_view.description,
 				snippet_lines = state.lesson_view.sandbox_snippet or lesson.sandbox_snippet,
 				hint_lines = state.lesson_view.hint_lines,
 			})
-			state.snippet_offset, state.snippet_end = deps.buffer.get_snippet_bounds()
+			state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
 			vim.bo[state.buf].modifiable = true
 			vim.bo[state.buf].undolevels = 1000
 			local info_start_row = math.min(vim.api.nvim_buf_line_count(state.buf), 3)
@@ -246,7 +250,7 @@ function M.new(deps)
 			vim.fn.winrestview({ topline = 1, leftcol = 0 })
 			local opts = { buffer = state.buf, noremap = true, silent = true }
 			vim.keymap.set("n", "n", function()
-				local next_name = deps.lessons.get_next(lesson_name)
+				local next_name = lessons.get_next(lesson_name)
 				if next_name then
 					controller.start(next_name)
 				end
@@ -258,14 +262,15 @@ function M.new(deps)
 		end
 
 		if lesson.type == "insert" then
-			deps.block_keys_for_insert_lesson(
-				deps.resolve_keys_list(lesson.allowed_keys or {}),
-				deps.resolve_keys_list(lesson.allowed_modify_keys),
-				deps.resolve_keys_list(lesson.allowed_visual_keys)
+			key_blocking.block_keys_for_insert_lesson(
+				state.buf,
+				key_blocking.resolve_keys(state.key_display, lesson.allowed_keys or {}),
+				key_blocking.resolve_keys(state.key_display, lesson.allowed_modify_keys),
+				key_blocking.resolve_keys(state.key_display, lesson.allowed_visual_keys)
 			)
 			vim.bo[state.buf].autoindent = true
 		else
-			deps.block_insert_keys(deps.resolved_keys_for_lesson(lesson))
+			key_blocking.block_insert_keys(state.buf, key_blocking.resolve_keys_for_lesson(lesson, state.key_display))
 		end
 
 		deps.setup_playing_keymaps(controller.show_menu, controller.start)

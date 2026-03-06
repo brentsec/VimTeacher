@@ -26,6 +26,9 @@ Describe major components, boundaries, and data flow.
 - `lua/vimteacher/state.lua`: shared session state and mode transitions
 - `lua/vimteacher/session.lua`: lesson/session lifecycle, challenge loading, completion flow
 - `lua/vimteacher/input.lua`: menu input buffering and menu rerender behavior
+- `lua/vimteacher/key_display.lua`: adaptive key text rewriting and lesson-view construction
+- `lua/vimteacher/key_blocking.lua`: buffer-local lesson key blocking and resolved-key helpers
+- `lua/vimteacher/goal.lua`: goal-bar metadata derived from lesson command keys
 - `lua/vimteacher/buffer.lua`: thin facade over UI renderers
 - `lua/vimteacher/ui/menu.lua`: topic menu layout and rendering
 - `lua/vimteacher/ui/lesson.lua`: active lesson/challenge rendering

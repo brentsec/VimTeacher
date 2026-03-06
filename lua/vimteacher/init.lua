@@ -6,11 +6,13 @@ local highlight = require("vimteacher.highlight")
 local highlight_plan = require("vimteacher.highlight_plan")
 local validate = require("vimteacher.validate")
 local stats_mod = require("vimteacher.stats")
+local goal = require("vimteacher.goal")
+local key_blocking = require("vimteacher.key_blocking")
+local key_display = require("vimteacher.key_display")
 local session_mod = require("vimteacher.session")
 local state_mod = require("vimteacher.state")
 local input_mod = require("vimteacher.input")
 local lessons = require("vimteacher.lessons")
-local snippets = require("vimteacher.snippets")
 local keymaps = require("vimteacher.keymaps")
 
 local M = {}
@@ -145,295 +147,8 @@ local function merged_config()
 	return vim.tbl_deep_extend("force", vim.deepcopy(DEFAULT_CONFIG), stored)
 end
 
-local function escape_lua_pattern(s)
-	return s:gsub("(%W)", "%%%1")
-end
-
-local function is_word_char(ch)
-	return type(ch) == "string" and ch:match("[%w_]") ~= nil
-end
-
-local function is_boundary_char(ch)
-	if ch == nil or ch == "" then
-		return true
-	end
-	return ch:match("[%s%[%]%(%)%{%},:;!%?=+%-%*/\\|<>\"']") ~= nil
-end
-
-local function prev_nonspace_char(text, idx)
-	for i = idx, 1, -1 do
-		local ch = text:sub(i, i)
-		if ch ~= " " and ch ~= "\t" then
-			return ch
-		end
-	end
-	return nil
-end
-
-local function next_nonspace_char(text, idx)
-	for i = idx, #text do
-		local ch = text:sub(i, i)
-		if ch ~= " " and ch ~= "\t" then
-			return ch
-		end
-	end
-	return nil
-end
-
-local function replace_single_alpha_token(text, canonical, display)
-	local escaped = escape_lua_pattern(canonical)
-	return (text:gsub("()" .. escaped .. "()", function(start_pos, end_pos)
-		local prev_char = start_pos > 1 and text:sub(start_pos - 1, start_pos - 1) or nil
-		local next_char = end_pos <= #text and text:sub(end_pos, end_pos) or nil
-		if is_word_char(prev_char) or is_word_char(next_char) then
-			return canonical
-		end
-
-		local prev_nonspace = prev_nonspace_char(text, start_pos - 1)
-		local next_nonspace = next_nonspace_char(text, end_pos)
-		local prev_ok = prev_nonspace == nil or prev_nonspace:match("[%[%(%{:,/]") ~= nil
-		local next_ok = next_nonspace == nil or next_nonspace:match("[%],:/=%)%}]") ~= nil
-		if prev_ok and next_ok then
-			return display
-		end
-
-		return canonical
-	end))
-end
-
-local function has_count_prefix(text, start_pos)
-	if start_pos <= 1 then
-		return false
-	end
-	local idx = start_pos - 1
-	if not text:sub(idx, idx):match("%d") then
-		return false
-	end
-	while idx >= 1 and text:sub(idx, idx):match("%d") do
-		idx = idx - 1
-	end
-	local prev = idx >= 1 and text:sub(idx, idx) or nil
-	return is_boundary_char(prev)
-end
-
-local function is_prompt_prefix_char(ch)
-	return type(ch) == "string" and ch ~= "" and ch:match("[%w%%\\.,%+%-]") ~= nil
-end
-
-local function replace_bounded_plain_token(text, canonical, display)
-	local out = {}
-	local from = 1
-
-	while true do
-		local start_pos, end_pos = text:find(canonical, from, true)
-		if not start_pos then
-			out[#out + 1] = text:sub(from)
-			break
-		end
-
-		out[#out + 1] = text:sub(from, start_pos - 1)
-
-		local prev = start_pos > 1 and text:sub(start_pos - 1, start_pos - 1) or nil
-		local next_char = end_pos < #text and text:sub(end_pos + 1, end_pos + 1) or nil
-		local replace = false
-
-		if is_boundary_char(prev) and is_boundary_char(next_char) then
-			replace = true
-		elseif has_count_prefix(text, start_pos) and is_boundary_char(next_char) then
-			replace = true
-		elseif (canonical == "/" or canonical == "?" or canonical == ":") and is_boundary_char(prev) and is_prompt_prefix_char(next_char) then
-			replace = true
-		end
-
-		out[#out + 1] = replace and display or canonical
-		from = end_pos + 1
-	end
-
-	return table.concat(out)
-end
-
-local function apply_key_display_to_text(text, key_display)
-	if type(text) ~= "string" then
-		return text
-	end
-	if type(key_display) ~= "table" then
-		return text
-	end
-
-	local keys = {}
-	for canonical, _ in pairs(key_display) do
-		keys[#keys + 1] = canonical
-	end
-	table.sort(keys, function(a, b)
-		return #a > #b
-	end)
-
-	local out = text
-	for _, canonical in ipairs(keys) do
-		local display = key_display[canonical]
-		if type(display) == "string" and display ~= "" and display ~= canonical then
-			local escaped = escape_lua_pattern(canonical)
-			out = out:gsub("%[" .. escaped .. "%]", "[" .. display .. "]")
-			out = replace_bounded_plain_token(out, canonical, display)
-			local single_alpha = canonical:match("^[%a]$") ~= nil
-			if single_alpha then
-				out = replace_single_alpha_token(out, canonical, display)
-			elseif canonical:match("^[%w]+$") then
-				out = out:gsub("(%f[%w])" .. escaped .. "(%f[^%w])", display)
-			end
-		end
-	end
-	return out
-end
-
-local function apply_key_display_to_lines(lines, key_display)
-	if type(lines) ~= "table" then
-		return lines
-	end
-	local out = {}
-	for i, line in ipairs(lines) do
-		out[i] = apply_key_display_to_text(line, key_display)
-	end
-	return out
-end
-
-local function lesson_ctx()
-	return {
-		key_display = state.key_display or {},
-	}
-end
-
 local function build_lesson_view(lesson)
-	local ctx = lesson_ctx()
-	local view = {
-		title = apply_key_display_to_text(lesson.title, ctx.key_display),
-		description = apply_key_display_to_lines(lesson.description, ctx.key_display),
-		hint_lines = apply_key_display_to_lines(lesson.hint_lines, ctx.key_display),
-		goal_text = apply_key_display_to_text(lesson.goal_text, ctx.key_display),
-		sandbox_snippet = vim.deepcopy(lesson.sandbox_snippet),
-	}
-
-	if type(lesson.get_title) == "function" then
-		local ok, title = pcall(lesson.get_title, ctx)
-		if ok and type(title) == "string" and title ~= "" then
-			view.title = title
-		end
-	end
-
-	if type(lesson.get_description) == "function" then
-		local ok, lines = pcall(lesson.get_description, ctx)
-		if ok and type(lines) == "table" then
-			view.description = lines
-		end
-	end
-
-	if type(lesson.get_hint_lines) == "function" then
-		local ok, lines = pcall(lesson.get_hint_lines, ctx)
-		if ok and type(lines) == "table" then
-			view.hint_lines = lines
-		end
-	end
-
-	if type(lesson.get_goal_text) == "function" then
-		local ok, text = pcall(lesson.get_goal_text, ctx)
-		if ok and type(text) == "string" and text ~= "" then
-			view.goal_text = text
-		end
-	end
-
-	if type(lesson.get_sandbox_snippet) == "function" then
-		local ok, lines = pcall(lesson.get_sandbox_snippet, ctx)
-		if ok and type(lines) == "table" then
-			view.sandbox_snippet = lines
-		end
-	end
-
-	return view
-end
-
---- Build goal bar metadata from a challenge key/char.
---- @param key string|nil canonical key
---- @param char string|nil
---- @param display_key string|nil resolved display key
---- @return table|nil
-local function build_goal(key, char, display_key)
-	if not key then
-		return nil
-	end
-	local g = { key = display_key or key, char = char }
-	if key == "i" then
-		g.action, g.preposition = "insert", "before cursor"
-	elseif key == "a" then
-		g.action, g.preposition = "append", "after cursor"
-	elseif key == "I" then
-		g.action, g.preposition = "insert", "at line start"
-	elseif key == "A" then
-		g.action, g.preposition = "append", "at line end"
-	elseif key == "o" then
-		g.action, g.preposition = "open below", "and type"
-	elseif key == "O" then
-		g.action, g.preposition = "open above", "and type"
-	elseif key == "cl" then
-		g.action, g.preposition = "change letter", "under cursor"
-	elseif key == "x" then
-		g.action, g.preposition = "delete", "under cursor"
-	elseif key:match("^%d+x$") then
-		g.action, g.preposition = "delete", key:sub(1, -2) .. " chars at cursor"
-	elseif key == "r" then
-		g.action, g.preposition = "replace with", "under cursor"
-	elseif key == "." then
-		g.action, g.preposition = "repeat last change", "at cursor"
-	elseif key:match("^%d+%.$") then
-		g.action, g.preposition = "repeat last change", key:sub(1, -2) .. " times"
-	elseif key == "cw" then
-		g.action, g.preposition = "change word to", "at cursor"
-	elseif key == "cW" then
-		g.action, g.preposition = "change WORD to", "at cursor"
-	-- Delete operators
-	elseif key == "dw" then
-		g.action, g.preposition = "delete word", "at cursor"
-	elseif key == "dW" then
-		g.action, g.preposition = "delete WORD", "at cursor"
-	elseif key == "dd" then
-		g.action, g.preposition = "delete", "entire line"
-	elseif key == "D" then
-		g.action, g.preposition = "delete to", "end of line"
-	elseif key:match("^d%d*j$") then
-		g.action, g.preposition = "delete lines", "downward"
-	elseif key:match("^d%d*k$") then
-		g.action, g.preposition = "delete lines", "upward"
-	-- Paste
-	elseif key == "p" then
-		g.action, g.preposition = "paste", "below current line"
-	elseif key == "P" then
-		g.action, g.preposition = "paste", "above current line"
-	-- Text objects: change inside/around
-	elseif key:match("^ci") then
-		g.action, g.preposition = "change inside " .. key:sub(3), "at cursor"
-	elseif key:match("^ca") then
-		g.action, g.preposition = "change around " .. key:sub(3), "at cursor"
-	-- Text objects: delete inside/around
-	elseif key:match("^di") then
-		g.action, g.preposition = "delete inside " .. key:sub(3), "at cursor"
-	elseif key:match("^da") then
-		g.action, g.preposition = "delete around " .. key:sub(3), "at cursor"
-	-- Visual mode
-	elseif key:match("^V.*c$") then
-		g.action, g.preposition = "visual line change to", "selected lines"
-	elseif key:match("^V.*d$") then
-		g.action, g.preposition = "visual line delete", "selected lines"
-	elseif key == "vd" then
-		g.action, g.preposition = "visual delete", "selected text"
-	elseif key == "vc" then
-		g.action, g.preposition = "visual change to", "selected text"
-	elseif key:match("^v.*d$") then
-		g.action, g.preposition = "visual delete", "selected text"
-	elseif key:match("^v.*c$") then
-		g.action, g.preposition = "visual change to", "selected text"
-	else
-		return nil
-	end
-	return g
+	return key_display.build_lesson_view(lesson, state.key_display)
 end
 
 local function apply_phase(challenge, phase_idx)
@@ -462,195 +177,8 @@ cleanup = function()
 	end
 end
 
--- ─── Key blocking ──────────────────────────────────────────────────────────
-
-local function to_set(keys)
-	local s = {}
-	for _, k in ipairs(keys or {}) do
-		if type(k) == "string" and k ~= "" then
-			s[k] = true
-		end
-	end
-	return s
-end
-
-local function resolved_keys_for_lesson(lesson)
-	local out = {}
-	local seen = {}
-	for _, canonical in ipairs((lesson and lesson.adaptive_keys) or {}) do
-		local display = (state.key_display and state.key_display[canonical]) or canonical
-		if type(display) == "string" and display ~= "" and not seen[display] then
-			seen[display] = true
-			out[#out + 1] = display
-		end
-	end
-	return out
-end
-
-local function resolve_keys_list(canonical_keys)
-	local out = {}
-	local seen = {}
-	for _, canonical in ipairs(canonical_keys or {}) do
-		local display = (state.key_display and state.key_display[canonical]) or canonical
-		if type(display) == "string" and display ~= "" and not seen[display] then
-			seen[display] = true
-			out[#out + 1] = display
-		end
-	end
-	return out
-end
-
 local function block_insert_keys(exempt_keys)
-	local buf = state.buf
-	local opts = { buffer = buf, noremap = true, silent = true }
-	local exempt = to_set(exempt_keys)
-
-	-- Block insert-mode entry keys with a friendly message
-	local insert_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" }
-	for _, key in ipairs(insert_keys) do
-		if exempt[key] then
-			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		else
-			vim.keymap.set("n", key, function()
-				vim.notify("VimTeacher: Insert mode disabled during tutorial", vim.log.levels.WARN)
-			end, opts)
-		end
-	end
-
-	-- Block text-modifying keys silently
-	local modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
-	for _, key in ipairs(modify_keys) do
-		if exempt[key] then
-			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		else
-			vim.keymap.set("n", key, "<Nop>", opts)
-		end
-	end
-
-	-- Block visual mode
-	local visual_keys = { "v", "V", "<C-v>" }
-	for _, key in ipairs(visual_keys) do
-		if exempt[key] then
-			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		else
-			vim.keymap.set("n", key, "<Nop>", opts)
-		end
-	end
-
-	-- Block mouse clicks (prevent bypassing keyboard navigation)
-	local mouse_keys = {
-		"<LeftMouse>",
-		"<2-LeftMouse>",
-		"<3-LeftMouse>",
-		"<4-LeftMouse>",
-		"<RightMouse>",
-		"<2-RightMouse>",
-		"<MiddleMouse>",
-		"<ScrollWheelUp>",
-		"<ScrollWheelDown>",
-		"<ScrollWheelLeft>",
-		"<ScrollWheelRight>",
-	}
-	for _, key in ipairs(mouse_keys) do
-		vim.keymap.set("n", key, "<Nop>", opts)
-	end
-end
-
---- Block keys for insert-type lessons: allows specified insert keys, blocks the rest.
---- @param allowed string[] Insert keys to leave unblocked (e.g., {"i", "a"})
---- @param allowed_modify string[]|nil Modify keys to leave unblocked (e.g., {"x", "r"})
-local function block_keys_for_insert_lesson(allowed, allowed_modify, allowed_visual)
-	local buf = state.buf
-	local opts = { buffer = buf, noremap = true, silent = true }
-
-	-- Build lookup of allowed insert keys
-	local allowed_set = {}
-	for _, key in ipairs(allowed) do
-		allowed_set[key] = true
-		-- Clear stale local blockers so user/global remaps still work.
-		pcall(vim.keymap.del, "n", key, { buffer = buf })
-	end
-
-	-- Build lookup of allowed modify keys
-	local modify_allowed_set = {}
-	for _, key in ipairs(allowed_modify or {}) do
-		modify_allowed_set[key] = true
-		pcall(vim.keymap.del, "n", key, { buffer = buf })
-	end
-
-	-- Build notification message with all allowed keys
-	local all_allowed = {}
-	for _, key in ipairs(allowed) do
-		all_allowed[#all_allowed + 1] = key
-	end
-	for _, key in ipairs(allowed_modify or {}) do
-		all_allowed[#all_allowed + 1] = key
-	end
-	local hint_msg = "VimTeacher: Use " .. table.concat(all_allowed, ", ") .. " for this lesson"
-
-	-- Block insert-mode entry keys that are NOT allowed
-	local insert_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" }
-	for _, key in ipairs(insert_keys) do
-		if not allowed_set[key] then
-			vim.keymap.set("n", key, function()
-				vim.notify(hint_msg, vim.log.levels.WARN)
-			end, opts)
-		else
-			-- Let built-in/user mappings pass through cleanly.
-			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		end
-	end
-
-	-- Block text-modifying keys that are NOT in allowed_modify
-	local modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
-	for _, key in ipairs(modify_keys) do
-		if modify_allowed_set[key] or allowed_set[key] then
-			-- Remove any stale buffer-local map so the built-in command works cleanly.
-			-- Don't re-map (e.g. d→d noremap); buffer-local mappings for operators
-			-- interfere with operator-pending text objects like di{, da[, etc.
-			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		elseif #key > 1 and (modify_allowed_set[key:sub(1, 1)] or allowed_set[key:sub(1, 1)]) then
-			-- Clean up multi-char variants (e.g. "dd" when "d" is allowed) to avoid
-			-- mapping ambiguity in Neovim's key resolver.
-			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		else
-			vim.keymap.set("n", key, "<Nop>", opts)
-		end
-	end
-
-	-- Block visual mode (unless allowed by lesson)
-	local visual_allowed_set = {}
-	for _, key in ipairs(allowed_visual or {}) do
-		visual_allowed_set[key] = true
-		pcall(vim.keymap.del, "n", key, { buffer = buf })
-	end
-
-	local visual_keys = { "v", "V", "<C-v>" }
-	for _, key in ipairs(visual_keys) do
-		if visual_allowed_set[key] then
-			pcall(vim.keymap.del, "n", key, { buffer = buf })
-		else
-			vim.keymap.set("n", key, "<Nop>", opts)
-		end
-	end
-
-	-- Block mouse clicks
-	local mouse_keys = {
-		"<LeftMouse>",
-		"<2-LeftMouse>",
-		"<3-LeftMouse>",
-		"<4-LeftMouse>",
-		"<RightMouse>",
-		"<2-RightMouse>",
-		"<MiddleMouse>",
-		"<ScrollWheelUp>",
-		"<ScrollWheelDown>",
-		"<ScrollWheelLeft>",
-		"<ScrollWheelRight>",
-	}
-	for _, key in ipairs(mouse_keys) do
-		vim.keymap.set("n", key, "<Nop>", opts)
-	end
+	key_blocking.block_insert_keys(state.buf, exempt_keys)
 end
 
 input_controller = input_mod.new({
@@ -774,46 +302,6 @@ clear_info_keymaps = function()
 	pcall(vim.keymap.del, "n", "q", { buffer = buf })
 end
 
-session_controller = session_mod.new({
-	state = state,
-	state_mod = state_mod,
-	buffer = buffer,
-	highlight = highlight,
-	stats_mod = stats_mod,
-	lessons = lessons,
-	snippets = snippets,
-	apply_phase = apply_phase,
-	build_lesson_view = build_lesson_view,
-	render_current_challenge = function(cursor_rel)
-		render_current_challenge(cursor_rel)
-	end,
-	resolved_keys_for_lesson = resolved_keys_for_lesson,
-	resolve_keys_list = resolve_keys_list,
-	setup_autocmds = function()
-		setup_autocmds()
-	end,
-	setup_menu_keymaps = function()
-		setup_menu_keymaps()
-	end,
-	setup_playing_keymaps = setup_playing_keymaps,
-	setup_completion_keymaps = setup_completion_keymaps,
-	clear_menu_keymaps = clear_menu_keymaps,
-	clear_stats_keymaps = function()
-		clear_stats_keymaps()
-	end,
-	clear_completion_keymaps = function()
-		clear_completion_keymaps()
-	end,
-	clear_info_keymaps = function()
-		clear_info_keymaps()
-	end,
-	clear_playing_keymaps = function()
-		clear_playing_keymaps()
-	end,
-	block_insert_keys = block_insert_keys,
-	block_keys_for_insert_lesson = block_keys_for_insert_lesson,
-})
-
 -- ─── Playing mode ──────────────────────────────────────────────────────────
 
 local function on_target_reached()
@@ -884,7 +372,7 @@ render_current_challenge = function(cursor_rel)
 	end
 	local view = state.lesson_view or build_lesson_view(state.lesson)
 	local goal_text = challenge.goal_text or view.goal_text
-	goal_text = apply_key_display_to_text(goal_text, state.key_display or {})
+	goal_text = key_display.apply_to_text(goal_text, state.key_display or {})
 	local goal_display_key = (state.key_display and state.key_display[challenge.key]) or challenge.key
 
 	state.loading = true
@@ -897,7 +385,7 @@ render_current_challenge = function(cursor_rel)
 		snippet_lines = challenge.snippet_lines,
 		hint_lines = view.hint_lines,
 		goal_text = goal_text,
-		goal = build_goal(challenge.key, challenge.char, goal_display_key),
+		goal = goal.build(challenge.key, challenge.char, goal_display_key),
 		nav_hint_line = string.format(
 			"[%s] Menu  [%s] Restart lesson",
 			state.play_menu_key or "q",
@@ -1229,10 +717,6 @@ local function on_cursor_moved()
 	end
 end
 
-advance_challenge = function()
-	session_controller.advance_challenge()
-end
-
 setup_autocmds = function()
 	state.augroup = vim.api.nvim_create_augroup("VimTeacher", { clear = true })
 
@@ -1280,6 +764,32 @@ setup_autocmds = function()
 			rerender_menu_layout()
 		end,
 	})
+end
+
+local function clear_mode_keymaps()
+	clear_menu_keymaps()
+	clear_stats_keymaps()
+	clear_completion_keymaps()
+	clear_info_keymaps()
+	clear_playing_keymaps()
+end
+
+session_controller = session_mod.new({
+	state = state,
+	apply_phase = apply_phase,
+	build_lesson_view = build_lesson_view,
+	render_current_challenge = render_current_challenge,
+	setup_autocmds = setup_autocmds,
+	setup_menu_keymaps = setup_menu_keymaps,
+	setup_playing_keymaps = setup_playing_keymaps,
+	setup_completion_keymaps = setup_completion_keymaps,
+	clear_mode_keymaps = clear_mode_keymaps,
+	clear_info_keymaps = clear_info_keymaps,
+	clear_playing_keymaps = clear_playing_keymaps,
+})
+
+advance_challenge = function()
+	session_controller.advance_challenge()
 end
 
 show_menu = function()
