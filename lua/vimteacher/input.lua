@@ -1,0 +1,124 @@
+-- vimteacher/input.lua
+-- Menu input handling for the VimTeacher topic screen.
+
+local M = {}
+
+--- Build menu input handlers for the active session.
+--- @param deps table
+--- @return table
+function M.new(deps)
+	local menu_input_timer = nil
+	local controller = {}
+
+	function controller.clear_menu_keymaps()
+		if menu_input_timer then
+			vim.fn.timer_stop(menu_input_timer)
+			menu_input_timer = nil
+		end
+		local buf = deps.state.buf
+		if not buf or not vim.api.nvim_buf_is_valid(buf) then
+			return
+		end
+		local opts = { buffer = buf }
+		for i = 0, 9 do
+			pcall(vim.keymap.del, "n", tostring(i), opts)
+		end
+		pcall(vim.keymap.del, "n", "q", opts)
+	end
+
+	function controller.setup_menu_keymaps(start_lesson, stop_session)
+		local buf = deps.state.buf
+		local opts = { buffer = buf, noremap = true, silent = true }
+		local all_lessons = deps.lessons.get_all()
+		local total = #all_lessons
+		local input_buf = ""
+
+		local function flush_input()
+			if menu_input_timer then
+				vim.fn.timer_stop(menu_input_timer)
+				menu_input_timer = nil
+			end
+			local num = tonumber(input_buf)
+			input_buf = ""
+			if num and num >= 1 and num <= total then
+				start_lesson(all_lessons[num].name)
+			end
+		end
+
+		local function handle_digit(digit)
+			if menu_input_timer then
+				vim.fn.timer_stop(menu_input_timer)
+				menu_input_timer = nil
+			end
+			input_buf = input_buf .. tostring(digit)
+			local num = tonumber(input_buf)
+
+			local could_extend = false
+			if num then
+				for extended = num * 10, num * 10 + 9 do
+					if extended >= 1 and extended <= total then
+						could_extend = true
+						break
+					end
+				end
+			end
+
+			if not could_extend then
+				flush_input()
+			else
+				menu_input_timer = vim.fn.timer_start(800, function()
+					vim.schedule(flush_input)
+				end)
+			end
+		end
+
+		for digit = 1, 9 do
+			vim.keymap.set("n", tostring(digit), function()
+				handle_digit(digit)
+			end, opts)
+		end
+
+		vim.keymap.set("n", "0", function()
+			if input_buf ~= "" then
+				handle_digit(0)
+			end
+		end, opts)
+
+		vim.keymap.set("n", "q", function()
+			if menu_input_timer then
+				vim.fn.timer_stop(menu_input_timer)
+				menu_input_timer = nil
+			end
+			input_buf = ""
+			stop_session()
+		end, opts)
+	end
+
+	function controller.rerender_menu_layout(render_menu)
+		local state = deps.state
+		if state.mode ~= "menu" then
+			return
+		end
+		if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+			return
+		end
+		if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+			return
+		end
+
+		local cursor = vim.api.nvim_win_get_cursor(state.win)
+		local ok = pcall(render_menu, state.buf, deps.lessons.get_sections(), state.all_stats, state.win)
+		if not ok then
+			return
+		end
+
+		local line_count = vim.api.nvim_buf_line_count(state.buf)
+		local row = math.max(1, math.min(cursor[1], line_count))
+		vim.api.nvim_win_set_cursor(state.win, { row, 0 })
+		vim.fn.winrestview({ leftcol = 0 })
+	end
+
+	return controller
+end
+
+return M
