@@ -10,6 +10,12 @@ function M.clear_maps(keys)
 	end
 end
 
+function M.clear_mode_maps(mode, keys)
+	for _, key in ipairs(keys or {}) do
+		pcall(vim.keymap.del, mode, key)
+	end
+end
+
 function M.send_key(key)
 	local keys = vim.api.nvim_replace_termcodes(key, true, false, true)
 	vim.api.nvim_feedkeys(keys, "mxt", false)
@@ -114,6 +120,28 @@ function M.perform_normal_with_payload(command_key, text)
 	end, 80, 20)
 end
 
+function M.move_cursor_to(row_1idx, col_0idx)
+	local cur = M.current_cursor()
+	local row_delta = row_1idx - cur[1]
+	if row_delta > 0 then
+		M.send_sequence(string.rep("j", row_delta))
+	elseif row_delta < 0 then
+		M.send_sequence(string.rep("k", math.abs(row_delta)))
+	end
+
+	cur = M.current_cursor()
+	local col_delta = col_0idx - cur[2]
+	if col_delta > 0 then
+		M.send_sequence(string.rep("l", col_delta))
+	elseif col_delta < 0 then
+		M.send_sequence(string.rep("h", math.abs(col_delta)))
+	end
+
+	M.wait_for(function()
+		return true
+	end, 80, 20)
+end
+
 function M.prime_pending_cursor_event()
 	M.fire_cursor_moved(0)
 	M.wait_for(function()
@@ -144,6 +172,18 @@ function M.install_command_maps(remap_pairs)
 	for _, pair in ipairs(remap_pairs or {}) do
 		vim.keymap.set("n", pair.canonical, "<Nop>", { noremap = true, silent = true })
 		vim.keymap.set("n", pair.remap, pair.canonical, { noremap = true, silent = true })
+	end
+
+	return remaps
+end
+
+function M.install_mode_maps(mode, remap_pairs)
+	local remaps = M.build_remap_index(remap_pairs)
+	M.clear_mode_maps(mode, remaps.cleanup_keys)
+
+	for _, pair in ipairs(remap_pairs or {}) do
+		vim.keymap.set(mode, pair.canonical, "<Nop>", { noremap = true, silent = true })
+		vim.keymap.set(mode, pair.remap, pair.canonical, { noremap = true, silent = true })
 	end
 
 	return remaps

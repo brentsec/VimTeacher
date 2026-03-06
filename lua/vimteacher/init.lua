@@ -65,10 +65,47 @@ local GLOBAL_ADAPTIVE_KEYS = {
 	"G",
 	"{",
 	"}",
+	"/",
+	"?",
+	":",
 	"n",
 	"N",
 	"*",
 	"#",
+	"d",
+	"c",
+	"di(",
+	"di[",
+	"di{",
+	"da(",
+	"da[",
+	"da{",
+	"ci(",
+	"ci[",
+	"ci{",
+	"ca(",
+	"ca[",
+	"ca{",
+	'di"',
+	'da"',
+	'ci"',
+	'ca"',
+	"di'",
+	"da'",
+	"ci'",
+	"ca'",
+	"diw",
+	"daw",
+	"ciw",
+	"caw",
+	"dip",
+	"dap",
+	"cip",
+	"cap",
+	"qa",
+	"q",
+	"@a",
+	"@@",
 	"<C-u>",
 	"<C-d>",
 	"v",
@@ -109,6 +146,7 @@ local state = {
 	total_buf_lines = nil, -- buffer line count at render time (for o/O restore)
 	elapsed_timer = nil, -- repeating vim timer ID for display
 	insert_validate_timer = nil, -- delayed validation timer while macro record/replay is active
+	insert_busy_since = nil, -- hrtime when macro-busy insert validation started deferring
 	challenge_load_time = nil, -- hrtime when challenge was loaded
 	pending_programmatic_cursor = nil, -- one synthetic CursorMoved position to ignore after render
 	saved_inccommand = nil, -- user's original inccommand option, restored on cleanup
@@ -143,6 +181,13 @@ end
 
 local function is_word_char(ch)
 	return type(ch) == "string" and ch:match("[%w_]") ~= nil
+end
+
+local function is_boundary_char(ch)
+	if ch == nil or ch == "" then
+		return true
+	end
+	return ch:match("[%s%[%]%(%)%{%},:;!%?=+%-%*/\\|<>\"']") ~= nil
 end
 
 local function prev_nonspace_char(text, idx)
@@ -186,6 +231,57 @@ local function replace_single_alpha_token(text, canonical, display)
 	end))
 end
 
+local function has_count_prefix(text, start_pos)
+	if start_pos <= 1 then
+		return false
+	end
+	local idx = start_pos - 1
+	if not text:sub(idx, idx):match("%d") then
+		return false
+	end
+	while idx >= 1 and text:sub(idx, idx):match("%d") do
+		idx = idx - 1
+	end
+	local prev = idx >= 1 and text:sub(idx, idx) or nil
+	return is_boundary_char(prev)
+end
+
+local function is_prompt_prefix_char(ch)
+	return type(ch) == "string" and ch ~= "" and ch:match("[%w%%\\.,%+%-]") ~= nil
+end
+
+local function replace_bounded_plain_token(text, canonical, display)
+	local out = {}
+	local from = 1
+
+	while true do
+		local start_pos, end_pos = text:find(canonical, from, true)
+		if not start_pos then
+			out[#out + 1] = text:sub(from)
+			break
+		end
+
+		out[#out + 1] = text:sub(from, start_pos - 1)
+
+		local prev = start_pos > 1 and text:sub(start_pos - 1, start_pos - 1) or nil
+		local next_char = end_pos < #text and text:sub(end_pos + 1, end_pos + 1) or nil
+		local replace = false
+
+		if is_boundary_char(prev) and is_boundary_char(next_char) then
+			replace = true
+		elseif has_count_prefix(text, start_pos) and is_boundary_char(next_char) then
+			replace = true
+		elseif (canonical == "/" or canonical == "?" or canonical == ":") and is_boundary_char(prev) and is_prompt_prefix_char(next_char) then
+			replace = true
+		end
+
+		out[#out + 1] = replace and display or canonical
+		from = end_pos + 1
+	end
+
+	return table.concat(out)
+end
+
 local function apply_key_display_to_text(text, key_display)
 	if type(text) ~= "string" then
 		return text
@@ -208,6 +304,7 @@ local function apply_key_display_to_text(text, key_display)
 		if type(display) == "string" and display ~= "" and display ~= canonical then
 			local escaped = escape_lua_pattern(canonical)
 			out = out:gsub("%[" .. escaped .. "%]", "[" .. display .. "]")
+			out = replace_bounded_plain_token(out, canonical, display)
 			local single_alpha = canonical:match("^[%a]$") ~= nil
 			if single_alpha then
 				out = replace_single_alpha_token(out, canonical, display)
@@ -427,6 +524,7 @@ local function cleanup()
 	state.total_buf_lines = nil
 	state.elapsed_timer = nil
 	state.insert_validate_timer = nil
+	state.insert_busy_since = nil
 	state.challenge_load_time = nil
 	state.pending_programmatic_cursor = nil
 	state.play_menu_key = "q"
@@ -1195,6 +1293,14 @@ local function schedule_insert_validation_retry()
 				return
 			end
 			if macro_session_busy() then
+				local busy_ms = state.insert_busy_since and ((vim.loop.hrtime() - state.insert_busy_since) / 1e6) or 0
+				if busy_ms >= 150 and snippet_matches_expected(state.current_challenge.expected_lines) then
+					state.insert_busy_since = nil
+					if not advance_challenge_phase() then
+						on_target_reached()
+					end
+					return
+				end
 				schedule_insert_validation_retry()
 				return
 			end
@@ -1224,11 +1330,29 @@ on_text_changed = function()
 		return
 	end
 	if macro_session_busy() then
+		if not state.insert_busy_since then
+			state.insert_busy_since = vim.loop.hrtime()
+		end
+
+		-- Counted macro replay can leave reg_executing() appearing busy in headless
+		-- runs even after the final buffer state has settled. If the snippet already
+		-- matches the expected result and we've been deferring long enough, validate
+		-- instead of retrying forever.
+		local busy_ms = (vim.loop.hrtime() - state.insert_busy_since) / 1e6
+		if busy_ms >= 150 and snippet_matches_expected(state.current_challenge.expected_lines) then
+			state.insert_busy_since = nil
+			if not advance_challenge_phase() then
+				on_target_reached()
+			end
+			return
+		end
+
 		-- While recording/executing macros, intermediate text states are expected.
 		-- Delay pass/fail validation until macro activity has fully settled.
 		schedule_insert_validation_retry()
 		return
 	end
+	state.insert_busy_since = nil
 
 	if snippet_matches_expected(state.current_challenge.expected_lines) then
 		if not advance_challenge_phase() then

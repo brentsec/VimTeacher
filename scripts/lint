@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mise x github:lunarmodules/luacheck@1.2.0 -- luacheck .
+
+local_check="scripts/local-policy-check"
+if [[ -x "$local_check" ]]; then
+  bash "$local_check"
+fi
