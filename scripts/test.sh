@@ -17,6 +17,8 @@ TESTS=(
   "test_recent.lua"
   "test_snippets.lua"
   "test_keymaps.lua"
+  "test_menu_ui.lua"
+  "test_menu_input.lua"
   "test_timing_smoke.lua"
   "test_getting_started_integration.lua"
   "test_validate.lua"

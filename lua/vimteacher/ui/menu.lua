@@ -130,6 +130,7 @@ function M.render_menu(buf, sections, all_stats, win)
 	local menu_layout = M.compute_menu_layout(win)
 	local topic_col_width = math.max(20, menu_layout.box_width - 33)
 	local lines = {}
+	local row_to_lesson = {}
 
 	lines[#lines + 1] = M.border_top(menu_layout)
 	lines[#lines + 1] = M.bordered("", menu_layout)
@@ -147,7 +148,7 @@ function M.render_menu(buf, sections, all_stats, win)
 	lines[#lines + 1] = M.bordered("", menu_layout)
 
 	local hint_row = #lines
-	lines[#lines + 1] = M.bordered("Type a number to start, or q to quit", menu_layout)
+	lines[#lines + 1] = M.bordered("Type a number or highlight a lesson and press Enter to start, or q to quit", menu_layout)
 	lines[#lines + 1] = M.bordered("", menu_layout)
 
 	local header_row = #lines
@@ -189,6 +190,7 @@ function M.render_menu(buf, sections, all_stats, win)
 				M.build_menu_row(lesson_num .. ".", common.as_text(lesson.title), best_time, best_acc, topic_col_width),
 				menu_layout
 			)
+			row_to_lesson[#lines] = lesson_num
 		end
 	end
 	local menu_end = #lines
@@ -204,6 +206,7 @@ function M.render_menu(buf, sections, all_stats, win)
 	vim.bo[buf].modifiable = true
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modifiable = false
+	vim.api.nvim_buf_set_var(buf, "vimteacher_menu_row_to_lesson", row_to_lesson)
 
 	highlight.apply_line_highlight(buf, 0, 1, "VimTeacherBorder")
 	highlight.apply_line_highlight(buf, #lines - 1, #lines, "VimTeacherBorder")

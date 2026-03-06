@@ -24,6 +24,7 @@ function M.new(deps)
 			pcall(vim.keymap.del, "n", tostring(i), opts)
 		end
 		pcall(vim.keymap.del, "n", "q", opts)
+		pcall(vim.keymap.del, "n", "<CR>", opts)
 	end
 
 	function controller.setup_menu_keymaps(start_lesson, stop_session)
@@ -91,6 +92,26 @@ function M.new(deps)
 			end
 			input_buf = ""
 			stop_session()
+		end, opts)
+
+		vim.keymap.set("n", "<CR>", function()
+			if input_buf ~= "" then
+				flush_input()
+				return
+			end
+			local win = deps.state.win
+			if not win or not vim.api.nvim_win_is_valid(win) then
+				return
+			end
+			local row = vim.api.nvim_win_get_cursor(win)[1]
+			local ok, row_map = pcall(vim.api.nvim_buf_get_var, buf, "vimteacher_menu_row_to_lesson")
+			if not ok or type(row_map) ~= "table" then
+				return
+			end
+			local lesson_num = row_map[row]
+			if lesson_num and lesson_num >= 1 and lesson_num <= total then
+				start_lesson(all_lessons[lesson_num].name)
+			end
 		end, opts)
 	end
 
