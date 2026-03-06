@@ -17,7 +17,48 @@ end
 
 print("test_highlight: running...")
 
+local original_set_hl = vim.api.nvim_set_hl
+local hl_specs = {}
+vim.api.nvim_set_hl = function(ns, name, spec)
+	hl_specs[name] = vim.deepcopy(spec)
+	return original_set_hl(ns, name, spec)
+end
+
 highlight.setup()
+vim.api.nvim_set_hl = original_set_hl
+
+for _, group in ipairs({
+	"VimTeacherTitle",
+	"VimTeacherSeparator",
+	"VimTeacherTarget",
+	"VimTeacherSuccess",
+	"VimTeacherProgress",
+	"VimTeacherTimer",
+	"VimTeacherHint",
+	"VimTeacherComplete",
+	"VimTeacherStatsHeader",
+	"VimTeacherMenuItem",
+	"VimTeacherMenuNumber",
+	"VimTeacherLogo1",
+	"VimTeacherLogo2",
+	"VimTeacherLogo3",
+	"VimTeacherLogo4",
+	"VimTeacherLogo5",
+	"VimTeacherBorder",
+	"VimTeacherSubtitle",
+	"VimTeacherMenuText",
+	"VimTeacherMenuStat",
+	"VimTeacherMenuSep",
+	"VimTeacherMenuSection",
+	"VimTeacherInsertHint",
+	"VimTeacherGoalText",
+	"VimTeacherSearchTarget",
+}) do
+	assert_test(hl_specs[group] ~= nil, "Expected setup to define highlight group " .. group)
+	if hl_specs[group] then
+		assert_test(hl_specs[group].default == true, group .. " should use default=true")
+	end
+end
 
 local buf = vim.api.nvim_create_buf(false, true)
 vim.api.nvim_buf_set_lines(buf, 0, -1, false, {

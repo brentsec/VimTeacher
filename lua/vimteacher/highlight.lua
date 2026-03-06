@@ -8,6 +8,11 @@ M.ns_layout = nil
 M.ns_target = nil
 M.ns_timer = nil
 
+local function set_default_hl(name, spec)
+	spec = vim.tbl_extend("force", { default = true }, spec or {})
+	vim.api.nvim_set_hl(0, name, spec)
+end
+
 --- Initialize highlight groups and namespaces.
 function M.setup()
 	M.ns_layout = vim.api.nvim_create_namespace("vimteacher_layout")
@@ -15,103 +20,103 @@ function M.setup()
 	M.ns_timer = vim.api.nvim_create_namespace("vimteacher_timer")
 
 	-- Title: blue bold
-	vim.api.nvim_set_hl(0, "VimTeacherTitle", {
+	set_default_hl("VimTeacherTitle", {
 		bold = true,
 		fg = "#61AFEF",
 	})
 
 	-- Separator: muted gray
-	vim.api.nvim_set_hl(0, "VimTeacherSeparator", {
+	set_default_hl("VimTeacherSeparator", {
 		fg = "#5C6370",
 	})
 
 	-- Target: green background, dark foreground
-	vim.api.nvim_set_hl(0, "VimTeacherTarget", {
+	set_default_hl("VimTeacherTarget", {
 		bg = "#98C379",
 		fg = "#282C34",
 		bold = true,
 	})
 
 	-- Success flash: gold/yellow background
-	vim.api.nvim_set_hl(0, "VimTeacherSuccess", {
+	set_default_hl("VimTeacherSuccess", {
 		bg = "#E5C07B",
 		fg = "#282C34",
 		bold = true,
 	})
 
 	-- Progress bar: green text
-	vim.api.nvim_set_hl(0, "VimTeacherProgress", {
+	set_default_hl("VimTeacherProgress", {
 		fg = "#98C379",
 	})
 
 	-- Elapsed timer: cyan bold
-	vim.api.nvim_set_hl(0, "VimTeacherTimer", {
+	set_default_hl("VimTeacherTimer", {
 		fg = "#56B6C2",
 		bold = true,
 	})
 
 	-- Hint text: gray italic
-	vim.api.nvim_set_hl(0, "VimTeacherHint", {
+	set_default_hl("VimTeacherHint", {
 		fg = "#5C6370",
 		italic = true,
 	})
 
 	-- Completion: green bold
-	vim.api.nvim_set_hl(0, "VimTeacherComplete", {
+	set_default_hl("VimTeacherComplete", {
 		fg = "#98C379",
 		bold = true,
 	})
 
 	-- Stats header: bright white bold
-	vim.api.nvim_set_hl(0, "VimTeacherStatsHeader", {
+	set_default_hl("VimTeacherStatsHeader", {
 		fg = "#ABB2BF",
 		bold = true,
 	})
 
 	-- Menu item: default with slightly brighter foreground
-	vim.api.nvim_set_hl(0, "VimTeacherMenuItem", {
+	set_default_hl("VimTeacherMenuItem", {
 		fg = "#ABB2BF",
 	})
 
 	-- Menu number: purple bold (for selectable items)
-	vim.api.nvim_set_hl(0, "VimTeacherMenuNumber", {
+	set_default_hl("VimTeacherMenuNumber", {
 		fg = "#C678DD",
 		bold = true,
 	})
 
 	-- Logo gradient: purple (#C678DD) → red (#E06C75), 5 steps
-	vim.api.nvim_set_hl(0, "VimTeacherLogo1", { fg = "#C678DD", bold = true })
-	vim.api.nvim_set_hl(0, "VimTeacherLogo2", { fg = "#CE63BF", bold = true })
-	vim.api.nvim_set_hl(0, "VimTeacherLogo3", { fg = "#D64EA1", bold = true })
-	vim.api.nvim_set_hl(0, "VimTeacherLogo4", { fg = "#DE3983", bold = true })
-	vim.api.nvim_set_hl(0, "VimTeacherLogo5", { fg = "#E06C75", bold = true })
+	set_default_hl("VimTeacherLogo1", { fg = "#C678DD", bold = true })
+	set_default_hl("VimTeacherLogo2", { fg = "#CE63BF", bold = true })
+	set_default_hl("VimTeacherLogo3", { fg = "#D64EA1", bold = true })
+	set_default_hl("VimTeacherLogo4", { fg = "#DE3983", bold = true })
+	set_default_hl("VimTeacherLogo5", { fg = "#E06C75", bold = true })
 
 	-- Border: muted purple
-	vim.api.nvim_set_hl(0, "VimTeacherBorder", { fg = "#7C6F9F" })
+	set_default_hl("VimTeacherBorder", { fg = "#7C6F9F" })
 
 	-- Menu subtitle: purple bold
-	vim.api.nvim_set_hl(0, "VimTeacherSubtitle", { fg = "#C678DD", bold = true })
+	set_default_hl("VimTeacherSubtitle", { fg = "#C678DD", bold = true })
 
 	-- Menu topic text: bright white
-	vim.api.nvim_set_hl(0, "VimTeacherMenuText", { fg = "#D4D4D4" })
+	set_default_hl("VimTeacherMenuText", { fg = "#D4D4D4" })
 
 	-- Menu stat values: cyan
-	vim.api.nvim_set_hl(0, "VimTeacherMenuStat", { fg = "#56B6C2" })
+	set_default_hl("VimTeacherMenuStat", { fg = "#56B6C2" })
 
 	-- Inner separator: dim purple
-	vim.api.nvim_set_hl(0, "VimTeacherMenuSep", { fg = "#5C4F7C" })
+	set_default_hl("VimTeacherMenuSep", { fg = "#5C4F7C" })
 
 	-- Menu section header: teal/cyan bold
-	vim.api.nvim_set_hl(0, "VimTeacherMenuSection", { fg = "#56B6C2", bold = true })
+	set_default_hl("VimTeacherMenuSection", { fg = "#56B6C2", bold = true })
 
 	-- Insert mode hint: gold bold (shows what to type)
-	vim.api.nvim_set_hl(0, "VimTeacherInsertHint", { fg = "#E5C07B", bold = true })
+	set_default_hl("VimTeacherInsertHint", { fg = "#E5C07B", bold = true })
 
 	-- Goal bar text: readable white for action labels
-	vim.api.nvim_set_hl(0, "VimTeacherGoalText", { fg = "#ABB2BF" })
+	set_default_hl("VimTeacherGoalText", { fg = "#ABB2BF" })
 
 	-- Search target: blue bg, distinct from Vim's yellow hlsearch
-	vim.api.nvim_set_hl(0, "VimTeacherSearchTarget", {
+	set_default_hl("VimTeacherSearchTarget", {
 		bg = "#61AFEF",
 		fg = "#282C34",
 		bold = true,
