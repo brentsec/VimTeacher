@@ -147,6 +147,34 @@ local function merged_config()
 	return vim.tbl_deep_extend("force", vim.deepcopy(DEFAULT_CONFIG), stored)
 end
 
+local function lines_equal(a, b, normalizer)
+	if #a ~= #b then
+		return false
+	end
+	for i = 1, #a do
+		local left = a[i]
+		local right = b[i]
+		if normalizer then
+			left = normalizer(left)
+			right = normalizer(right)
+		end
+		if left ~= right then
+			return false
+		end
+	end
+	return true
+end
+
+local function clear_buf_keymaps(buf, keys)
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		return
+	end
+	local opts = { buffer = buf }
+	for _, key in ipairs(keys or {}) do
+		pcall(vim.keymap.del, "n", key, opts)
+	end
+end
+
 local function build_lesson_view(lesson)
 	return key_display.build_lesson_view(lesson, state.key_display)
 end
@@ -203,11 +231,7 @@ end
 -- ─── Stats mode (between challenges) ──────────────────────────────────────
 
 clear_stats_keymaps = function()
-	local buf = state.buf
-	if not buf or not vim.api.nvim_buf_is_valid(buf) then
-		return
-	end
-	pcall(vim.keymap.del, "n", "<Space>", { buffer = buf })
+	clear_buf_keymaps(state.buf, { "<Space>" })
 end
 
 -- ─── Playing mode keymaps (menu return + restart) ─────────────────────────
@@ -228,19 +252,16 @@ local function setup_playing_keymaps(show_menu_fn, start_lesson_fn)
 end
 
 clear_playing_keymaps = function()
-	local buf = state.buf
-	if not buf or not vim.api.nvim_buf_is_valid(buf) then
-		return
-	end
-	local opts = { buffer = buf }
-	pcall(vim.keymap.del, "n", state.play_menu_key or "q", opts)
-	pcall(vim.keymap.del, "n", state.play_restart_key or "Q", opts)
-	pcall(vim.keymap.del, "n", "q", opts)
-	pcall(vim.keymap.del, "n", "Q", opts)
-	pcall(vim.keymap.del, "n", "m", opts)
-	pcall(vim.keymap.del, "n", "R", opts)
-	pcall(vim.keymap.del, "n", "gg", opts)
-	pcall(vim.keymap.del, "n", "G", opts)
+	clear_buf_keymaps(state.buf, {
+		state.play_menu_key or "q",
+		state.play_restart_key or "Q",
+		"q",
+		"Q",
+		"m",
+		"R",
+		"gg",
+		"G",
+	})
 end
 
 -- ─── Completion mode ───────────────────────────────────────────────────────
@@ -282,24 +303,11 @@ local function setup_completion_keymaps()
 end
 
 clear_completion_keymaps = function()
-	local buf = state.buf
-	if not buf or not vim.api.nvim_buf_is_valid(buf) then
-		return
-	end
-	local opts = { buffer = buf }
-	for _, key in ipairs({ "n", "p", "r", "m", "q" }) do
-		pcall(vim.keymap.del, "n", key, opts)
-	end
+	clear_buf_keymaps(state.buf, { "n", "p", "r", "m", "q" })
 end
 
 clear_info_keymaps = function()
-	local buf = state.buf
-	if not buf or not vim.api.nvim_buf_is_valid(buf) then
-		return
-	end
-	pcall(vim.keymap.del, "n", "n", { buffer = buf })
-	pcall(vim.keymap.del, "n", "<CR>", { buffer = buf })
-	pcall(vim.keymap.del, "n", "q", { buffer = buf })
+	clear_buf_keymaps(state.buf, { "n", "<CR>", "q" })
 end
 
 -- ─── Playing mode ──────────────────────────────────────────────────────────
@@ -316,28 +324,11 @@ local function snippet_matches_expected(expected)
 	end
 	local actual = vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_offset + #expected, false)
 
-	local match = #actual == #expected
-	if match then
-		for i = 1, #expected do
-			if actual[i] ~= expected[i] then
-				match = false
-				break
-			end
-		end
-	end
+	local match = lines_equal(actual, expected)
 
 	-- Fallback: tolerate spaces immediately inside brackets
-	if not match and #actual == #expected then
-		local norm_match = true
-		for i = 1, #expected do
-			if normalize_bracket_spaces(actual[i]) ~= normalize_bracket_spaces(expected[i]) then
-				norm_match = false
-				break
-			end
-		end
-		if norm_match then
-			match = true
-		end
+	if not match and lines_equal(actual, expected, normalize_bracket_spaces) then
+		match = true
 	end
 
 	return match
@@ -596,19 +587,8 @@ on_text_changed = function()
 		state.snippet_offset + #(state.current_challenge.expected_lines or {}),
 		false
 	)
-	if orig then
-		local is_orig = #actual == #orig
-		if is_orig then
-			for i = 1, #orig do
-				if actual[i] ~= orig[i] then
-					is_orig = false
-					break
-				end
-			end
-		end
-		if is_orig then
-			return
-		end
+	if orig and lines_equal(actual, orig) then
+		return
 	end
 
 	restore_original_snippet()

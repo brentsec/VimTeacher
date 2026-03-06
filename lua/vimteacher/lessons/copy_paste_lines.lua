@@ -273,6 +273,7 @@ local CHALLENGES = {
 }
 
 -- Track recently used challenges to avoid repetition
+local recent_picker = require("vimteacher.recent")
 local recent = {}
 local MAX_RECENT = 5
 
@@ -294,36 +295,7 @@ end
 --- @return table challenge {snippet_lines, expected_lines, target, start_pos, key, yank_row, paste_after_row}
 function M.generate_challenge(buf, ns_id)
 	-- Build list of eligible indices (not recently used)
-	local eligible = {}
-	for i = 1, #CHALLENGES do
-		local dominated = false
-		for _, r in ipairs(recent) do
-			if r == i then
-				dominated = true
-				break
-			end
-		end
-		if not dominated then
-			eligible[#eligible + 1] = i
-		end
-	end
-
-	-- If all are recent, reset
-	if #eligible == 0 then
-		recent = {}
-		for i = 1, #CHALLENGES do
-			eligible[#eligible + 1] = i
-		end
-	end
-
-	-- Pick random eligible challenge
-	local idx = eligible[math.random(1, #eligible)]
-
-	-- Update recency
-	recent[#recent + 1] = idx
-	if #recent > MAX_RECENT then
-		table.remove(recent, 1)
-	end
+	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
 
 	local c = CHALLENGES[idx]
 

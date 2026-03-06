@@ -29,6 +29,8 @@ Describe major components, boundaries, and data flow.
 - `lua/vimteacher/key_display.lua`: adaptive key text rewriting and lesson-view construction
 - `lua/vimteacher/key_blocking.lua`: buffer-local lesson key blocking and resolved-key helpers
 - `lua/vimteacher/goal.lua`: goal-bar metadata derived from lesson command keys
+- `lua/vimteacher/recent.lua`: shared recency-window selection helper for snippets and challenge pools
+- `lua/vimteacher/optimal.lua`: shared motion-cost utilities for lesson scoring
 - `lua/vimteacher/buffer.lua`: thin facade over UI renderers
 - `lua/vimteacher/ui/menu.lua`: topic menu layout and rendering
 - `lua/vimteacher/ui/lesson.lua`: active lesson/challenge rendering

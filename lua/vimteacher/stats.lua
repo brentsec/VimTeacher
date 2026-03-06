@@ -3,14 +3,21 @@
 
 local M = {}
 
---- Clamp an accuracy percentage to the user-facing 0-100 range.
+--- Clamp a percentage to the user-facing 0-100 range.
 --- @param pct number
 --- @return number
-function M.clamp_accuracy_pct(pct)
+function M.clamp_pct(pct)
 	if type(pct) ~= "number" then
 		return 0
 	end
 	return math.max(0, math.min(math.floor(pct), 100))
+end
+
+--- Clamp an accuracy percentage to the user-facing 0-100 range.
+--- @param pct number
+--- @return number
+function M.clamp_accuracy_pct(pct)
+	return M.clamp_pct(pct)
 end
 
 local function get_data_dir()
@@ -103,10 +110,7 @@ end
 --- @param current_time number Current lesson time
 --- @return number Speed percentage (0-100, capped)
 function M.clamp_speed_pct(pct)
-	if type(pct) ~= "number" then
-		return 0
-	end
-	return math.max(0, math.min(math.floor(pct), 100))
+	return M.clamp_pct(pct)
 end
 
 function M.calc_speed_pct(best_time, current_time)
@@ -161,13 +165,7 @@ end
 --- @param total_moves number Sum of actual moves across challenges
 --- @return number Accuracy percentage (0-100)
 function M.calc_overall_accuracy_pct(total_optimal, total_moves)
-	if total_moves <= 0 then
-		return 100
-	end
-	if total_optimal <= 0 then
-		return 100
-	end
-	return M.clamp_accuracy_pct((total_optimal / total_moves) * 100)
+	return M.calc_accuracy_pct(total_optimal, total_moves)
 end
 
 return M

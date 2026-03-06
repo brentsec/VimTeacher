@@ -40,6 +40,7 @@ M.hint_lines = {
 	"[qa] Record in a  [q] Stop recording  [@a] Run a  [@@] Repeat last macro  [count@a] Repeat N times",
 }
 
+local recent_picker = require("vimteacher.recent")
 local recent = {}
 local MAX_RECENT = 5
 local current_snippet = nil
@@ -377,32 +378,7 @@ end
 --- @param _ns_id number
 --- @return table
 function M.generate_challenge(_buf, _ns_id)
-	local eligible = {}
-	for i = 1, #CHALLENGES do
-		local seen = false
-		for _, r in ipairs(recent) do
-			if r == i then
-				seen = true
-				break
-			end
-		end
-		if not seen then
-			eligible[#eligible + 1] = i
-		end
-	end
-
-	if #eligible == 0 then
-		recent = {}
-		for i = 1, #CHALLENGES do
-			eligible[#eligible + 1] = i
-		end
-	end
-
-	local idx = eligible[math.random(1, #eligible)]
-	recent[#recent + 1] = idx
-	if #recent > MAX_RECENT then
-		table.remove(recent, 1)
-	end
+	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
 
 	local c = CHALLENGES[idx]
 	current_snippet = c.snippet_lines

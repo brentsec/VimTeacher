@@ -6,6 +6,17 @@ local highlight = require("vimteacher.highlight")
 
 local M = {}
 
+local function add_part(parts, hl_regions, text, hl_group, byte_pos)
+	if not text then
+		return byte_pos
+	end
+	parts[#parts + 1] = text
+	if hl_group then
+		hl_regions[#hl_regions + 1] = { s = byte_pos, e = byte_pos + #text, g = hl_group }
+	end
+	return byte_pos + #text
+end
+
 --- Render the lesson layout with description, progress bar, and code snippet.
 --- @param buf number Buffer handle
 --- @param opts table Render options
@@ -50,34 +61,23 @@ function M.render(buf, opts)
 		local parts = {}
 		local byte_pos = 0
 
-		local function add(text, hl_group)
-			if not text then
-				return
-			end
-			parts[#parts + 1] = text
-			if hl_group then
-				goal_hl_regions[#goal_hl_regions + 1] = { s = byte_pos, e = byte_pos + #text, g = hl_group }
-			end
-			byte_pos = byte_pos + #text
-		end
-
-		add("  ")
-		add("─── ", "VimTeacherSeparator")
-		add(opts.goal.action, "VimTeacherGoalText")
-		add("  ")
-		add(opts.goal.char, "VimTeacherInsertHint")
-		add("  ")
-		add(opts.goal.preposition, "VimTeacherGoalText")
-		add(" ── ", "VimTeacherSeparator")
-		add("press", "VimTeacherGoalText")
-		add("  ")
-		add(opts.goal.key, "VimTeacherInsertHint")
-		add("  ")
+		byte_pos = add_part(parts, goal_hl_regions, "  ", nil, byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, "─── ", "VimTeacherSeparator", byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, opts.goal.action, "VimTeacherGoalText", byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, "  ", nil, byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, opts.goal.char, "VimTeacherInsertHint", byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, "  ", nil, byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, opts.goal.preposition, "VimTeacherGoalText", byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, " ── ", "VimTeacherSeparator", byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, "press", "VimTeacherGoalText", byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, "  ", nil, byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, opts.goal.key, "VimTeacherInsertHint", byte_pos)
+		byte_pos = add_part(parts, goal_hl_regions, "  ", nil, byte_pos)
 
 		local display_width = vim.api.nvim_strwidth(table.concat(parts, ""))
 		local remaining = 68 + 2 - display_width
 		if remaining > 0 then
-			add(string.rep("─", remaining), "VimTeacherSeparator")
+			add_part(parts, goal_hl_regions, string.rep("─", remaining), "VimTeacherSeparator", byte_pos)
 		end
 
 		lines[#lines + 1] = table.concat(parts, "")
@@ -90,26 +90,15 @@ function M.render(buf, opts)
 		local parts = {}
 		local byte_pos = 0
 
-		local function add_gt(text, hl_group)
-			if not text then
-				return
-			end
-			parts[#parts + 1] = text
-			if hl_group then
-				goal_text_hl_regions[#goal_text_hl_regions + 1] = { s = byte_pos, e = byte_pos + #text, g = hl_group }
-			end
-			byte_pos = byte_pos + #text
-		end
-
-		add_gt("  ")
-		add_gt("─── ", "VimTeacherSeparator")
-		add_gt(opts.goal_text, "VimTeacherGoalText")
-		add_gt(" ")
+		byte_pos = add_part(parts, goal_text_hl_regions, "  ", nil, byte_pos)
+		byte_pos = add_part(parts, goal_text_hl_regions, "─── ", "VimTeacherSeparator", byte_pos)
+		byte_pos = add_part(parts, goal_text_hl_regions, opts.goal_text, "VimTeacherGoalText", byte_pos)
+		byte_pos = add_part(parts, goal_text_hl_regions, " ", nil, byte_pos)
 
 		local display_width = vim.api.nvim_strwidth(table.concat(parts, ""))
 		local remaining = 68 + 2 - display_width
 		if remaining > 0 then
-			add_gt(string.rep("─", remaining), "VimTeacherSeparator")
+			add_part(parts, goal_text_hl_regions, string.rep("─", remaining), "VimTeacherSeparator", byte_pos)
 		end
 
 		lines[#lines + 1] = table.concat(parts, "")

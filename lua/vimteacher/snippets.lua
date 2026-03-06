@@ -175,49 +175,19 @@ M.pool = {
 }
 
 -- Track recently used snippet indices to avoid repeats
+local recent_picker = require("vimteacher.recent")
 local recent = {}
 local MAX_RECENT = 5
 
 --- Reset the recency tracker (call at lesson start)
 function M.reset_recent()
-	recent = {}
+	recent_picker.clear(recent)
 end
 
 --- Get a random snippet from the pool, avoiding recent picks.
 --- Returns a COPY of the snippet (table of strings).
 function M.get_random()
-	-- Build list of available indices (not recently used)
-	local available = {}
-	for i = 1, #M.pool do
-		local is_recent = false
-		for _, r in ipairs(recent) do
-			if r == i then
-				is_recent = true
-				break
-			end
-		end
-		if not is_recent then
-			available[#available + 1] = i
-		end
-	end
-
-	-- Fallback: if all are recent, reset
-	if #available == 0 then
-		recent = {}
-		available = {}
-		for i = 1, #M.pool do
-			available[i] = i
-		end
-	end
-
-	-- Pick random from available
-	local idx = available[math.random(1, #available)]
-
-	-- Update recent tracking (FIFO)
-	recent[#recent + 1] = idx
-	if #recent > MAX_RECENT then
-		table.remove(recent, 1)
-	end
+	local idx = recent_picker.pick_avoiding_recent(#M.pool, recent, MAX_RECENT)
 
 	-- Return a copy
 	local copy = {}
