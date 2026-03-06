@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Routine pushes do not require release tags.
+# Create and push release tags explicitly when publishing a release.
+exit 0

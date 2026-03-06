@@ -33,6 +33,8 @@ Tags must represent released plugin versions, not routine commits or pushes.
 
 Do not create a new version only because code was pushed, merged, or refactored. Create a new version only when publishing a new release.
 
+Local hooks must not create release tags automatically. Use the explicit `mise run release:tag -- ...` workflow when publishing a release.
+
 ## Public API For This Repository
 
 Semantic Versioning depends on a clear public API.
@@ -172,7 +174,7 @@ Before tagging:
 3. Confirm the chosen version is the highest required bump for any included change.
 4. Run `mise run verify`.
 5. If the proposed release is `v1.0.0`, stop and get explicit approval from the project owner before tagging.
-6. Create an annotated tag using the `vX.Y.Z` format.
+6. Create an annotated tag using `mise run release:tag -- ...`.
 
 For pre-releases, append a SemVer pre-release identifier to the target version:
 

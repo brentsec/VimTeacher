@@ -17,6 +17,7 @@ status: active
 ## Runbooks
 
 - `docs/runbooks/local-workflow.md`
+- `docs/runbooks/releasing.md`
 
 ## Reference
 

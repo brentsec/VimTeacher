@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  scripts/release-tag patch
+  scripts/release-tag minor
+  scripts/release-tag major --owner-approved-1-0
+  scripts/release-tag version <vX.Y.Z[-PRERELEASE]>
+
+Options:
+  --dry-run              Print the computed tag and exit.
+  --allow-dirty          Skip the clean-worktree check.
+  --skip-verify          Skip `mise run verify`.
+  --owner-approved-1-0   Required before creating v1.0.0.
+
+Notes:
+  - Use `patch` only for backward-compatible bug-fix releases.
+  - Use `minor` for new functionality or intentional public behavior changes while the project is on 0.y.z.
+  - Do not use `major` while the project is pre-1.0 unless the project owner has explicitly approved v1.0.0.
+EOF
+}
+
+fail() {
+  printf 'release-tag: %s\n' "$1" >&2
+  exit 1
+}
+
+require_repo_root() {
+  git rev-parse --show-toplevel >/dev/null 2>&1 || fail "must run inside a git repository"
+}
+
+worktree_clean() {
+  git diff --quiet && git diff --cached --quiet
+}
+
+latest_semver_tag() {
+  git tag --list 'v*' --sort=version:refname | tail -n1
+}
+
+latest_stable_tag() {
+  git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=version:refname | tail -n1
+}
+
+parse_stable_version() {
+  local version="$1"
+  local parsed="${version#v}"
+  IFS='.' read -r VERSION_MAJOR VERSION_MINOR VERSION_PATCH <<< "$parsed"
+}
+
+version_exists() {
+  git rev-parse -q --verify "refs/tags/$1" >/dev/null 2>&1
+}
+
+validate_version_format() {
+  local version="$1"
+  [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+    || fail "invalid version '$version'; expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE"
+}
+
+ensure_newer_than_latest() {
+  local target="$1"
+  local latest="$2"
+  [[ -z "$latest" ]] && return 0
+
+  local highest
+  highest="$(printf '%s\n%s\n' "$latest" "$target" | sort -V | tail -n1)"
+  [[ "$highest" == "$target" && "$target" != "$latest" ]] \
+    || fail "target version '$target' must be newer than latest tag '$latest'"
+}
+
+run_verify() {
+  mise run verify
+}
+
+build_from_bump() {
+  local bump="$1"
+  local latest="$2"
+
+  if [[ -z "$latest" ]]; then
+    case "$bump" in
+      patch|minor)
+        printf 'v0.1.0\n'
+        return
+        ;;
+      major)
+        fail "v1.0.0 requires explicit project owner approval"
+        ;;
+    esac
+  fi
+
+  parse_stable_version "$latest"
+  local major="$VERSION_MAJOR"
+  local minor="$VERSION_MINOR"
+  local patch="$VERSION_PATCH"
+
+  case "$bump" in
+    patch)
+      patch=$((patch + 1))
+      ;;
+    minor)
+      minor=$((minor + 1))
+      patch=0
+      ;;
+    major)
+      if [[ "$major" -eq 0 ]]; then
+        fail "major bump is blocked while the project is pre-1.0; notify the project owner and use --owner-approved-1-0 for v1.0.0"
+      fi
+      major=$((major + 1))
+      minor=0
+      patch=0
+      ;;
+    *)
+      fail "unsupported bump type '$bump'"
+      ;;
+  esac
+
+  printf 'v%s.%s.%s\n' "$major" "$minor" "$patch"
+}
+
+require_owner_approval_if_needed() {
+  local target="$1"
+  local owner_approved="$2"
+
+  if [[ "$target" == "v1.0.0" && "$owner_approved" -ne 1 ]]; then
+    fail "v1.0.0 requires explicit project owner approval; rerun with --owner-approved-1-0 only after that approval"
+  fi
+}
+
+main() {
+  require_repo_root
+
+  local allow_dirty=0
+  local dry_run=0
+  local owner_approved=0
+  local skip_verify=0
+  local args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --allow-dirty)
+        allow_dirty=1
+        ;;
+      --dry-run)
+        dry_run=1
+        ;;
+      --owner-approved-1-0)
+        owner_approved=1
+        ;;
+      --skip-verify)
+        skip_verify=1
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        args+=("$1")
+        ;;
+    esac
+    shift
+  done
+
+  [[ "${#args[@]}" -ge 1 ]] || {
+    usage
+    exit 1
+  }
+
+  local latest_any
+  latest_any="$(latest_semver_tag)"
+  local latest_stable
+  latest_stable="$(latest_stable_tag)"
+  local target
+
+  case "${args[0]}" in
+    patch|minor|major)
+      target="$(build_from_bump "${args[0]}" "$latest_stable")"
+      ;;
+    version)
+      [[ "${#args[@]}" -eq 2 ]] || fail "version mode requires an explicit tag value"
+      target="${args[1]}"
+      validate_version_format "$target"
+      ensure_newer_than_latest "$target" "$latest_any"
+      ;;
+    *)
+      fail "unknown mode '${args[0]}'; use patch, minor, major, or version"
+      ;;
+  esac
+
+  validate_version_format "$target"
+  ensure_newer_than_latest "$target" "$latest_any"
+  require_owner_approval_if_needed "$target" "$owner_approved"
+
+  if [[ "$allow_dirty" -ne 1 ]] && ! worktree_clean; then
+    fail "worktree must be clean before tagging; commit or stash changes first"
+  fi
+
+  version_exists "$target" && fail "tag '$target' already exists"
+
+  if [[ "$skip_verify" -ne 1 ]]; then
+    run_verify
+    if [[ "$allow_dirty" -ne 1 ]] && ! worktree_clean; then
+      fail "verification changed the worktree; commit those changes before tagging"
+    fi
+  fi
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '%s\n' "$target"
+    exit 0
+  fi
+
+  git tag -a "$target" -m "Version $target" HEAD
+  printf 'Created release tag %s at %s\n' "$target" "$(git rev-parse --short HEAD)"
+}
+
+main "$@"

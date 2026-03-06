@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+hooks_dir="$repo_root/.git/hooks"
+templates_dir="$repo_root/.githooks"
+
+install -m 0755 "$templates_dir/post-commit" "$hooks_dir/post-commit"
+install -m 0755 "$templates_dir/pre-push" "$hooks_dir/pre-push"
+
+printf 'Installed local hooks from %s\n' "$templates_dir"

@@ -21,3 +21,11 @@ run = "scripts/docs-build"
 [tasks.verify]
 description = "Main local commit gate"
 depends = ["fmt", "lint", "test", "docs:verify"]
+
+[tasks."hooks:install"]
+description = "Install repository-managed local git hooks"
+run = "scripts/install-hooks"
+
+[tasks."release:tag"]
+description = "Create an explicit annotated release tag after verification"
+run = "scripts/release-tag"

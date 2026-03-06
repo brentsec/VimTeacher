@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Release tags are created explicitly with `mise run release:tag`.
+# Routine commits do not create tags.
+exit 0

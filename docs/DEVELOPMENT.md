@@ -32,3 +32,10 @@ Standard tasks in this repo: `fmt lint test docs:verify docs:build verify`
 ## Release Versioning
 
 Use the semantic versioning policy in `docs/reference/semantic-versioning.md` before creating a release tag.
+
+Use:
+
+```bash
+mise run hooks:install
+mise run release:tag -- <patch|minor|major|version ...>
+```

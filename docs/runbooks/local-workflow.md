@@ -18,5 +18,7 @@ status: active
 
 - `docs:verify`: validate docs layout and front matter
 - `docs:build`: generate `.meta/*` indexes
+- `hooks:install`: install repository-managed local git hooks
+- `release:tag`: create an explicit annotated release tag
 - `verify`: run available quality gates
 - Optional stack commands depend on adapter/capabilities

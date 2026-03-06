@@ -9,6 +9,8 @@ commands:
   test: "scripts/test"
   docs:verify: "scripts/docs-verify"
   docs:build: "scripts/docs-build"
+  hooks:install: "scripts/install-hooks"
+  release:tag: "scripts/release-tag"
   verify: "mise run verify"
 
 artifact:
