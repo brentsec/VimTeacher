@@ -22,6 +22,14 @@ function M.new(deps)
 	local menu = deps.menu or {}
 	local controller = {}
 
+	local function apply_playing_window_options()
+		buffer.apply_playing_line_numbers(state.win, state.source_window_line_numbers)
+	end
+
+	local function apply_nonplaying_window_options()
+		buffer.apply_nonplaying_line_numbers(state.win, state.source_window_line_numbers)
+	end
+
 	local function stop_elapsed_timer()
 		if state.elapsed_timer then
 			vim.fn.timer_stop(state.elapsed_timer)
@@ -60,6 +68,8 @@ function M.new(deps)
 			state.augroup = nil
 		end
 
+		buffer.restore_line_numbers(state.win, state.source_window_line_numbers)
+
 		if state.buf and vim.api.nvim_buf_is_valid(state.buf) then
 			pcall(vim.api.nvim_buf_delete, state.buf, { force = true })
 		end
@@ -74,6 +84,7 @@ function M.new(deps)
 		stop_elapsed_timer()
 		state_mod.transition(nil, "menu")
 		state.target = nil
+		apply_nonplaying_window_options()
 		if mode_keymaps.clear_info_keymaps then
 			mode_keymaps.clear_info_keymaps()
 		end
@@ -87,6 +98,7 @@ function M.new(deps)
 				gameplay.setup_autocmds()
 			end
 			key_blocking.block_insert_keys(state.buf)
+			apply_nonplaying_window_options()
 		end
 
 		local all_sections = lessons.get_sections()
@@ -145,6 +157,7 @@ function M.new(deps)
 				stats_mod.save(state.all_stats)
 
 				state_mod.transition("stats", "complete")
+				apply_nonplaying_window_options()
 				buffer.render_completion(state.buf, {
 					title = state.lesson.title,
 					max_challenges = state.max_challenges,
@@ -166,6 +179,7 @@ function M.new(deps)
 		state_mod.transition(nil, "playing")
 		state.move_count = 0
 		state.dwell_pending = false
+		apply_playing_window_options()
 
 		local challenge = state.lesson.generate_challenge(state.buf, highlight.ns_target)
 		if challenge.phases and gameplay.apply_phase then
@@ -240,6 +254,7 @@ function M.new(deps)
 
 		if lesson.type == "info" then
 			state_mod.transition(nil, "info")
+			apply_nonplaying_window_options()
 			local info_exempt_keys = key_blocking.resolve_keys_for_lesson(lesson, state.key_display)
 			info_exempt_keys[#info_exempt_keys + 1] = "i"
 			local resolved_insert = (state.key_display and state.key_display["i"]) or nil

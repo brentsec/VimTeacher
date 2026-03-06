@@ -15,6 +15,69 @@ local layout_meta = {
 	progress_line = nil,
 }
 
+local function valid_win(win)
+	return win and vim.api.nvim_win_is_valid(win)
+end
+
+local function set_line_numbers(win, opts)
+	if not valid_win(win) then
+		return
+	end
+	opts = opts or {}
+	vim.wo[win].number = opts.number == true
+	vim.wo[win].relativenumber = opts.relativenumber == true
+	if type(opts.statuscolumn) == "string" then
+		vim.wo[win].statuscolumn = opts.statuscolumn
+	end
+end
+
+--- Capture the current window-local line number settings.
+--- @param win number|nil Window handle
+--- @return table { number: boolean, relativenumber: boolean, statuscolumn: string }
+function M.capture_line_numbers(win)
+	if not valid_win(win) then
+		return {
+			number = false,
+			relativenumber = false,
+			statuscolumn = "",
+		}
+	end
+	return {
+		number = vim.wo[win].number == true,
+		relativenumber = vim.wo[win].relativenumber == true,
+		statuscolumn = vim.wo[win].statuscolumn,
+	}
+end
+
+--- Apply the lesson-playing line number policy.
+--- @param win number|nil Window handle
+--- @param source_opts table|nil Captured user window options
+function M.apply_playing_line_numbers(win, source_opts)
+	set_line_numbers(win, {
+		number = false,
+		relativenumber = source_opts and source_opts.relativenumber == true,
+		statuscolumn = source_opts and source_opts.statuscolumn or nil,
+	})
+end
+
+--- Disable line numbers for non-challenge screens.
+--- @param win number|nil Window handle
+--- @param source_opts table|nil Captured user window options
+function M.apply_nonplaying_line_numbers(win, source_opts)
+	set_line_numbers(win, {
+		number = false,
+		relativenumber = false,
+		statuscolumn = source_opts and source_opts.statuscolumn or nil,
+	})
+end
+
+--- Restore the captured user line number settings.
+--- @param win number|nil Window handle
+--- @param source_opts table|nil Captured user window options
+function M.restore_line_numbers(win, source_opts)
+	set_line_numbers(win, source_opts)
+end
+
 --- Create a scratch buffer and configure the window.
 --- @return number buf Buffer handle
 --- @return number win Window handle
@@ -61,8 +124,7 @@ function M.create()
 		win = vim.api.nvim_get_current_win()
 	end
 
-	vim.wo[win].number = false
-	vim.wo[win].relativenumber = false
+	M.apply_nonplaying_line_numbers(win)
 	vim.wo[win].signcolumn = "no"
 	vim.wo[win].cursorline = true
 	vim.wo[win].wrap = false

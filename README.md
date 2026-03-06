@@ -48,7 +48,7 @@ Open Neovim and run:
 :VimTeacher
 ```
 
-This opens the topic selection menu. Press a number to start a lesson.
+This opens the topic selection menu. Press a number, or highlight a lesson and press `Enter`, to start.
 
 To jump directly into a specific lesson:
 
@@ -173,6 +173,7 @@ The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handle
 
 - VimTeacher targets Neovim (not classic Vim).
 - Adaptive keymapping reads active mappings from your running Neovim session.
+- Challenge screens inherit the active window's `relativenumber` setting from your running Neovim session. Menu, info, stats, and completion screens keep line numbers off.
 - LazyVim is supported through runtime detection and a late refresh on `User LazyVimStarted`.
 
 ## Adding New Lessons
