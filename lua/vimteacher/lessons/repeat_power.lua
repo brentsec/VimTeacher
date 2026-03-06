@@ -2,6 +2,7 @@
 -- Repeat command lesson: perform a delete, then repeat it with dot.
 
 local M = {}
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 local optimal = require("vimteacher.optimal")
 
 M.title = "Repeat Power: . and counts"
@@ -61,26 +62,6 @@ local function apply_x_n(line, col, n)
 	return out
 end
 
---- @param line string
---- @param needle string
---- @param occurrence number
---- @return number|nil 1-indexed byte position
-local function find_nth(line, needle, occurrence)
-	local from = 1
-	local occ = occurrence or 1
-	for _ = 1, occ do
-		local s, e = line:find(needle, from, true)
-		if not s then
-			return nil
-		end
-		if _ == occ then
-			return s
-		end
-		from = e + 1
-	end
-	return nil
-end
-
 --- @param def table
 --- @return table
 local function build_challenge(def)
@@ -90,7 +71,7 @@ local function build_challenge(def)
 
 	local row1 = def.phase1.row
 	local line1 = snippet[row1 + 1] or ""
-	local p1_start = find_nth(line1, def.phase1.find, def.phase1.occurrence or 1)
+	local p1_start = challenge_utils.find_nth(line1, def.phase1.find, def.phase1.occurrence or 1)
 	assert(p1_start, "repeat_power phase1 find failed: " .. tostring(def.phase1.find))
 	local p1_col = (p1_start - 1) + (def.phase1.offset or 0)
 
@@ -99,7 +80,7 @@ local function build_challenge(def)
 
 	local row2 = def.phase2.row
 	local line2 = after1[row2 + 1] or ""
-	local p2_start = find_nth(line2, def.phase2.find, def.phase2.occurrence or 1)
+	local p2_start = challenge_utils.find_nth(line2, def.phase2.find, def.phase2.occurrence or 1)
 	assert(p2_start, "repeat_power phase2 find failed: " .. tostring(def.phase2.find))
 	local p2_col = (p2_start - 1) + (def.phase2.offset or 0)
 

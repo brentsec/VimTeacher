@@ -2,6 +2,7 @@
 -- Lesson: macros for repeated edits.
 
 local M = {}
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 local optimal = require("vimteacher.optimal")
 
 M.title = "Macros for Repetition: qa, q, @a, @@"
@@ -55,32 +56,12 @@ local function delete_one(line, col)
 	return line:sub(1, col) .. line:sub(col + 2)
 end
 
---- @param line string
---- @param needle string
---- @param occurrence number
---- @return number|nil 1-indexed byte position
-local function find_nth(line, needle, occurrence)
-	local from = 1
-	local occ = occurrence or 1
-	for i = 1, occ do
-		local s, e = line:find(needle, from, true)
-		if not s then
-			return nil
-		end
-		if i == occ then
-			return s
-		end
-		from = e + 1
-	end
-	return nil
-end
-
 --- @param snippet string[]
 --- @param target_def table {row,find,occurrence?,offset?}
 --- @return table {row,col}
 local function resolve_target(snippet, target_def)
 	local line = snippet[(target_def.row or 0) + 1] or ""
-	local s = find_nth(line, target_def.find, target_def.occurrence or 1)
+	local s = challenge_utils.find_nth(line, target_def.find, target_def.occurrence or 1)
 	assert(s, "macro_repetition target find failed: " .. tostring(target_def.find))
 	local col = (s - 1) + (target_def.offset or 0)
 	assert(col >= 0 and col < #line, "macro_repetition target col out of bounds")
@@ -347,10 +328,6 @@ for _, def in ipairs(CHALLENGE_DEFS) do
 	CHALLENGES[#CHALLENGES + 1] = build_challenge(def)
 end
 
-local function manhattan(a, b)
-	return math.abs(a.row - b.row) + math.abs(a.col - b.col)
-end
-
 --- Compute optimal movement cost for macro lesson phases.
 --- @param start_pos table {row,col}
 --- @param target table {row,col}
@@ -369,7 +346,7 @@ function M.compute_optimal(start_pos, target, challenge)
 		return total
 	end
 	if not current_snippet then
-		return manhattan(start_pos, target)
+		return optimal.manhattan(start_pos, target)
 	end
 	return optimal.nav_cost(current_snippet, start_pos, target)
 end

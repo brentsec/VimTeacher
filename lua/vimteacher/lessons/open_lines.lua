@@ -237,10 +237,7 @@ local CHALLENGES = {
 	},
 }
 
--- Track recently used challenges to avoid repetition
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
+local challenge_pool = require("vimteacher.lessons.pool").new(CHALLENGES)
 
 --- Compute the minimum (optimal) moves between two positions.
 --- o/O jump to a new line, so only row navigation matters.
@@ -257,28 +254,7 @@ function M.compute_optimal(start_pos, target)
 	return 2
 end
 
---- Generate a new challenge: pick from the pre-defined pool with recency avoidance.
---- @param buf number Buffer handle (unused, part of interface)
---- @param ns_id number Namespace ID (unused, part of interface)
---- @return table challenge {snippet_lines, expected_lines, target, start_pos, key, char}
-function M.generate_challenge(buf, ns_id)
-	-- Build list of eligible indices (not recently used)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-	return {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		key = c.key,
-		char = c.char,
-	}
-end
-
---- Expose challenge pool for testing.
-function M._get_challenges()
-	return CHALLENGES
-end
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M

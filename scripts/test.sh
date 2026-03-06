@@ -12,6 +12,8 @@ echo "Neovim: $($NVIM --version 2>&1 | head -1)"
 echo ""
 
 TESTS=(
+  "test_challenge_utils.lua"
+  "test_lessons_pool.lua"
   "test_recent.lua"
   "test_snippets.lua"
   "test_keymaps.lua"

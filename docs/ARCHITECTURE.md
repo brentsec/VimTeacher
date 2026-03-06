@@ -39,4 +39,6 @@ Describe major components, boundaries, and data flow.
 - `lua/vimteacher/ui/stats.lua`: between-challenge stats overlay
 - `lua/vimteacher/ui/completion.lua`: end-of-lesson summary screen
 - `lua/vimteacher/lessons/base.lua`: template-driven adaptive lesson text helpers
+- `lua/vimteacher/lessons/pool.lua`: shared challenge-pool generation and nav-scoring helpers for pool-based lessons
+- `lua/vimteacher/lessons/challenge_utils.lua`: small challenge-construction helpers shared by complex lessons
 - `lua/vimteacher/stats.lua`: stats calculations and persistence in `stdpath("data") .. "/vimteacher/stats.json"`

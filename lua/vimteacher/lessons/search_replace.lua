@@ -2,10 +2,12 @@
 -- Lesson: Search and replace with :s, :%s, ranges, and g flag
 
 local M = {}
-local optimal = require("vimteacher.optimal")
+local pool = require("vimteacher.lessons.pool")
 
 M.title = "Search & Replace: :s, :%s"
 M.type = "insert"
+-- Ex substitution lives in the command-line, so this lesson intentionally
+-- keeps normal-mode editing keys available while the command is being typed.
 M.allowed_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" }
 M.allowed_modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
 M.allowed_visual_keys = { "v", "V", "<C-v>" }
@@ -209,45 +211,15 @@ local CHALLENGES = {
 	},
 }
 
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
-local current_snippet = nil
+local challenge_pool = pool.new(CHALLENGES)
 
 --- Compute the minimum (optimal) moves between two positions.
 --- Uses motion-aware shortest-path scoring on the current snippet.
 --- @param start_pos table {row=number, col=number} 0-indexed
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
-function M.compute_optimal(start_pos, target)
-	if not current_snippet then
-		return optimal.manhattan(start_pos, target)
-	end
-	return optimal.nav_cost(current_snippet, start_pos, target)
-end
-
---- Generate a new challenge with recency avoidance.
---- @param _buf number Buffer handle (unused)
---- @param _ns_id number Namespace ID (unused)
---- @return table challenge
-function M.generate_challenge(_buf, _ns_id)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-	current_snippet = c.snippet_lines
-
-	return {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		target_end_col = c.target_end_col,
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		goal_text = c.goal_text,
-	}
-end
-
-function M._get_challenges()
-	return CHALLENGES
-end
+M.compute_optimal = challenge_pool.nav_compute_optimal()
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M
