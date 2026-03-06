@@ -11,6 +11,13 @@ local plugin_root = vim.fn.fnamemodify(test_dir, ":h")
 -- Add plugin to runtimepath
 vim.opt.runtimepath:prepend(plugin_root)
 
+-- Allow test helper modules under tests/ to be required directly.
+package.path = table.concat({
+	test_dir .. "/?.lua",
+	test_dir .. "/?/init.lua",
+	package.path,
+}, ";")
+
 -- Minimal settings
 vim.o.swapfile = false
 vim.o.backup = false
