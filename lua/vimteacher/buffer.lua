@@ -122,6 +122,10 @@ function M.update_timer(buf, elapsed_secs)
 	if not layout_meta.progress_line then
 		return
 	end
+	local line_count = vim.api.nvim_buf_line_count(buf)
+	if layout_meta.progress_line < 0 or layout_meta.progress_line >= line_count then
+		return
+	end
 
 	local mins = math.floor(elapsed_secs / 60)
 	local secs = math.floor(elapsed_secs % 60)

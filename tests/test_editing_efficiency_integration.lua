@@ -119,6 +119,11 @@ local function run_macro_repeat_case(case)
 	integration.with_overridden_generate(case.module, case.challenge, function()
 		vimteacher.start(case.lesson_name)
 		assert_started(case)
+		if case.delay_ms then
+			vim.wait(case.delay_ms, function()
+				return false
+			end, case.delay_ms)
+		end
 		move_to_phase_target(case.challenge.phases[1])
 
 		integration.send_sequence("q")
@@ -178,6 +183,20 @@ local function run_macro_repeat_case(case)
 		assert_test(integration.wait_for(function()
 			return integration.buf_has_text("Challenge 2/10")
 		end, 1800), case.lesson_name .. " should advance after remapped macro replay for " .. case.label)
+		if case.min_recorded_secs then
+			local state = integration.runtime_state(vimteacher)
+			assert_test(
+				#state.session_challenges >= 1 and state.session_challenges[1].time >= case.min_recorded_secs,
+				case.lesson_name
+					.. " should include pre-action delay across macro phases for "
+					.. case.label
+					.. " (expected >= "
+					.. case.min_recorded_secs
+					.. "s, got "
+					.. string.format("%.3f", (state.session_challenges[1] and state.session_challenges[1].time) or -1)
+					.. "s)"
+			)
+		end
 	end)
 end
 
@@ -211,6 +230,8 @@ run_macro_repeat_case({
 	challenge = find_macro_challenge(function(challenge)
 		return #challenge.phases == 3 and challenge.phases[3].goal_text:find("@@", 1, true) ~= nil
 	end),
+	delay_ms = 1100,
+	min_recorded_secs = 1.0,
 })
 
 run_macro_repeat_case({

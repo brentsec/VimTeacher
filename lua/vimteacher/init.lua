@@ -663,12 +663,6 @@ local function on_cursor_moved()
 	-- Constrain cursor to snippet zone
 	local was_constrained = validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
 
-	-- Start timer on first real user move.
-	if not state.timer_start then
-		state.timer_start = vim.loop.hrtime()
-		session_controller.start_elapsed_timer()
-	end
-
 	if was_constrained then
 		-- Normally, constrained moves are boundary bounces (don't count as moves).
 		-- But absolute jumps (gg/G) overshoot the snippet and get constrained back

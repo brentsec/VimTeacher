@@ -40,7 +40,6 @@ function M.new(deps)
 	local function start_elapsed_timer()
 		stop_elapsed_timer()
 		state.challenge_load_time = vim.loop.hrtime()
-		buffer.update_timer(state.buf, 0)
 		state.elapsed_timer = vim.fn.timer_start(1000, function()
 			vim.schedule(update_timer_display)
 		end, { ["repeat"] = -1 })
@@ -153,7 +152,6 @@ function M.new(deps)
 		state.challenge_num = state.challenge_num + 1
 		state_mod.transition(nil, "playing")
 		state.move_count = 0
-		state.timer_start = nil
 		state.dwell_pending = false
 
 		local challenge = state.lesson.generate_challenge(state.buf, highlight.ns_target)
@@ -161,6 +159,8 @@ function M.new(deps)
 			deps.apply_phase(challenge, 1)
 		end
 		state.current_challenge = challenge
+		state.timer_start = vim.loop.hrtime()
+		start_elapsed_timer()
 
 		local start = challenge.start_pos or { row = 0, col = 0 }
 		if state.lesson.compute_optimal then

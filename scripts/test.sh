@@ -14,6 +14,7 @@ echo ""
 TESTS=(
   "test_snippets.lua"
   "test_keymaps.lua"
+  "test_timing_smoke.lua"
   "test_getting_started_integration.lua"
   "test_validate.lua"
   "test_highlight.lua"

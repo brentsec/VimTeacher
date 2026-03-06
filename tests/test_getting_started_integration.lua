@@ -29,6 +29,22 @@ local remaps = integration.install_normal_remaps(remap_pairs)
 local remap_for = remaps.remap_for
 integration.configure_adaptive(vimteacher)
 
+local function assert_recorded_time(label, min_recorded_secs)
+	if not min_recorded_secs then
+		return
+	end
+	local state = integration.runtime_state(vimteacher)
+	assert_test(
+		#state.session_challenges >= 1 and state.session_challenges[1].time >= min_recorded_secs,
+		label
+			.. " should include pre-action delay in challenge time (expected >= "
+			.. min_recorded_secs
+			.. "s, got "
+			.. string.format("%.3f", (state.session_challenges[1] and state.session_challenges[1].time) or -1)
+			.. "s)"
+	)
+end
+
 local function run_intro_modes_case()
 	vimteacher.start("intro_modes")
 
@@ -116,6 +132,11 @@ local function run_basic_movement_case(case)
 			cur0[1] == expected_start_row and cur0[2] == case.start_pos.col,
 			"basic_movement should place cursor at deterministic start for " .. case.label
 		)
+		if case.delay_ms then
+			vim.wait(case.delay_ms, function()
+				return false
+			end, case.delay_ms)
+		end
 
 		integration.send_key(case.canonical)
 		integration.wait_for(function()
@@ -141,6 +162,7 @@ local function run_basic_movement_case(case)
 		assert_test(integration.wait_for(function()
 			return integration.buf_has_text("Challenge 2/10")
 		end, 1500), "basic_movement should advance after remapped " .. case.remap .. " for " .. case.label)
+		assert_recorded_time("basic_movement " .. case.label, case.min_recorded_secs)
 	end)
 end
 
@@ -233,6 +255,11 @@ local function run_insert_mode_case(case)
 			after_blocked_cursor[1] == cur0[1] and after_blocked_cursor[2] == cur0[2],
 			"canonical " .. case.challenge.key .. " should not move the cursor for " .. case.label
 		)
+		if case.delay_ms then
+			vim.wait(case.delay_ms, function()
+				return false
+			end, case.delay_ms)
+		end
 
 		integration.perform_insert_sequence(case.remap, case.challenge.char)
 		assert_test(integration.wait_for(function()
@@ -241,6 +268,7 @@ local function run_insert_mode_case(case)
 		assert_test(integration.wait_for(function()
 			return integration.buf_has_text("Challenge 2/10")
 		end, 1500), "insert_mode should advance after correct remapped edit for " .. case.label)
+		assert_recorded_time("insert_mode " .. case.label, case.min_recorded_secs)
 	end)
 end
 
@@ -253,6 +281,8 @@ for _, case in ipairs({
 		remap = remap_for["h"],
 		start_pos = { row = 1, col = 1 },
 		target = { row = 1, col = 0 },
+		delay_ms = 1100,
+		min_recorded_secs = 1.0,
 	},
 	{
 		label = "down",
@@ -312,6 +342,8 @@ run_insert_mode_case({
 	label = "insert before cursor",
 	remap = remap_for["i"],
 	expected_line = "testing",
+	delay_ms = 1100,
+	min_recorded_secs = 1.0,
 	challenge = {
 		snippet_lines = { "esting" },
 		expected_lines = { "testing" },
