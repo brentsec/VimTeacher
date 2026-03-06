@@ -23,6 +23,40 @@ M.hint_lines = {
 	"[yy] Yank line  [p] Paste below  [P] Paste above  [hjkl] Navigate",
 }
 
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local yy = key_display["yy"] or "yy"
+	local p = key_display["p"] or "p"
+	local P = key_display["P"] or "P"
+	return string.format("Copy & Paste: %s, %s, %s", yy, p, P)
+end
+
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local yy = key_display["yy"] or "yy"
+	local p = key_display["p"] or "p"
+	local P = key_display["P"] or "P"
+	return {
+		"Copy and paste entire lines:",
+		"",
+		string.format("  %s = yank (copy) the current line", yy),
+		string.format("  %s  = paste below the current line", p),
+		string.format("  %s  = paste above the current line", P),
+		"",
+		"Navigate to the green target line, yank it with yy, then paste where needed.",
+	}
+end
+
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local yy = key_display["yy"] or "yy"
+	local p = key_display["p"] or "p"
+	local P = key_display["P"] or "P"
+	return {
+		string.format("[%s] Yank line  [%s] Paste below  [%s] Paste above  [hjkl] Navigate", yy, p, P),
+	}
+end
+
 -- Pre-defined challenge pool.
 -- Each challenge has:
 -- - snippet_lines: starting code (N lines)

@@ -53,7 +53,12 @@ local GLOBAL_ADAPTIVE_KEYS = {
 	"dw",
 	"dW",
 	"dd",
+	"dj",
+	"dk",
+	"d2j",
+	"d2k",
 	"D",
+	"yy",
 	"p",
 	"P",
 	"gg",
@@ -64,6 +69,8 @@ local GLOBAL_ADAPTIVE_KEYS = {
 	"N",
 	"*",
 	"#",
+	"<C-u>",
+	"<C-d>",
 	"v",
 	"V",
 	".",
@@ -134,6 +141,51 @@ local function escape_lua_pattern(s)
 	return s:gsub("(%W)", "%%%1")
 end
 
+local function is_word_char(ch)
+	return type(ch) == "string" and ch:match("[%w_]") ~= nil
+end
+
+local function prev_nonspace_char(text, idx)
+	for i = idx, 1, -1 do
+		local ch = text:sub(i, i)
+		if ch ~= " " and ch ~= "\t" then
+			return ch
+		end
+	end
+	return nil
+end
+
+local function next_nonspace_char(text, idx)
+	for i = idx, #text do
+		local ch = text:sub(i, i)
+		if ch ~= " " and ch ~= "\t" then
+			return ch
+		end
+	end
+	return nil
+end
+
+local function replace_single_alpha_token(text, canonical, display)
+	local escaped = escape_lua_pattern(canonical)
+	return (text:gsub("()" .. escaped .. "()", function(start_pos, end_pos)
+		local prev_char = start_pos > 1 and text:sub(start_pos - 1, start_pos - 1) or nil
+		local next_char = end_pos <= #text and text:sub(end_pos, end_pos) or nil
+		if is_word_char(prev_char) or is_word_char(next_char) then
+			return canonical
+		end
+
+		local prev_nonspace = prev_nonspace_char(text, start_pos - 1)
+		local next_nonspace = next_nonspace_char(text, end_pos)
+		local prev_ok = prev_nonspace == nil or prev_nonspace:match("[%[%(%{:,/]") ~= nil
+		local next_ok = next_nonspace == nil or next_nonspace:match("[%],:/=%)%}]") ~= nil
+		if prev_ok and next_ok then
+			return display
+		end
+
+		return canonical
+	end))
+end
+
 local function apply_key_display_to_text(text, key_display)
 	if type(text) ~= "string" then
 		return text
@@ -157,7 +209,9 @@ local function apply_key_display_to_text(text, key_display)
 			local escaped = escape_lua_pattern(canonical)
 			out = out:gsub("%[" .. escaped .. "%]", "[" .. display .. "]")
 			local single_alpha = canonical:match("^[%a]$") ~= nil
-			if (not single_alpha) and canonical:match("^[%w]+$") then
+			if single_alpha then
+				out = replace_single_alpha_token(out, canonical, display)
+			elseif canonical:match("^[%w]+$") then
 				out = out:gsub("(%f[%w])" .. escaped .. "(%f[^%w])", display)
 			end
 		end
@@ -1429,12 +1483,20 @@ start_lesson = function(lesson_name)
 	-- Remap gg/G to snippet-relative jumps
 	-- (prevents cursor escaping to buffer header/footer; reads state at keypress time)
 	local nav_opts = { buffer = state.buf, noremap = true, silent = true }
-	vim.keymap.set("n", "gg", function()
+	local top_jump_key = (state.key_display and state.key_display["gg"]) or "gg"
+	local bottom_jump_key = (state.key_display and state.key_display["G"]) or "G"
+	for _, key in ipairs({ "gg", top_jump_key }) do
+		pcall(vim.keymap.del, "n", key, { buffer = state.buf })
+	end
+	for _, key in ipairs({ "G", bottom_jump_key }) do
+		pcall(vim.keymap.del, "n", key, { buffer = state.buf })
+	end
+	vim.keymap.set("n", top_jump_key, function()
 		if state.snippet_offset and state.win and vim.api.nvim_win_is_valid(state.win) then
 			vim.api.nvim_win_set_cursor(state.win, { state.snippet_offset + 1, 0 })
 		end
 	end, nav_opts)
-	vim.keymap.set("n", "G", function()
+	vim.keymap.set("n", bottom_jump_key, function()
 		if state.snippet_end and state.win and vim.api.nvim_win_is_valid(state.win) then
 			vim.api.nvim_win_set_cursor(state.win, { state.snippet_end + 1, 0 })
 		end

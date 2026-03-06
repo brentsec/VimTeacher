@@ -15,10 +15,21 @@ function M.send_key(key)
 	vim.api.nvim_feedkeys(keys, "mxt", false)
 end
 
+function M.send_sequence(sequence, mode)
+	local keys = vim.api.nvim_replace_termcodes(sequence, true, false, true)
+	vim.api.nvim_feedkeys(keys, mode or "mxt", false)
+end
+
 function M.fire_cursor_moved(bufnr)
 	-- Headless Neovim test runs do not emit CursorMoved from fed keys.
 	-- Fire the real autocmd so lesson completion still goes through production logic.
 	vim.api.nvim_exec_autocmds("CursorMoved", { buffer = bufnr or 0 })
+end
+
+function M.fire_text_changed(bufnr)
+	-- Headless Neovim does not reliably emit TextChanged for fed Normal-mode edits.
+	-- Fire the real autocmd so lesson completion still goes through production logic.
+	vim.api.nvim_exec_autocmds("TextChanged", { buffer = bufnr or 0 })
 end
 
 function M.current_cursor()
@@ -49,15 +60,55 @@ function M.find_line_index(needle)
 	return nil
 end
 
+function M.runtime_state(vimteacher)
+	local _, state = debug.getupvalue(vimteacher.start, 1)
+	return state
+end
+
+function M.current_snippet_lines(vimteacher, count)
+	local state = M.runtime_state(vimteacher)
+	local line_count = count or ((state.snippet_end - state.snippet_offset) + 1)
+	return vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_offset + line_count, false)
+end
+
+function M.snippet_matches(vimteacher, expected_lines)
+	local actual = M.current_snippet_lines(vimteacher, #expected_lines)
+	if #actual ~= #expected_lines then
+		return false
+	end
+	for idx, expected in ipairs(expected_lines) do
+		if actual[idx] ~= expected then
+			return false
+		end
+	end
+	return true
+end
+
 function M.perform_insert_sequence(insert_key, text)
-	local insert_keys = vim.api.nvim_replace_termcodes(insert_key, true, false, true)
-	vim.api.nvim_feedkeys(insert_keys, "m", false)
+	M.send_sequence(insert_key, "m")
 	M.wait_for(function()
 		return true
 	end, 40, 20)
 
-	local typed = vim.api.nvim_replace_termcodes(text .. "<Esc>", true, false, true)
-	vim.api.nvim_feedkeys(typed, "mtx", false)
+	M.send_sequence(text .. "<Esc>", "mtx")
+	M.wait_for(function()
+		return true
+	end, 80, 20)
+end
+
+function M.perform_prompt_sequence(command_key, text, terminator)
+	M.send_sequence(command_key, "m")
+	M.wait_for(function()
+		return true
+	end, 40, 20)
+	M.send_sequence(text .. (terminator or "<CR>"), "mtx")
+	M.wait_for(function()
+		return true
+	end, 80, 20)
+end
+
+function M.perform_normal_with_payload(command_key, text)
+	M.send_sequence(command_key .. text, "mxt")
 	M.wait_for(function()
 		return true
 	end, 80, 20)
@@ -86,7 +137,7 @@ function M.build_remap_index(remap_pairs)
 	}
 end
 
-function M.install_normal_remaps(remap_pairs)
+function M.install_command_maps(remap_pairs)
 	local remaps = M.build_remap_index(remap_pairs)
 	M.clear_maps(remaps.cleanup_keys)
 
@@ -96,6 +147,10 @@ function M.install_normal_remaps(remap_pairs)
 	end
 
 	return remaps
+end
+
+function M.install_normal_remaps(remap_pairs)
+	return M.install_command_maps(remap_pairs)
 end
 
 function M.configure_adaptive(vimteacher)

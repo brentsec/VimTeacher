@@ -25,6 +25,48 @@ M.hint_lines = {
 	"[dj] Delete 2 lines down  [dk] Delete 2 lines up  [d2j] Delete 3 down  [d2k] Delete 3 up",
 }
 
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local dj = key_display["dj"] or "dj"
+	local dk = key_display["dk"] or "dk"
+	return string.format("Multi-Line Delete: %s, %s", dj, dk)
+end
+
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local dj = key_display["dj"] or "dj"
+	local dk = key_display["dk"] or "dk"
+	local d2j = key_display["d2j"] or "d2j"
+	local d2k = key_display["d2k"] or "d2k"
+	return {
+		"Delete multiple lines at once with d + motion:",
+		"",
+		string.format("  %s  = delete current line and line below (2 lines)", dj),
+		string.format("  %s  = delete current line and line above (2 lines)", dk),
+		string.format("  %s = delete current line and 2 lines below (3 lines)", d2j),
+		string.format("  %s = delete current line and 2 lines above (3 lines)", d2k),
+		"",
+		"Navigate to the green target and use the indicated key sequence.",
+	}
+end
+
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local dj = key_display["dj"] or "dj"
+	local dk = key_display["dk"] or "dk"
+	local d2j = key_display["d2j"] or "d2j"
+	local d2k = key_display["d2k"] or "d2k"
+	return {
+		string.format(
+			"[%s] Delete 2 lines down  [%s] Delete 2 lines up  [%s] Delete 3 down  [%s] Delete 3 up",
+			dj,
+			dk,
+			d2j,
+			d2k
+		),
+	}
+end
+
 -- Pre-defined challenge pool with larger snippets to accommodate multi-line deletions.
 -- Each challenge removes multiple lines from the snippet.
 local CHALLENGES = {

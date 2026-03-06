@@ -39,12 +39,32 @@ local function detect_distro()
 	return "neovim"
 end
 
+local function normalize_special_keys(s)
+	if type(s) ~= "string" then
+		return s
+	end
+	return s:gsub("<[^>]+>", function(tag)
+		return tag:lower()
+	end)
+end
+
+local function normalize_key_string(s)
+	if type(s) ~= "string" then
+		return s
+	end
+	return normalize_special_keys(s:gsub("%s+", ""))
+end
+
+local function keys_equivalent(lhs, rhs)
+	return normalize_key_string(lhs) == normalize_key_string(rhs)
+end
+
 local function is_simple_rhs_match(rhs, canonical)
 	if type(rhs) ~= "string" or rhs == "" then
 		return false
 	end
-	local canonical_norm = canonical:gsub("%s+", ""):lower()
-	local rhs_norm = rhs:gsub("%s+", ""):lower()
+	local canonical_norm = normalize_key_string(canonical)
+	local rhs_norm = normalize_key_string(rhs)
 	if rhs_norm == canonical_norm then
 		return true
 	end
@@ -73,7 +93,7 @@ local function score_candidate(lhs, canonical, source, distro)
 	if source == "override" then
 		score = score + 10000
 	end
-	if lhs == canonical then
+	if keys_equivalent(lhs, canonical) then
 		score = score + 700
 	end
 	if lhs:find("<", 1, true) then
@@ -97,7 +117,7 @@ end
 
 local function canonical_mapped_away(maps, canonical)
 	for _, map in ipairs(maps) do
-		if map.lhs == canonical then
+		if keys_equivalent(map.lhs, canonical) then
 			if map.expr == 1 or map.callback ~= nil then
 				return true
 			end

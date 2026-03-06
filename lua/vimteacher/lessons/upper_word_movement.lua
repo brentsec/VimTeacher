@@ -26,6 +26,44 @@ M.hint_lines = {
 	"[W] Next WORD  [E] End of WORD  [B] Back a WORD — Move to the green target",
 }
 
+function M.get_title(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local w = key_display["W"] or "W"
+	local e = key_display["E"] or "E"
+	local b = key_display["B"] or "B"
+	return string.format("Moving by WORDs: %s, %s, %s", w, e, b)
+end
+
+function M.get_description(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local w = key_display["W"] or "W"
+	local e = key_display["E"] or "E"
+	local b = key_display["B"] or "B"
+	return {
+		"Uppercase WORD motions treat anything between spaces as one WORD.",
+		"",
+		string.format("  %s = next WORD    %s = end of WORD    %s = previous WORD", w, e, b),
+		"",
+		"A WORD is any group of non-space characters. Unlike w/e/b,",
+		"symbols don't create boundaries:",
+		"",
+		"  user.getName()   →  1 WORD  (w/e/b sees 6 words)",
+		"  arr[idx] += 1    →  3 WORDs (w/e/b sees 7 words)",
+		"",
+		"Move your cursor to the green highlighted target below.",
+	}
+end
+
+function M.get_hint_lines(ctx)
+	local key_display = (ctx and ctx.key_display) or {}
+	local w = key_display["W"] or "W"
+	local e = key_display["E"] or "E"
+	local b = key_display["B"] or "B"
+	return {
+		string.format("[%s] Next WORD  [%s] End of WORD  [%s] Back a WORD — Move to the green target", w, e, b),
+	}
+end
+
 M.dwell_time = 200 -- ms; same as word_movement
 
 -- Module-level snippet storage so compute_optimal can access the current snippet
