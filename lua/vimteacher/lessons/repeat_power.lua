@@ -1,48 +1,52 @@
 -- vimteacher/lessons/repeat_power.lua
 -- Repeat command lesson: perform a delete, then repeat it with dot.
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local challenge_utils = require("vimteacher.lessons.challenge_utils")
 local pool = require("vimteacher.lessons.pool")
 local optimal = require("vimteacher.optimal")
 
-M.title = "Repeat Power: . and counts"
-M.type = "insert"
-M.allowed_keys = {}
-M.allowed_modify_keys = { "x", "." }
-M.allowed_nav_keys = {
-	"h",
-	"j",
-	"k",
-	"l",
-	"w",
-	"b",
-	"e",
-	"0",
-	"1",
-	"2",
-	"3",
-	"4",
-	"5",
-	"6",
-	"7",
-	"8",
-	"9",
-}
-M.challenges_required = 10
-
-M.description = {
-	"The dot command repeats your last change.",
-	"That means you can fix one spot manually, then apply the same edit again",
-	"without retyping the full command sequence each time.",
-	"Each challenge is two-step:",
-	"1) do the first delete on the highlighted target (x or 3x),",
-	"2) move to the new target and press . to repeat it.",
-}
-
-M.hint_lines = {
-	"[x] Delete char  [3x] Delete 3 chars  [.] Repeat last change",
-}
+local M = base.define({
+	title_template = "Repeat Power: {{repeat_cmd}} and counts",
+	type = "insert",
+	allowed_keys = {},
+	allowed_modify_keys = { "x", "." },
+	allowed_nav_keys = {
+		"h",
+		"j",
+		"k",
+		"l",
+		"w",
+		"b",
+		"e",
+		"0",
+		"1",
+		"2",
+		"3",
+		"4",
+		"5",
+		"6",
+		"7",
+		"8",
+		"9",
+	},
+	challenges_required = 10,
+	template_tokens = {
+		x = "x",
+		repeat_cmd = ".",
+	},
+	description_template = {
+		"The dot command repeats your last change.",
+		"That means you can fix one spot manually, then apply the same edit again",
+		"without retyping the full command sequence each time.",
+		"Each challenge is two-step:",
+		"1) do the first delete on the highlighted target ({{x}} or 3{{x}}),",
+		"2) move to the new target and press {{repeat_cmd}} to repeat it.",
+	},
+	hint_template = {
+		"[{{x}}] Delete char  [3{{x}}] Delete 3 chars  [{{repeat_cmd}}] Repeat last change",
+	},
+})
 
 --- @param line string
 --- @param col number 0-indexed

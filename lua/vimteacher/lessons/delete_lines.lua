@@ -1,30 +1,34 @@
 -- vimteacher/lessons/delete_lines.lua
 -- Delete lines lesson: dd (delete whole line) and D (delete to end of line)
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Delete Lines: dd, D"
-M.type = "insert"
-M.allowed_keys = {}
-M.allowed_modify_keys = { "d", "dd", "D" }
-M.challenges_required = 10
-
-M.description = {
-	"Delete entire lines or parts of lines:",
-	"",
-	"  dd = delete the whole line (line disappears entirely)",
-	"  D  = delete from cursor to end of line (line stays)",
-	"",
-	"  dd is actually d + d — the operator doubled acts on",
-	"  the whole line. This pattern works for other operators too.",
-	"",
-	"Deleted text goes to your clipboard for pasting later.",
-	"Navigate to the target and use the indicated key.",
-}
-
-M.hint_lines = {
-	"[dd] Delete line  [D] Delete to end of line  [q] Menu",
-}
+local M = base.define({
+	title_template = "Delete Lines: {{dd}}, {{D}}",
+	type = "insert",
+	allowed_keys = {},
+	allowed_modify_keys = { "d", "dd", "D" },
+	challenges_required = 10,
+	template_tokens = {
+		dd = "dd",
+		D = "D",
+	},
+	description_template = {
+		"Delete entire lines or parts of lines:",
+		"",
+		"  {{dd}} = delete the whole line (line disappears entirely)",
+		"  {{D}}  = delete from cursor to end of line (line stays)",
+		"",
+		"  {{dd}} is actually d + d — the operator doubled acts on",
+		"  the whole line. This pattern works for other operators too.",
+		"",
+		"Deleted text goes to your clipboard for pasting later.",
+		"Navigate to the target and use the indicated key.",
+	},
+	hint_template = {
+		"[{{dd}}] Delete line  [{{D}}] Delete to end of line  [q] Menu",
+	},
+})
 
 -- Pre-defined challenge pool
 -- dd challenges: delete whole line at target.row (expected_lines has 1 fewer line)

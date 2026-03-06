@@ -1,25 +1,31 @@
 -- vimteacher/lessons/text_objects_mega_review.lua
 -- Ninth lesson: Text Objects Mega Review - all types mixed
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Text Objects: Mega Review"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
-	"Mixed review of all text object commands:",
-	"  d/c + i/a + brackets/quotes/words/paragraphs",
-	"",
-	"Navigate to the highlighted target and execute the command shown above.",
-}
-
-M.hint_lines = {
-	"Execute the text object command on the highlighted target  [q] Menu",
-}
+local M = base.define({
+	title_template = "Text Objects: Mega Review",
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	template_tokens = {
+		d = "d",
+		c = "c",
+		i = "i",
+		a = "a",
+	},
+	description_template = {
+		"Mixed review of all text object commands:",
+		"  {{d}}/{{c}} + {{i}}/{{a}} + brackets/quotes/words/paragraphs",
+		"",
+		"Navigate to the highlighted target and execute the command shown above.",
+	},
+	hint_template = {
+		"Execute the text object command on the highlighted target  [q] Menu",
+	},
+})
 
 -- Pre-defined challenge pool mixing all text object types
 local CHALLENGES = {

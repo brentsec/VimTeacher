@@ -1,29 +1,34 @@
 -- vimteacher/lessons/delete_inside_brackets.lua
 -- Lesson: Delete inside brackets with di(, di[, di{
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Delete Inside: di(, di[, di{"
-M.type = "insert"
-M.allowed_keys = {}
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
-	"Delete text inside brackets without removing the brackets:",
-	"",
-	"  di(  = delete inside parentheses",
-	"  di[  = delete inside square brackets",
-	"  di{  = delete inside curly braces",
-	"",
-	"Place cursor anywhere inside the brackets and execute the command.",
-	"The brackets remain, but their contents are deleted.",
-}
-
-M.hint_lines = {
-	"[di(] Delete inside ()  [di[] Delete inside []  [di{] Delete inside {}",
-}
+local M = base.define({
+	title_template = "Delete Inside: {{di_paren}}, {{di_bracket}}, {{di_brace}}",
+	type = "insert",
+	allowed_keys = {},
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	template_tokens = {
+		di_paren = "di(",
+		di_bracket = "di[",
+		di_brace = "di{",
+	},
+	description_template = {
+		"Delete text inside brackets without removing the brackets:",
+		"",
+		"  {{di_paren}}  = delete inside parentheses",
+		"  {{di_bracket}}  = delete inside square brackets",
+		"  {{di_brace}}  = delete inside curly braces",
+		"",
+		"Place cursor anywhere inside the brackets and execute the command.",
+		"The brackets remain, but their contents are deleted.",
+	},
+	hint_template = {
+		"[{{di_paren}}] Delete inside ()  [{{di_bracket}}] Delete inside []  [{{di_brace}}] Delete inside {}",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- Each challenge targets a specific bracket pair on a line.

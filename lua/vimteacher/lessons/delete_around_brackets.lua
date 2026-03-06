@@ -1,27 +1,32 @@
 -- vimteacher/lessons/delete_around_brackets.lua
 -- Lesson: Delete Around brackets with da(, da[, da{
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Delete Around: da(, da[, da{"
-M.type = "insert"
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
-	"Delete bracket pairs AND their contents with 'da' commands:",
-	"",
-	"  da( = delete around parentheses: removes () and everything inside",
-	"  da[ = delete around square brackets: removes [] and everything inside",
-	"  da{ = delete around curly braces: removes {} and everything inside",
-	"",
-	"Navigate to the green target inside the brackets and use the indicated command.",
-}
-
-M.hint_lines = {
-	"[da(] Delete around ()  [da[] Delete around []  [da{] Delete around {}",
-}
+local M = base.define({
+	title_template = "Delete Around: {{da_paren}}, {{da_bracket}}, {{da_brace}}",
+	type = "insert",
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	template_tokens = {
+		da_paren = "da(",
+		da_bracket = "da[",
+		da_brace = "da{",
+	},
+	description_template = {
+		"Delete bracket pairs AND their contents with 'da' commands:",
+		"",
+		"  {{da_paren}} = delete around parentheses: removes () and everything inside",
+		"  {{da_bracket}} = delete around square brackets: removes [] and everything inside",
+		"  {{da_brace}} = delete around curly braces: removes {} and everything inside",
+		"",
+		"Navigate to the green target inside the brackets and use the indicated command.",
+	},
+	hint_template = {
+		"[{{da_paren}}] Delete around ()  [{{da_bracket}}] Delete around []  [{{da_brace}}] Delete around {}",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- da(, da[, da{ delete the bracket pair AND all contents between them

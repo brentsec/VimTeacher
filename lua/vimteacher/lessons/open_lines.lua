@@ -1,26 +1,31 @@
 -- vimteacher/lessons/open_lines.lua
 -- Sixth lesson: Opening new lines with o and O
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Open New Lines: o, O"
-M.type = "insert"
-M.allowed_keys = { "o", "O" }
-M.challenges_required = 10
-
-M.description = {
-	"The open commands create a new line and enter insert mode.",
-	"",
-	"  o = open a new line BELOW the cursor",
-	"  O = open a new line ABOVE the cursor",
-	"",
-	"Navigate to the highlighted line, press o or O to add the",
-	"missing line, type the text, then press <Esc>.",
-}
-
-M.hint_lines = {
-	"[o] Open below  [O] Open above  [Esc] Return to normal mode",
-}
+local M = base.define({
+	title_template = "Open New Lines: {{o}}, {{O}}",
+	type = "insert",
+	allowed_keys = { "o", "O" },
+	challenges_required = 10,
+	template_tokens = {
+		o = "o",
+		O = "O",
+		Esc = "Esc",
+	},
+	description_template = {
+		"The open commands create a new line and enter insert mode.",
+		"",
+		"  {{o}} = open a new line BELOW the cursor",
+		"  {{O}} = open a new line ABOVE the cursor",
+		"",
+		"Navigate to the highlighted line, press {{o}} or {{O}} to add the",
+		"missing line, type the text, then press <{{Esc}}>.",
+	},
+	hint_template = {
+		"[{{o}}] Open below  [{{O}}] Open above  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool. Each challenge has a "broken" snippet (missing a line)
 -- and the expected fix (with the line present).

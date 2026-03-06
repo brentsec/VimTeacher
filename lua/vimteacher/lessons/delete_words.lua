@@ -1,31 +1,36 @@
 -- vimteacher/lessons/delete_words.lua
 -- Lesson: Delete Words with dw and dW
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Delete Words: dw, dW"
-M.type = "insert"
-M.allowed_keys = {}
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
-	"The delete operator (d) removes text. Combine it with a motion:",
-	"",
-	"  dw  = delete from cursor to start of next word",
-	"  dW  = delete from cursor to start of next WORD",
-	"       (a WORD is everything until the next space)",
-	"",
-	"Tip: Deleted text is saved to your clipboard (like cut).",
-	"If you start d by mistake, press Esc to cancel.",
-	"",
-	"Navigate to the target and delete the highlighted word.",
-}
-
-M.hint_lines = {
-	"[dw] Delete word  [dW] Delete WORD  [Esc] Cancel operator",
-}
+local M = base.define({
+	title_template = "Delete Words: {{dw}}, {{dW}}",
+	type = "insert",
+	allowed_keys = {},
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	template_tokens = {
+		dw = "dw",
+		dW = "dW",
+		Esc = "Esc",
+	},
+	description_template = {
+		"The delete operator (d) removes text. Combine it with a motion:",
+		"",
+		"  {{dw}}  = delete from cursor to start of next word",
+		"  {{dW}}  = delete from cursor to start of next WORD",
+		"           (a WORD is everything until the next space)",
+		"",
+		"Tip: Deleted text is saved to your clipboard (like cut).",
+		"If you start d by mistake, press {{Esc}} to cancel.",
+		"",
+		"Navigate to the target and delete the highlighted word.",
+	},
+	hint_template = {
+		"[{{dw}}] Delete word  [{{dW}}] Delete WORD  [{{Esc}}] Cancel operator",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- dw: deletes from cursor to next word boundary (word chars + trailing space)

@@ -104,15 +104,15 @@ function M.record_session(all_stats, lesson_name, total_time, accuracy)
 	return ls
 end
 
+function M.clamp_speed_pct(pct)
+	return M.clamp_pct(pct)
+end
+
 --- Calculate speed percentage.
 --- 100% means at or better than personal-best lesson time.
 --- @param best_time number|nil Best recorded lesson time
 --- @param current_time number Current lesson time
 --- @return number Speed percentage (0-100, capped)
-function M.clamp_speed_pct(pct)
-	return M.clamp_pct(pct)
-end
-
 function M.calc_speed_pct(best_time, current_time)
 	if not best_time or best_time <= 0 or current_time <= 0 then
 		return 100

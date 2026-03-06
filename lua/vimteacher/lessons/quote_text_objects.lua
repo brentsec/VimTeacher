@@ -1,31 +1,41 @@
 -- vimteacher/lessons/quote_text_objects.lua
 -- Quote text objects: di", da", ci", ca" (and single quote variants)
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = 'Quote Objects: di", ci", da", ca"'
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
-	"Act on text inside or around quotation marks:",
-	"",
-	'  di" = delete inside double quotes: "hello" becomes ""',
-	'  da" = delete around double quotes: removes quotes too',
-	'  ci" = change inside quotes: clears content, type replacement',
-	'  ca" = change around quotes: removes quotes, type replacement',
-	"",
-	"  Same keys work with single quotes: di' da' ci' ca'",
-	"",
-	"Navigate inside the quotes and use the indicated command.",
-}
-
-M.hint_lines = {
-	'[di"] Del inside  [da"] Del around  [ci"] Change inside  [ca"] Change around',
-}
+local M = base.define({
+	title_template = 'Quote Objects: {{di_quote}}, {{ci_quote}}, {{da_quote}}, {{ca_quote}}',
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	template_tokens = {
+		di_quote = 'di"',
+		da_quote = 'da"',
+		ci_quote = 'ci"',
+		ca_quote = 'ca"',
+		di_squote = "di'",
+		da_squote = "da'",
+		ci_squote = "ci'",
+		ca_squote = "ca'",
+	},
+	description_template = {
+		"Act on text inside or around quotation marks:",
+		"",
+		'  {{di_quote}} = delete inside double quotes: "hello" becomes ""',
+		'  {{da_quote}} = delete around double quotes: removes quotes too',
+		'  {{ci_quote}} = change inside quotes: clears content, type replacement',
+		'  {{ca_quote}} = change around quotes: removes quotes, type replacement',
+		"",
+		"  Same keys work with single quotes: {{di_squote}} {{da_squote}} {{ci_squote}} {{ca_squote}}",
+		"",
+		"Navigate inside the quotes and use the indicated command.",
+	},
+	hint_template = {
+		'[{{di_quote}}] Del inside  [{{da_quote}}] Del around  [{{ci_quote}}] Change inside  [{{ca_quote}}] Change around',
+	},
+})
 
 -- Pre-defined challenge pool.
 -- di": delete inside quotes (keep quotes)

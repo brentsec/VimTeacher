@@ -1,27 +1,33 @@
 -- vimteacher/lessons/change_around_brackets.lua
 -- Lesson: Change around brackets with ca(, ca[, ca{
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Change Around: ca(, ca[, ca{"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.challenges_required = 10
-
-M.description = {
-	"Change around brackets deletes brackets and their contents:",
-	"",
-	"  ca( = delete parentheses and contents, enter insert mode",
-	"  ca[ = delete square brackets and contents, enter insert mode",
-	"  ca{ = delete curly braces and contents, enter insert mode",
-	"",
-	"Navigate to the green target inside the brackets and use the indicated key.",
-}
-
-M.hint_lines = {
-	"[ca(] Change around (  [ca[] Change around [  [ca{] Change around {  [Esc] Return to normal mode",
-}
+local M = base.define({
+	title_template = "Change Around: {{ca_paren}}, {{ca_bracket}}, {{ca_brace}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	challenges_required = 10,
+	template_tokens = {
+		ca_paren = "ca(",
+		ca_bracket = "ca[",
+		ca_brace = "ca{",
+		Esc = "Esc",
+	},
+	description_template = {
+		"Change around brackets deletes brackets and their contents:",
+		"",
+		"  {{ca_paren}} = delete parentheses and contents, enter insert mode",
+		"  {{ca_bracket}} = delete square brackets and contents, enter insert mode",
+		"  {{ca_brace}} = delete curly braces and contents, enter insert mode",
+		"",
+		"Navigate to the green target inside the brackets and use the indicated key.",
+	},
+	hint_template = {
+		"[{{ca_paren}}] Change around (  [{{ca_bracket}}] Change around [  [{{ca_brace}}] Change around {  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- Each challenge has key (ca(, ca[, or ca{) and char (replacement text)

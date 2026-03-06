@@ -5,17 +5,27 @@ local keymaps = require("vimteacher.keymaps")
 local absolute_line_jumps = require("vimteacher.lessons.absolute_line_jumps")
 local basic_movement = require("vimteacher.lessons.basic_movement")
 local change_words = require("vimteacher.lessons.change_words")
+local delete_inside_brackets = require("vimteacher.lessons.delete_inside_brackets")
+local delete_words = require("vimteacher.lessons.delete_words")
 local intro_modes = require("vimteacher.lessons.intro_modes")
 local intro_operators = require("vimteacher.lessons.intro_operators")
+local intro_text_objects = require("vimteacher.lessons.intro_text_objects")
+local intro_visual_mode = require("vimteacher.lessons.intro_visual_mode")
+local line_inserts = require("vimteacher.lessons.line_inserts")
+local open_lines = require("vimteacher.lessons.open_lines")
+local paragraph_text_objects = require("vimteacher.lessons.paragraph_text_objects")
 local quick_word_search = require("vimteacher.lessons.quick_word_search")
 local repeat_search = require("vimteacher.lessons.repeat_search")
+local repeat_power = require("vimteacher.lessons.repeat_power")
 local search = require("vimteacher.lessons.search")
+local small_edits = require("vimteacher.lessons.small_edits")
 local switch_selection_ends = require("vimteacher.lessons.switch_selection_ends")
 local visual_line_mode = require("vimteacher.lessons.visual_line_mode")
 local visual_mode_operators = require("vimteacher.lessons.visual_mode_operators")
 local word_movement = require("vimteacher.lessons.word_movement")
 local word_text_objects = require("vimteacher.lessons.word_text_objects")
 local insert_mode = require("vimteacher.lessons.insert_mode")
+local quote_text_objects = require("vimteacher.lessons.quote_text_objects")
 
 local assertions = require("helpers.assertions")
 local counter = assertions.new_counter()
@@ -201,6 +211,7 @@ local command_pairs = {
 	{ canonical = "gg", remap = "Z" },
 	{ canonical = "G", remap = "X" },
 	{ canonical = "dw", remap = "zg" },
+	{ canonical = "dW", remap = "zG" },
 	{ canonical = "d$", remap = "zx" },
 	{ canonical = "u", remap = "zu" },
 	{ canonical = "c", remap = "zc" },
@@ -211,6 +222,10 @@ local command_pairs = {
 	{ canonical = "N", remap = "[" },
 	{ canonical = "*", remap = "gs" },
 	{ canonical = "#", remap = "gS" },
+	{ canonical = "di(", remap = "z(" },
+	{ canonical = "da(", remap = "z)" },
+	{ canonical = 'ci"', remap = 'x"' },
+	{ canonical = "dip", remap = "zpp" },
 	{ canonical = "diw", remap = "ziw" },
 	{ canonical = "daw", remap = "zaw" },
 	{ canonical = "ciw", remap = "xiw" },
@@ -252,6 +267,12 @@ assert_test(
 	"intro_operators hints should render remapped delete commands"
 )
 
+local delete_words_title = delete_words.get_title({ key_display = display_commands })
+assert_test(
+	delete_words_title:find("zg, zG", 1, true) ~= nil,
+	"delete_words title should render remapped dw/dW commands"
+)
+
 local change_words_title = change_words.get_title({ key_display = display_commands })
 assert_test(
 	change_words_title:find("cw, cW", 1, true) ~= nil,
@@ -281,6 +302,30 @@ assert_test(
 	"quick_word_search hints should render remapped */# commands"
 )
 
+local intro_text_hints = intro_text_objects.get_hint_lines({ key_display = display_commands })
+assert_test(
+	intro_text_hints[1]:find("%[z%(%] Delete inside %(%)") ~= nil and intro_text_hints[1]:find("%[x\"%] Change inside \"\"") ~= nil,
+	"intro_text_objects hints should render remapped text-object commands"
+)
+
+local delete_inside_title = delete_inside_brackets.get_title({ key_display = display_commands })
+assert_test(
+	delete_inside_title:find("z(, di[, di{", 1, true) ~= nil,
+	"delete_inside_brackets title should render remapped di( command"
+)
+
+local quote_title = quote_text_objects.get_title({ key_display = display_commands })
+assert_test(
+	quote_title:find('di", x", da", ca"', 1, true) ~= nil,
+	"quote_text_objects title should render remapped ci\" command"
+)
+
+local paragraph_hints = paragraph_text_objects.get_hint_lines({ key_display = display_commands })
+assert_test(
+	paragraph_hints[1]:find("%[zpp%] Del block") ~= nil,
+	"paragraph_text_objects hints should render remapped dip command"
+)
+
 local word_objects_title = word_text_objects.get_title({ key_display = display_commands })
 assert_test(
 	word_objects_title:find("ziw, zaw, xiw, xaw", 1, true) ~= nil,
@@ -306,6 +351,64 @@ assert_test(
 )
 
 clear_maps(command_cleanup_keys)
+keymaps.capture()
+
+local edit_pairs = {
+	{ canonical = "I", remap = "U" },
+	{ canonical = "A", remap = "P" },
+	{ canonical = "o", remap = "m" },
+	{ canonical = "O", remap = "M" },
+	{ canonical = "x", remap = "b" },
+	{ canonical = "r", remap = "n" },
+	{ canonical = "cl", remap = "fg" },
+	{ canonical = ".", remap = "t" },
+}
+local edit_cleanup_keys = {}
+for _, pair in ipairs(edit_pairs) do
+	edit_cleanup_keys[#edit_cleanup_keys + 1] = pair.canonical
+	edit_cleanup_keys[#edit_cleanup_keys + 1] = pair.remap
+end
+clear_maps(edit_cleanup_keys)
+for _, pair in ipairs(edit_pairs) do
+	vim.keymap.set("n", pair.canonical, "<Nop>", { noremap = true, silent = true })
+	vim.keymap.set("n", pair.remap, pair.canonical, { noremap = true, silent = true })
+end
+keymaps.capture()
+local display_edits = keymaps.resolve_many(vim.tbl_map(function(pair)
+	return pair.canonical
+end, edit_pairs))
+
+local line_insert_title = line_inserts.get_title({ key_display = display_edits })
+assert_test(
+	line_insert_title:find("U, P", 1, true) ~= nil,
+	"line_inserts title should render remapped I/A keys"
+)
+
+local open_lines_title = open_lines.get_title({ key_display = display_edits })
+assert_test(
+	open_lines_title:find("m, M", 1, true) ~= nil,
+	"open_lines title should render remapped o/O keys"
+)
+
+local small_edits_hints = small_edits.get_hint_lines({ key_display = display_edits })
+assert_test(
+	small_edits_hints[1]:find("%[b%] Delete char") ~= nil and small_edits_hints[1]:find("%[fg%] Change letter") ~= nil,
+	"small_edits hints should render remapped x/cl commands"
+)
+
+local repeat_hints_power = repeat_power.get_hint_lines({ key_display = display_edits })
+assert_test(
+	repeat_hints_power[1]:find("%[b%] Delete char") ~= nil and repeat_hints_power[1]:find("%[3b%] Delete 3 chars") ~= nil,
+	"repeat_power hints should render remapped x command in counted form"
+)
+
+local visual_intro_desc = intro_visual_mode.get_description({ key_display = display })
+assert_test(
+	table.concat(visual_intro_desc, "\n"):find("z/x/c/v", 1, true) ~= nil,
+	"intro_visual_mode description should render remapped movement keys"
+)
+
+clear_maps(edit_cleanup_keys)
 keymaps.capture()
 
 counter.finish("test_keymaps")

@@ -1,26 +1,31 @@
 -- vimteacher/lessons/line_inserts.lua
 -- Fifth lesson: Inserting at line boundaries with I and A
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 
-M.title = "Line Inserts: I, A"
-M.type = "insert"
-M.allowed_keys = { "I", "A" }
-M.challenges_required = 10
-
-M.description = {
-	"I and A are powerful shortcuts for inserting at line boundaries.",
-	"",
-	"  I = insert at the BEGINNING of the line (first non-blank)",
-	"  A = append at the END of the line",
-	"",
-	"Navigate to the target line, then use I or A to fix the code.",
-	"Press <Esc> when done.",
-}
-
-M.hint_lines = {
-	"[I] Insert at line start  [A] Append at line end  [Esc] Return to normal mode",
-}
+local M = base.define({
+	title_template = "Line Inserts: {{I}}, {{A}}",
+	type = "insert",
+	allowed_keys = { "I", "A" },
+	challenges_required = 10,
+	template_tokens = {
+		I = "I",
+		A = "A",
+		Esc = "Esc",
+	},
+	description_template = {
+		"{{I}} and {{A}} are powerful shortcuts for inserting at line boundaries.",
+		"",
+		"  {{I}} = insert at the BEGINNING of the line (first non-blank)",
+		"  {{A}} = append at the END of the line",
+		"",
+		"Navigate to the target line, then use {{I}} or {{A}} to fix the code.",
+		"Press <{{Esc}}> when done.",
+	},
+	hint_template = {
+		"[{{I}}] Insert at line start  [{{A}}] Append at line end  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool. Each challenge has a "broken" snippet and the expected fix.
 -- For `I` challenges: target is at first non-blank col (where I places cursor)

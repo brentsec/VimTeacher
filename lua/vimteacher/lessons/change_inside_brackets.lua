@@ -1,28 +1,34 @@
 -- vimteacher/lessons/change_inside_brackets.lua
 -- Lesson: Change inside brackets with ci(, ci[, ci{
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Change Inside: ci(, ci[, ci{"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.challenges_required = 10
-
-M.description = {
-	"Change text inside brackets:",
-	"",
-	"  ci(  = change inside parentheses",
-	"  ci[  = change inside square brackets",
-	"  ci{  = change inside curly braces",
-	"",
-	"Navigate to the target inside brackets and use the indicated key.",
-	"Brackets are kept; only the contents are replaced.",
-}
-
-M.hint_lines = {
-	"[ci(] Change inside ()  [ci[] Change inside []  [ci{] Change inside {}  [Esc] Return to normal mode",
-}
+local M = base.define({
+	title_template = "Change Inside: {{ci_paren}}, {{ci_bracket}}, {{ci_brace}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	challenges_required = 10,
+	template_tokens = {
+		ci_paren = "ci(",
+		ci_bracket = "ci[",
+		ci_brace = "ci{",
+		Esc = "Esc",
+	},
+	description_template = {
+		"Change text inside brackets:",
+		"",
+		"  {{ci_paren}}  = change inside parentheses",
+		"  {{ci_bracket}}  = change inside square brackets",
+		"  {{ci_brace}}  = change inside curly braces",
+		"",
+		"Navigate to the target inside brackets and use the indicated key.",
+		"Brackets are kept; only the contents are replaced.",
+	},
+	hint_template = {
+		"[{{ci_paren}}] Change inside ()  [{{ci_bracket}}] Change inside []  [{{ci_brace}}] Change inside {}  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- Each challenge has:

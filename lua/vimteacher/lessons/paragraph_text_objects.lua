@@ -1,32 +1,38 @@
 -- vimteacher/lessons/paragraph_text_objects.lua
 -- Eighth lesson: Paragraph text objects (dip, dap, cip, cap)
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Paragraph Objects: dip, dap"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = { "d" }
-M.challenges_required = 10
-
-M.description = {
-	"Act on entire blocks of text separated by blank lines:",
-	"",
-	"  dip = delete inner paragraph (the whole code block)",
-	"  dap = delete a paragraph (block + the blank line after it)",
-	"  cip = change inner paragraph (delete block, type replacement)",
-	"  cap = change a paragraph (delete block + blank line, type)",
-	"",
-	"  A 'paragraph' is a group of non-blank lines. Blank lines",
-	"  are the boundaries between paragraphs.",
-	"",
-	"Navigate into the target block and use the indicated command.",
-}
-
-M.hint_lines = {
-	"[dip] Del block  [dap] Del block+blank  [cip] Change block  [q] Menu",
-}
+local M = base.define({
+	title_template = "Paragraph Objects: {{dip}}, {{dap}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = { "d" },
+	challenges_required = 10,
+	template_tokens = {
+		dip = "dip",
+		dap = "dap",
+		cip = "cip",
+		cap = "cap",
+	},
+	description_template = {
+		"Act on entire blocks of text separated by blank lines:",
+		"",
+		"  {{dip}} = delete inner paragraph (the whole code block)",
+		"  {{dap}} = delete a paragraph (block + the blank line after it)",
+		"  {{cip}} = change inner paragraph (delete block, type replacement)",
+		"  {{cap}} = change a paragraph (delete block + blank line, type)",
+		"",
+		"  A 'paragraph' is a group of non-blank lines. Blank lines",
+		"  are the boundaries between paragraphs.",
+		"",
+		"Navigate into the target block and use the indicated command.",
+	},
+	hint_template = {
+		"[{{dip}}] Del block  [{{dap}}] Del block+blank  [{{cip}}] Change block  [q] Menu",
+	},
+})
 
 -- Pre-defined challenge pool with multi-paragraph snippets
 local CHALLENGES = {

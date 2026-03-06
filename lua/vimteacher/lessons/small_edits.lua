@@ -1,29 +1,35 @@
 -- vimteacher/lessons/small_edits.lua
 -- Seventh lesson: Character-level edits with cl, x, r
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Small Edits: cl, x, r"
-M.type = "insert"
-M.allowed_keys = { "c" }
-M.allowed_modify_keys = { "x", "r" }
-M.allowed_nav_keys = { "h", "j", "k", "l", "w", "b", "e" }
-M.challenges_required = 10
-
-M.description = {
-	"Quick character-level edits without full insert mode:",
-	"",
-	"  x  = delete the character under the cursor",
-	"  r  = replace character under cursor (type the replacement)",
-	"  cl = change letter: delete char and enter insert mode",
-	"",
-	"Navigate to the green target and use the indicated key.",
-}
-
-M.hint_lines = {
-	"[x] Delete char  [r] Replace char  [cl] Change letter  [Esc] Return to normal mode",
-}
+local M = base.define({
+	title_template = "Small Edits: {{cl}}, {{x}}, {{r}}",
+	type = "insert",
+	allowed_keys = { "c" },
+	allowed_modify_keys = { "x", "r" },
+	allowed_nav_keys = { "h", "j", "k", "l", "w", "b", "e" },
+	challenges_required = 10,
+	template_tokens = {
+		cl = "cl",
+		x = "x",
+		r = "r",
+		Esc = "Esc",
+	},
+	description_template = {
+		"Quick character-level edits without full insert mode:",
+		"",
+		"  {{x}}  = delete the character under the cursor",
+		"  {{r}}  = replace character under cursor (type the replacement)",
+		"  {{cl}} = change letter: delete char and enter insert mode",
+		"",
+		"Navigate to the green target and use the indicated key.",
+	},
+	hint_template = {
+		"[{{x}}] Delete char  [{{r}}] Replace char  [{{cl}}] Change letter  [{{Esc}}] Return to normal mode",
+	},
+})
 
 -- Pre-defined challenge pool.
 -- x: deletes the char at target — char field is the char being deleted (display only)

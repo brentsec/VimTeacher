@@ -12,12 +12,18 @@ local function resolve_token(tokens, name, key_display)
 		return key_display[token] or token
 	end
 	if type(token) == "table" then
+		local prefix = token.prefix or ""
+		local suffix = token.suffix or ""
 		local canonical = token.canonical or token.key or token[1]
 		local fallback = token.fallback or canonical or name
 		if canonical then
-			return key_display[canonical] or fallback
+			local resolved = key_display[canonical] or fallback
+			if prefix ~= "" or suffix ~= "" then
+				return prefix .. resolved .. suffix
+			end
+			return resolved
 		end
-		return fallback
+		return prefix .. fallback .. suffix
 	end
 	return tostring(token)
 end

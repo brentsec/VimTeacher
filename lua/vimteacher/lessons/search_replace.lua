@@ -1,32 +1,39 @@
 -- vimteacher/lessons/search_replace.lua
 -- Lesson: Search and replace with :s, :%s, ranges, and g flag
 
-local M = {}
+local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
-M.title = "Search & Replace: :s, :%s"
-M.type = "insert"
--- Ex substitution lives in the command-line, so this lesson intentionally
--- keeps normal-mode editing keys available while the command is being typed.
-M.allowed_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" }
-M.allowed_modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" }
-M.allowed_visual_keys = { "v", "V", "<C-v>" }
-M.challenges_required = 10
-
-M.description = {
-	"Use Ex substitution commands to refactor text quickly:",
-	"",
-	"  :s/old/new/        replace first match on current line",
-	"  :s/old/new/g       replace ALL matches on current line",
-	"  :%s/old/new/g      replace across the whole file",
-	"  :.,+1s/old/new/g   replace on current line + next line",
-	"",
-	"Move to the green target and run a substitution command.",
-}
-
-M.hint_lines = {
-	"[:s] Current line  [:%s] Whole file  [g] Global matches  [range] :.,+1s/old/new/g",
-}
+local M = base.define({
+	title_template = "Search & Replace: {{line_sub}}, {{file_sub}}",
+	type = "insert",
+	-- Ex substitution lives in the command-line, so this lesson intentionally
+	-- keeps normal-mode editing keys available while the command is being typed.
+	allowed_keys = { "i", "I", "a", "A", "o", "O", "s", "S", "c", "C" },
+	allowed_modify_keys = { "d", "dd", "D", "r", "x", "X", "p", "P", "u", "J", "<C-r>", "~" },
+	allowed_visual_keys = { "v", "V", "<C-v>" },
+	challenges_required = 10,
+	template_tokens = {
+		line_sub = { canonical = ":", suffix = "s" },
+		global_line_sub = { canonical = ":", suffix = "s/old/new/g" },
+		file_sub = { canonical = ":", suffix = "%s" },
+		range_sub = { canonical = ":", suffix = ".,+1s" },
+		g = "g",
+	},
+	description_template = {
+		"Use Ex substitution commands to refactor text quickly:",
+		"",
+		"  {{line_sub}}/old/new/        replace first match on current line",
+		"  {{global_line_sub}}       replace ALL matches on current line",
+		"  {{file_sub}}/old/new/g      replace across the whole file",
+		"  {{range_sub}}/old/new/g   replace on current line + next line",
+		"",
+		"Move to the green target and run a substitution command.",
+	},
+	hint_template = {
+		"[{{line_sub}}] Current line  [{{file_sub}}] Whole file  [{{g}}] Global matches  [range] {{range_sub}}/old/new/g",
+	},
+})
 
 local CHALLENGES = {
 	{
