@@ -23,9 +23,11 @@ Describe major components, boundaries, and data flow.
 ## Runtime Structure
 
 - `lua/vimteacher/init.lua`: entrypoint, setup, commands, and top-level wiring
+- `lua/vimteacher/gameplay.lua`: active-lesson render loop, validation, and autocmd handlers
 - `lua/vimteacher/state.lua`: shared session state and mode transitions
 - `lua/vimteacher/session.lua`: lesson/session lifecycle, challenge loading, completion flow
 - `lua/vimteacher/input.lua`: menu input buffering and menu rerender behavior
+- `lua/vimteacher/mode_keymaps.lua`: mode-specific buffer-local keymaps outside menu input handling
 - `lua/vimteacher/key_display.lua`: adaptive key text rewriting and lesson-view construction
 - `lua/vimteacher/key_blocking.lua`: buffer-local lesson key blocking and resolved-key helpers
 - `lua/vimteacher/goal.lua`: goal-bar metadata derived from lesson command keys

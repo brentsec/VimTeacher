@@ -17,6 +17,9 @@ local M = {}
 function M.new(deps)
 	deps = deps or {}
 	local state = deps.state or state_mod.session
+	local gameplay = deps.gameplay or {}
+	local mode_keymaps = deps.mode_keymaps or {}
+	local menu = deps.menu or {}
 	local controller = {}
 
 	local function stop_elapsed_timer()
@@ -71,12 +74,18 @@ function M.new(deps)
 		stop_elapsed_timer()
 		state_mod.transition(nil, "menu")
 		state.target = nil
-		deps.clear_info_keymaps()
-		deps.clear_playing_keymaps()
+		if mode_keymaps.clear_info_keymaps then
+			mode_keymaps.clear_info_keymaps()
+		end
+		if mode_keymaps.clear_playing_keymaps then
+			mode_keymaps.clear_playing_keymaps()
+		end
 
 		if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
 			state.buf, state.win = buffer.create()
-			deps.setup_autocmds()
+			if gameplay.setup_autocmds then
+				gameplay.setup_autocmds()
+			end
 			key_blocking.block_insert_keys(state.buf)
 		end
 
@@ -89,7 +98,9 @@ function M.new(deps)
 			vim.fn.winrestview({ topline = 1, leftcol = 0 })
 			vim.api.nvim_win_set_cursor(state.win, { 1, 0 })
 		end
-		deps.setup_menu_keymaps()
+		if menu.setup then
+			menu.setup()
+		end
 	end
 
 	function controller.advance_challenge()
@@ -141,7 +152,9 @@ function M.new(deps)
 					best_time = lesson_stats.best_time,
 					avg_time = lesson_stats.avg_time,
 				})
-				deps.setup_completion_keymaps()
+				if mode_keymaps.setup_completion_keymaps then
+					mode_keymaps.setup_completion_keymaps(controller.start, controller.show_menu, controller.stop)
+				end
 			else
 				controller.load_challenge()
 			end
@@ -155,8 +168,8 @@ function M.new(deps)
 		state.dwell_pending = false
 
 		local challenge = state.lesson.generate_challenge(state.buf, highlight.ns_target)
-		if challenge.phases then
-			deps.apply_phase(challenge, 1)
+		if challenge.phases and gameplay.apply_phase then
+			gameplay.apply_phase(challenge, 1)
 		end
 		state.current_challenge = challenge
 		state.timer_start = vim.loop.hrtime()
@@ -169,12 +182,14 @@ function M.new(deps)
 			state.optimal_moves = math.abs(start.row - challenge.target.row) + math.abs(start.col - challenge.target.col)
 		end
 
-		deps.render_current_challenge()
+		if gameplay.render_current_challenge then
+			gameplay.render_current_challenge()
+		end
 	end
 
 	function controller.start(lesson_name)
-		if state.buf and vim.api.nvim_buf_is_valid(state.buf) then
-			deps.clear_mode_keymaps()
+		if state.buf and vim.api.nvim_buf_is_valid(state.buf) and mode_keymaps.clear_mode_keymaps then
+			mode_keymaps.clear_mode_keymaps(menu.clear)
 		end
 
 		local lesson = lessons.get_lesson(lesson_name)
@@ -194,11 +209,13 @@ function M.new(deps)
 		state_mod.transition(nil, "playing")
 		state.play_menu_key = lesson.play_menu_key or "q"
 		state.play_restart_key = lesson.play_restart_key or "Q"
-		state.lesson_view = deps.build_lesson_view(lesson)
+		state.lesson_view = gameplay.build_lesson_view and gameplay.build_lesson_view(lesson) or nil
 
 		if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
 			state.buf, state.win = buffer.create()
-			deps.setup_autocmds()
+			if gameplay.setup_autocmds then
+				gameplay.setup_autocmds()
+			end
 		end
 
 		local nav_opts = { buffer = state.buf, noremap = true, silent = true }
@@ -273,7 +290,9 @@ function M.new(deps)
 			key_blocking.block_insert_keys(state.buf, key_blocking.resolve_keys_for_lesson(lesson, state.key_display))
 		end
 
-		deps.setup_playing_keymaps(controller.show_menu, controller.start)
+		if mode_keymaps.setup_playing_keymaps then
+			mode_keymaps.setup_playing_keymaps(controller.show_menu, controller.start)
+		end
 		controller.load_challenge()
 	end
 
