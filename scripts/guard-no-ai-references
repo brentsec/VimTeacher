@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pattern='\\bagents?\\b|\\bAI\\b|AGENTS\\.md|\\.agent/|\\.agents/|\\.codex/|CLAUDE\\.md|GEMINI\\.md|COPILOT\\.md|LLMS\\.md'
+
+if matches="$(git grep -nI -E "$pattern" -- . \
+  ':(exclude).gitignore' \
+  ':(exclude)scripts/guard-no-ai-references' \
+  ':(exclude)lua/vimteacher/lessons/**' \
+  ':(exclude)tests/**' \
+)"; then
+  printf 'guard-no-ai-references: found restricted terms outside lesson files:\n' >&2
+  printf '%s\n' "$matches" >&2
+  exit 1
+fi
+
+printf 'guard-no-ai-references: OK\n'

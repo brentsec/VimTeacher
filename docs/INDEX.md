@@ -23,4 +23,5 @@ status: active
 - `docs/reference/docs-contract.md`
 - `docs/reference/mise-task-contract.md`
 - `docs/reference/project-manifest-v1.md`
-- `docs/reference/agent-context-contract.md`
+- `docs/reference/context-pack-contract.md`
+- `docs/reference/adaptive-keymapping.md`

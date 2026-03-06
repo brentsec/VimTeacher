@@ -7,7 +7,7 @@ status: active
 
 # Project Manifest
 
-The root `project.yaml` file describes this project for tooling and agents.
+The root `project.yaml` file describes this project for tooling.
 
 Key fields:
 

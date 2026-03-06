@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mise x github:lunarmodules/luacheck@1.2.0 -- luacheck .
+bash scripts/guard-no-ai-references

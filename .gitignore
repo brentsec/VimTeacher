@@ -36,6 +36,21 @@ logs/
 # Temp / cache
 .tmp/
 .cache/
-.agent/
 *.bak
 *.orig
+
+# Local metadata and assistant artifacts
+.meta/
+.agent/
+AGENTS.md
+docs/reference/agent-context-contract.md
+.agents/
+.codex/
+.cursor/
+.copilot/
+.claude/
+CLAUDE.md
+GEMINI.md
+COPILOT.md
+LLMS.md
+.aider*
