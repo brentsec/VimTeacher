@@ -5,11 +5,11 @@ from pathlib import Path
 
 ROOT = Path('.').resolve()
 DOCS = ROOT / 'docs'
-AGENT = ROOT / '.agent'
-AGENT.mkdir(exist_ok=True)
+META = ROOT / '.meta'
+META.mkdir(exist_ok=True)
 
 REQUIRED_ORDER = [
-    '.agent/context-pack.json',
+    '.meta/context-pack.json',
     'project.yaml',
     'README.md',
     'docs/START.md',
@@ -101,14 +101,14 @@ context_pack = {
     'adapter': project_facts.get('adapter'),
     'read_first': REQUIRED_ORDER,
     'verification_hint': 'Run `mise run verify` before committing to main.',
-    'commands_file': '.agent/commands.json',
-    'docs_index_file': '.agent/docs-index.json',
-    'repo_facts_file': '.agent/repo-facts.json',
+    'commands_file': '.meta/commands.json',
+    'docs_index_file': '.meta/docs-index.json',
+    'repo_facts_file': '.meta/repo-facts.json',
 }
 
-(AGENT / 'docs-index.json').write_text(json.dumps(docs_index, indent=2) + '\n', encoding='utf-8')
-(AGENT / 'repo-facts.json').write_text(json.dumps(repo_facts, indent=2) + '\n', encoding='utf-8')
-(AGENT / 'commands.json').write_text(json.dumps(commands, indent=2) + '\n', encoding='utf-8')
-(AGENT / 'context-pack.json').write_text(json.dumps(context_pack, indent=2) + '\n', encoding='utf-8')
+(META / 'docs-index.json').write_text(json.dumps(docs_index, indent=2) + '\n', encoding='utf-8')
+(META / 'repo-facts.json').write_text(json.dumps(repo_facts, indent=2) + '\n', encoding='utf-8')
+(META / 'commands.json').write_text(json.dumps(commands, indent=2) + '\n', encoding='utf-8')
+(META / 'context-pack.json').write_text(json.dumps(context_pack, indent=2) + '\n', encoding='utf-8')
 
 print('docs-build: OK')

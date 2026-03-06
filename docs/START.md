@@ -9,15 +9,14 @@ status: active
 
 ## Purpose
 
-Provide a predictable onboarding path for humans and agents.
+Provide a predictable onboarding path for contributors.
 
 ## Read Order
 
 1. `README.md`
-2. `AGENTS.md`
-3. `docs/DEVELOPMENT.md`
-4. `docs/VERIFICATION.md`
-5. `docs/runbooks/local-workflow.md`
+2. `docs/DEVELOPMENT.md`
+3. `docs/VERIFICATION.md`
+4. `docs/runbooks/local-workflow.md`
 
 ## Common Commands
 

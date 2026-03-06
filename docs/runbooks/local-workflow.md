@@ -17,6 +17,6 @@ status: active
 ## Standard Commands
 
 - `docs:verify`: validate docs layout and front matter
-- `docs:build`: generate `.agent/*` indexes
+- `docs:build`: generate `.meta/*` indexes
 - `verify`: run available quality gates
 - Optional stack commands depend on adapter/capabilities

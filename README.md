@@ -2,7 +2,7 @@
 
 Interactive Vim tutorial plugin that teaches Vim concepts directly inside Neovim.
 
-![VimTeacher Demo](docs/static/Screencast_20260228_225033.gif)
+![VimTeacher Demo](docs/static/vimteacher.gif)
 
 ## Requirements
 
@@ -80,6 +80,25 @@ Note: lessons that teach macros remap menu to `m` so `q` can be used for recordi
 | `m` | Return to topic menu |
 | `q` | Quit |
 
+## Adaptive Keymapping
+
+VimTeacher can detect your active Neovim keymaps at runtime and adapt lesson UI to show your mapped keys.
+
+This is enabled by default:
+
+```lua
+require("vimteacher").setup({
+  keymaps = {
+    mode = "adaptive_display", -- strict | adaptive_display | adaptive_runtime
+    distro = "auto", -- auto | neovim | lazyvim
+    overrides = {}, -- optional: canonical_key -> display_key
+  },
+})
+```
+
+For full behavior and coverage details, see:
+[Adaptive Keymapping Reference](docs/reference/adaptive-keymapping.md)
+
 ## Available Topics (40 lessons)
 
 ### Getting Started
@@ -150,9 +169,11 @@ All movement-based challenges require the cursor to **dwell** on the target posi
 
 The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handler, so it applies to **all lessons automatically**. No per-lesson opt-in is needed. If a future lesson type genuinely doesn't need dwell validation (e.g., a timed command execution lesson), it can set `dwell_ms = 0` in its lesson table to bypass it.
 
-### LazyVim-Compatible Keybindings
+### Neovim/LazyVim Support Notes
 
-All lessons must use keybindings compatible with the standard LazyVim distribution. When a vanilla Vim key conflicts with a LazyVim default (e.g., `s` is remapped to flash.nvim), use the LazyVim-equivalent motion instead (e.g., `cl` for substitute-character). Reference: https://www.lazyvim.org/keymaps
+- VimTeacher targets Neovim (not classic Vim).
+- Adaptive keymapping reads active mappings from your running Neovim session.
+- LazyVim is supported through runtime detection and a late refresh on `User LazyVimStarted`.
 
 ## Adding New Lessons
 
