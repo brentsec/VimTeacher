@@ -3,6 +3,7 @@
 
 local M = {}
 local challenge_utils = require("vimteacher.lessons.challenge_utils")
+local pool = require("vimteacher.lessons.pool")
 local optimal = require("vimteacher.optimal")
 
 M.title = "Repeat Power: . and counts"
@@ -42,10 +43,6 @@ M.description = {
 M.hint_lines = {
 	"[x] Delete char  [3x] Delete 3 chars  [.] Repeat last change",
 }
-
-local recent_picker = require("vimteacher.recent")
-local recent = {}
-local MAX_RECENT = 5
 
 --- @param line string
 --- @param col number 0-indexed
@@ -242,6 +239,8 @@ for _, def in ipairs(CHALLENGE_DEFS) do
 	CHALLENGES[#CHALLENGES + 1] = build_challenge(def)
 end
 
+local challenge_pool = pool.new(CHALLENGES, { track_current_snippet = false })
+
 function M._compute_nav_optimal(lines, start_pos, target)
 	return optimal.nav_cost(lines, start_pos, target)
 end
@@ -271,28 +270,7 @@ function M.compute_optimal(start_pos, target, challenge)
 	return optimal.manhattan(start_pos, target)
 end
 
---- Generate challenge with recency avoidance.
---- @param _buf number
---- @param _ns_id number
---- @return table challenge
-function M.generate_challenge(_buf, _ns_id)
-	local idx = recent_picker.pick_avoiding_recent(#CHALLENGES, recent, MAX_RECENT)
-
-	local c = CHALLENGES[idx]
-	return {
-		snippet_lines = vim.deepcopy(c.snippet_lines),
-		expected_lines = vim.deepcopy(c.expected_lines),
-		target = { row = c.target.row, col = c.target.col },
-		target_end_col = c.target_end_col,
-		start_pos = { row = c.start_pos.row, col = c.start_pos.col },
-		key = c.key,
-		char = c.char,
-		phases = vim.deepcopy(c.phases),
-	}
-end
-
-function M._get_challenges()
-	return CHALLENGES
-end
+M.generate_challenge = challenge_pool.generate_challenge
+M._get_challenges = challenge_pool.get_challenges
 
 return M
