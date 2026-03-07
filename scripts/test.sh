@@ -17,6 +17,7 @@ TESTS=(
   "test_recent.lua"
   "test_snippets.lua"
   "test_keymaps.lua"
+  "test_key_display_direct.lua"
   "test_menu_ui.lua"
   "test_menu_input.lua"
   "test_plugin_command.lua"
