@@ -225,8 +225,7 @@ for i = 1, 50 do
 end
 
 -- Test 12: Bracket space normalization tolerates natural spacing
-local init_mod = require("vimteacher")
-local normalize = init_mod._normalize_bracket_spaces
+local normalize = require("vimteacher.text_normalize").normalize_bracket_spaces
 
 -- Spaces after opening brackets
 assert_test(normalize("{  hello }") == "{hello}", "Double space after { should normalize")

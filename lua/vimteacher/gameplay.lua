@@ -6,22 +6,13 @@ local goal = require("vimteacher.goal")
 local highlight = require("vimteacher.highlight")
 local highlight_plan = require("vimteacher.highlight_plan")
 local key_display = require("vimteacher.key_display")
+local text_normalize = require("vimteacher.text_normalize")
 local validate = require("vimteacher.validate")
 
 local M = {}
 local INSERT_VALIDATION_RETRY_MS = 25
 local MACRO_BUSY_THRESHOLD_MS = 150
 local DEFAULT_DWELL_TIME_MS = 50
-
---- Normalize spaces immediately inside bracket pairs for tolerant matching.
---- Strips whitespace after ( [ { and before ) ] }.
---- @param line string
---- @return string
-local function normalize_bracket_spaces(line)
-	line = line:gsub("([{%[%(])%s+", "%1")
-	line = line:gsub("%s+([}%]%)])", "%1")
-	return line
-end
 
 local function lines_equal(a, b, normalizer)
 	if #a ~= #b then
@@ -83,7 +74,7 @@ function M.new(deps)
 		local actual = vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_offset + #expected, false)
 
 		local match = lines_equal(actual, expected)
-		if not match and lines_equal(actual, expected, normalize_bracket_spaces) then
+		if not match and lines_equal(actual, expected, text_normalize.normalize_bracket_spaces) then
 			match = true
 		end
 
@@ -478,8 +469,6 @@ function M.new(deps)
 
 	controller.apply_phase = apply_phase
 	controller.build_lesson_view = build_lesson_view
-	controller.normalize_bracket_spaces = normalize_bracket_spaces
-
 	return controller
 end
 

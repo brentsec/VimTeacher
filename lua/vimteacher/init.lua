@@ -267,7 +267,4 @@ function M.start(lesson_name)
 		show_menu()
 	end
 end
-
-M._normalize_bracket_spaces = gameplay_controller.normalize_bracket_spaces
-
 return M
