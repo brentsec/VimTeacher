@@ -2,7 +2,7 @@
 
 Interactive Vim tutorial plugin that teaches Vim concepts directly inside Neovim.
 
-![VimTeacher Demo](docs/static/vimteacher.gif)
+![VimTeacher Demo](docs/static/vimteacher-demo-v2.gif)
 
 ## Requirements
 
