@@ -119,12 +119,17 @@ local function run_macro_repeat_case(case)
 	integration.with_overridden_generate(case.module, case.challenge, function()
 		vimteacher.start(case.lesson_name)
 		assert_started(case)
+		local state = integration.runtime_state(vimteacher)
+		assert_test(state.timer_start == nil, case.lesson_name .. " should not start timing before the first cursor move for " .. case.label)
 		if case.delay_ms then
 			vim.wait(case.delay_ms, function()
 				return false
 			end, case.delay_ms)
+			assert_test(state.timer_start == nil, case.lesson_name .. " should keep timing off during pre-move delay for " .. case.label)
 		end
 		move_to_phase_target(case.challenge.phases[1])
+		integration.fire_cursor_moved(0)
+		assert_test(state.timer_start ~= nil, case.lesson_name .. " should start timing on the first actual move for " .. case.label)
 
 		integration.send_sequence("q")
 		integration.wait_for(function()
@@ -148,9 +153,9 @@ local function run_macro_repeat_case(case)
 		wait_for_macro_idle(400)
 		integration.fire_text_changed(0)
 		assert_test(integration.wait_for(function()
-			local state = integration.runtime_state(vimteacher)
+			local runtime = integration.runtime_state(vimteacher)
 			return integration.snippet_matches(vimteacher, case.challenge.phases[1].expected_lines)
-				and state.current_challenge.phase_index == 2
+				and runtime.current_challenge.phase_index == 2
 		end, 1200), case.lesson_name .. " should apply the recorded edit for " .. case.label)
 
 		move_to_phase_target(case.challenge.phases[2])
@@ -161,8 +166,8 @@ local function run_macro_repeat_case(case)
 		wait_for_macro_idle(600)
 		integration.fire_text_changed(0)
 		assert_test(integration.wait_for(function()
-			local state = integration.runtime_state(vimteacher)
-			local phase_ok = case.challenge.phases[3] and state.current_challenge.phase_index == 3
+			local runtime = integration.runtime_state(vimteacher)
+			local phase_ok = case.challenge.phases[3] and runtime.current_challenge.phase_index == 3
 				or (not case.challenge.phases[3])
 			return integration.snippet_matches(vimteacher, case.challenge.phases[2].expected_lines) and phase_ok
 		end, 1200), case.lesson_name .. " should replay the macro with remapped keys for " .. case.label)
@@ -183,15 +188,14 @@ local function run_macro_repeat_case(case)
 		assert_test(integration.wait_for(function()
 			return integration.buf_has_text("Challenge 2/10")
 		end, 1800), case.lesson_name .. " should advance after remapped macro replay for " .. case.label)
-		if case.min_recorded_secs then
-			local state = integration.runtime_state(vimteacher)
+		if case.max_recorded_secs then
 			assert_test(
-				#state.session_challenges >= 1 and state.session_challenges[1].time >= case.min_recorded_secs,
+				#state.session_challenges >= 1 and state.session_challenges[1].time <= case.max_recorded_secs,
 				case.lesson_name
-					.. " should include pre-action delay across macro phases for "
+					.. " should exclude pre-move delay across macro phases for "
 					.. case.label
-					.. " (expected >= "
-					.. case.min_recorded_secs
+					.. " (expected <= "
+					.. case.max_recorded_secs
 					.. "s, got "
 					.. string.format("%.3f", (state.session_challenges[1] and state.session_challenges[1].time) or -1)
 					.. "s)"
@@ -231,7 +235,7 @@ run_macro_repeat_case({
 		return #challenge.phases == 3 and challenge.phases[3].goal_text:find("@@", 1, true) ~= nil
 	end),
 	delay_ms = 1100,
-	min_recorded_secs = 1.0,
+	max_recorded_secs = 0.8,
 })
 
 run_macro_repeat_case({

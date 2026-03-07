@@ -169,6 +169,7 @@ function M.new(deps)
 		local col = math.max(0, math.min(desired.col or 0, #line))
 		vim.api.nvim_win_set_cursor(state.win, { row + state.snippet_offset + 1, col })
 		state.pending_programmatic_cursor = { row = row + state.snippet_offset + 1, col = col }
+		state.last_cursor = { row + state.snippet_offset + 1, col }
 		if state.challenge_num == 1 and not cursor_rel then
 			vim.fn.winrestview({ topline = 1, leftcol = 0 })
 		end
@@ -371,7 +372,18 @@ function M.new(deps)
 			end
 		end
 
+		local cur = vim.api.nvim_win_get_cursor(state.win)
+		if state.last_cursor and cur[1] == state.last_cursor[1] and cur[2] == state.last_cursor[2] then
+			return
+		end
+
+		if deps.begin_challenge_timing then
+			deps.begin_challenge_timing()
+		end
+
 		local was_constrained = validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
+		cur = vim.api.nvim_win_get_cursor(state.win)
+		state.last_cursor = { cur[1], cur[2] }
 		if was_constrained then
 			if state.lesson and state.lesson.type ~= "insert" and is_on_target() then
 				state.move_count = state.move_count + 1

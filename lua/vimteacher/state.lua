@@ -30,6 +30,7 @@ local function initial_state()
 		insert_busy_since = nil,
 		challenge_load_time = nil,
 		pending_programmatic_cursor = nil,
+		last_cursor = nil,
 		saved_inccommand = nil,
 		source_window_line_numbers = nil,
 		preferred_lesson_line_numbers = nil,

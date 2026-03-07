@@ -48,12 +48,22 @@ function M.new(deps)
 		buffer.update_timer(state.buf, elapsed)
 	end
 
-	local function start_elapsed_timer()
+	local function start_elapsed_timer(started_at)
 		stop_elapsed_timer()
-		state.challenge_load_time = vim.loop.hrtime()
+		state.challenge_load_time = started_at or vim.loop.hrtime()
 		state.elapsed_timer = vim.fn.timer_start(1000, function()
 			vim.schedule(update_timer_display)
 		end, { ["repeat"] = -1 })
+	end
+
+	function controller.begin_challenge_timing()
+		if state.timer_start then
+			return false
+		end
+		local started_at = vim.loop.hrtime()
+		state.timer_start = started_at
+		start_elapsed_timer(started_at)
+		return true
 	end
 
 	function controller.stop()
@@ -186,8 +196,8 @@ function M.new(deps)
 			gameplay.apply_phase(challenge, 1)
 		end
 		state.current_challenge = challenge
-		state.timer_start = vim.loop.hrtime()
-		start_elapsed_timer()
+		state.timer_start = nil
+		state.challenge_load_time = nil
 
 		local start = challenge.start_pos or { row = 0, col = 0 }
 		if state.lesson.compute_optimal then

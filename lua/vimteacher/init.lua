@@ -116,7 +116,7 @@ local GLOBAL_ADAPTIVE_KEYS = {
 	".",
 }
 
-local cleanup, show_menu, start_lesson, advance_challenge, rerender_menu_layout
+local cleanup, show_menu, start_lesson, advance_challenge, begin_challenge_timing, rerender_menu_layout
 local input_controller, gameplay_controller, mode_keymap_controller, session_controller
 
 local state = state_mod.session
@@ -171,6 +171,11 @@ gameplay_controller = gameplay_mod.new({
 			advance_challenge()
 		end
 	end,
+	begin_challenge_timing = function()
+		if begin_challenge_timing then
+			begin_challenge_timing()
+		end
+	end,
 	cleanup = cleanup,
 	rerender_menu_layout = rerender_menu_layout,
 })
@@ -191,6 +196,10 @@ session_controller = session_mod.new({
 
 advance_challenge = function()
 	session_controller.advance_challenge()
+end
+
+begin_challenge_timing = function()
+	session_controller.begin_challenge_timing()
 end
 
 show_menu = function()

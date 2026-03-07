@@ -105,12 +105,14 @@ local function run_search_timing_case(case)
 		assert_started(case)
 
 		local state = integration.runtime_state(vimteacher)
-		assert_test(state.timer_start ~= nil, case.lesson_name .. " should start timing when the challenge is shown")
+		assert_test(state.timer_start == nil, case.lesson_name .. " should not start timing when the challenge is shown")
 
 		vim.wait(case.delay_ms, function()
 			return false
 		end, case.delay_ms)
+		assert_test(state.timer_start == nil, case.lesson_name .. " should keep timing off until the first cursor move")
 
+		local saw_timer_start = false
 		for _, action in ipairs(case.actions) do
 			if action.kind == "prompt" then
 				integration.perform_prompt_sequence(action.key, action.text)
@@ -121,16 +123,20 @@ local function run_search_timing_case(case)
 				end, 60, 20)
 			end
 			integration.fire_cursor_moved(0)
+			saw_timer_start = saw_timer_start or integration.wait_for(function()
+				return state.timer_start ~= nil
+			end, 120, 20)
 		end
 
 		assert_test(integration.wait_for(function()
 			return integration.buf_has_text("Challenge 2/10")
 		end, 1800), case.lesson_name .. " should advance after delayed remapped search timing case")
+		assert_test(saw_timer_start, case.lesson_name .. " should start timing once the search moves the cursor")
 		assert_test(
-			#state.session_challenges >= 1 and state.session_challenges[1].time >= case.min_recorded_secs,
+			#state.session_challenges >= 1 and state.session_challenges[1].time <= case.max_recorded_secs,
 			case.lesson_name
-				.. " should include pre-move delay in challenge time (expected >= "
-				.. case.min_recorded_secs
+				.. " should exclude pre-move delay from challenge time (expected <= "
+				.. case.max_recorded_secs
 				.. "s, got "
 				.. string.format("%.3f", (state.session_challenges[1] and state.session_challenges[1].time) or -1)
 				.. "s)"
@@ -229,7 +235,7 @@ run_search_timing_case({
 		"Search: y, m, M",
 	},
 	delay_ms = 1100,
-	min_recorded_secs = 1.0,
+	max_recorded_secs = 0.8,
 	actions = {
 		{ kind = "prompt", key = remaps.remap_for["/"], text = "data" },
 		{ kind = "key", key = remaps.remap_for["n"] },

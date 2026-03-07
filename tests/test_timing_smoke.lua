@@ -34,18 +34,10 @@ for _, lesson_name in ipairs(lessons.order) do
 			assert_test(integration.wait_for(function()
 				return integration.buf_has_text("Challenge 1/10")
 			end, 1000), lesson_name .. " should render challenge 1")
-			assert_test(type(state.timer_start) == "number" and state.timer_start > 0, lesson_name .. " should start timer on challenge load")
+			assert_test(state.timer_start == nil, lesson_name .. " should keep timer_start unset until the first user cursor move")
 			assert_test(
-				type(state.challenge_load_time) == "number" and state.challenge_load_time > 0,
-				lesson_name .. " should set challenge_load_time on challenge load"
-			)
-			assert_test(
-				state.challenge_load_time >= state.timer_start,
-				lesson_name .. " should not backdate challenge_load_time before timer_start"
-			)
-			assert_test(
-				(state.challenge_load_time - state.timer_start) <= 100000000,
-				lesson_name .. " should initialize timer_start and challenge_load_time within 100ms"
+				state.challenge_load_time == nil,
+				lesson_name .. " should keep challenge_load_time unset until the first user cursor move"
 			)
 		end
 	end
