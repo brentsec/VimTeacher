@@ -32,6 +32,7 @@ local function initial_state()
 		pending_programmatic_cursor = nil,
 		saved_inccommand = nil,
 		source_window_line_numbers = nil,
+		preferred_lesson_line_numbers = nil,
 		play_menu_key = "q",
 		play_restart_key = "Q",
 		config = nil,

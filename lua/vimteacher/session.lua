@@ -23,7 +23,7 @@ function M.new(deps)
 	local controller = {}
 
 	local function apply_playing_window_options()
-		buffer.apply_playing_line_numbers(state.win, state.source_window_line_numbers)
+		buffer.apply_playing_line_numbers(state.win, state.preferred_lesson_line_numbers)
 	end
 
 	local function apply_nonplaying_window_options()

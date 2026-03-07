@@ -3,6 +3,7 @@
 
 local assertions = require("helpers.assertions")
 local integration = require("helpers.integration")
+local buffer = require("vimteacher.buffer")
 
 local counter = assertions.new_counter()
 local assert_test = counter.assert_test
@@ -34,12 +35,21 @@ end
 local TEST_STATUSCOLUMN = "%!v:lua._vimteacher_test_statuscolumn()"
 
 local function configure_source_window(opts)
+	vim.go.number = opts.global_number
+	vim.go.relativenumber = opts.global_relativenumber
+	vim.go.statuscolumn = TEST_STATUSCOLUMN
 	vim.opt_global.number = opts.global_number
 	vim.opt_global.relativenumber = opts.global_relativenumber
 	vim.opt_global.statuscolumn = TEST_STATUSCOLUMN
 	vim.wo[0].number = opts.local_number
 	vim.wo[0].relativenumber = opts.local_relativenumber
 	vim.wo[0].statuscolumn = TEST_STATUSCOLUMN
+	if opts.filetype ~= nil then
+		vim.bo[0].filetype = opts.filetype
+	end
+	if opts.buftype ~= nil then
+		vim.bo[0].buftype = opts.buftype
+	end
 end
 
 local function launch_vimteacher(arg)
@@ -63,19 +73,8 @@ end
 
 local function current_statuscolumn_text()
 	local state = runtime_state()
-	if not state.win or not vim.api.nvim_win_is_valid(state.win) then
-		return nil
-	end
-	local row = math.max(1, (state.snippet_offset or 0) + 1)
-	local ok, result = pcall(vim.api.nvim_eval_statusline, vim.wo[state.win].statuscolumn, {
-		use_statuscol_lnum = row,
-		winid = state.win,
-		maxwidth = 20,
-	})
-	if not ok then
-		return nil
-	end
-	return vim.trim(result.str or "")
+	local snapshot = buffer.inspect_line_numbers(state.win, math.max(1, (state.snippet_offset or 0) + 1))
+	return snapshot and snapshot.rendered or nil
 end
 
 local function assert_line_numbers(expected, label)
@@ -98,6 +97,31 @@ end
 local function assert_statuscolumn(expected, label)
 	local actual = current_statuscolumn_text()
 	assert_test(actual == expected, label .. " (expected '" .. tostring(expected) .. "', got '" .. tostring(actual) .. "')")
+end
+
+local function assert_statuscolumn_visible(label)
+	local actual = current_statuscolumn_text()
+	assert_test(actual ~= nil and actual ~= "", label .. " (expected visible gutter text, got '" .. tostring(actual) .. "')")
+end
+
+local function assert_live_window_matches_state(label)
+	local state = runtime_state()
+	local current_win = vim.api.nvim_get_current_win()
+	local current_buf = vim.api.nvim_get_current_buf()
+	assert_test(current_win == state.win, label .. " should keep the lesson buffer in the active window")
+	assert_test(current_buf == state.buf, label .. " should keep the lesson buffer in the active buffer")
+end
+
+local function assert_playing_gutter_persists(label)
+	assert_test(integration.wait_for(function()
+		local state = runtime_state()
+		local snapshot = buffer.inspect_line_numbers(state.win, math.max(1, (state.snippet_offset or 0) + 1))
+		return snapshot
+			and snapshot.relativenumber == true
+			and snapshot.statuscolumn:find("lesson_statuscolumn", 1, true) ~= nil
+			and snapshot.rendered ~= nil
+			and snapshot.rendered ~= ""
+	end, 300, 25), label .. " should keep the custom lesson statuscolumn after startup settles")
 end
 
 local function stop_from_current_screen()
@@ -151,11 +175,13 @@ local function run_menu_to_playing_case()
 		local state = runtime_state()
 		return state.mode == "playing" and integration.buf_has_text("Challenge 1/10")
 	end, 1200), "pressing Enter on the highlighted lesson row should start the lesson")
+	assert_live_window_matches_state("playing screen from menu")
 	assert_line_numbers({
-		number = false,
+		number = true,
 		relativenumber = true,
-	}, "playing screen should inherit the source window's relative numbers only")
-	assert_statuscolumn("0", "playing screen should render the visible relative-number status column")
+	}, "playing screen should inherit the source window's visible line-number settings")
+	assert_statuscolumn_visible("playing screen should render the visible relative-number status column")
+	assert_playing_gutter_persists("playing screen from menu")
 
 	stop_from_current_screen()
 	assert_line_numbers({
@@ -177,11 +203,22 @@ local function run_local_over_global_case()
 		local state = runtime_state()
 		return state.mode == "playing" and integration.buf_has_text("Challenge 1/10")
 	end, 1000), "direct lesson start should render the playing screen")
+	assert_live_window_matches_state("direct lesson start")
 	assert_line_numbers({
-		number = false,
+		number = true,
 		relativenumber = false,
-	}, "playing screen should read the active window-local relativenumber setting, not the global default")
-	assert_statuscolumn("", "playing screen should render no line-number status column when relative numbers are disabled")
+	}, "playing screen should read the active window-local number settings, not the global defaults")
+	assert_statuscolumn_visible("playing screen should render the absolute line-number gutter when the source window keeps number enabled")
+	assert_test(integration.wait_for(function()
+		local state = runtime_state()
+		local snapshot = buffer.inspect_line_numbers(state.win, math.max(1, (state.snippet_offset or 0) + 1))
+		return snapshot
+			and snapshot.number == true
+			and snapshot.relativenumber == false
+			and snapshot.statuscolumn:find("lesson_statuscolumn", 1, true) ~= nil
+			and snapshot.rendered ~= nil
+			and snapshot.rendered ~= ""
+	end, 300, 25), "playing screen should keep the absolute-number gutter when the source window disables relative numbers")
 
 	stop_from_current_screen()
 	assert_line_numbers({
@@ -203,6 +240,7 @@ local function run_info_screen_case()
 		local state = runtime_state()
 		return state.mode == "info" and integration.buf_has_text("Intro to Modes")
 	end, 1000), "info lesson should render its sandbox view")
+	assert_live_window_matches_state("info lesson")
 	assert_line_numbers({
 		number = false,
 		relativenumber = false,
@@ -216,8 +254,55 @@ local function run_info_screen_case()
 	}, "cleanup should restore source window options after an info lesson")
 end
 
+local function run_dashboard_fallback_case()
+	local augroup = vim.api.nvim_create_augroup("VimTeacherDashboardLineNumberTest", { clear = true })
+	vim.api.nvim_create_autocmd("BufEnter", {
+		group = augroup,
+		callback = function(args)
+			if vim.bo[args.buf].buftype == "" then
+				vim.wo.number = true
+				vim.wo.relativenumber = true
+			end
+		end,
+	})
+	vim.api.nvim_create_autocmd("FileType", {
+		group = augroup,
+		pattern = "snacks_dashboard",
+		callback = function()
+			vim.wo.number = false
+			vim.wo.relativenumber = false
+		end,
+	})
+
+	configure_source_window({
+		global_number = true,
+		global_relativenumber = true,
+		local_number = true,
+		local_relativenumber = true,
+		filetype = "snacks_dashboard",
+		buftype = "nofile",
+	})
+
+	assert_test(launch_vimteacher("small_edits"), "dashboard start should initialize VimTeacher through the :VimTeacher command")
+	assert_test(integration.wait_for(function()
+		local state = runtime_state()
+		return state.mode == "playing" and integration.buf_has_text("Challenge 1/10")
+	end, 1000), "dashboard start should render the playing screen")
+	assert_live_window_matches_state("dashboard lesson start")
+	assert_line_numbers({
+		number = true,
+		relativenumber = true,
+	}, "playing screen should fall back to global editing defaults when started from a dashboard buffer")
+	assert_statuscolumn_visible("dashboard start should render the line-number gutter from global defaults")
+
+	stop_from_current_screen()
+	assert_test(vim.api.nvim_get_current_win() ~= nil, "cleanup should leave a valid active window after a dashboard-launched lesson")
+	pcall(vim.api.nvim_del_augroup_by_id, augroup)
+end
+
 run_menu_to_playing_case()
 run_local_over_global_case()
 run_info_screen_case()
+run_dashboard_fallback_case()
 
 counter.finish("test_line_numbers_integration")

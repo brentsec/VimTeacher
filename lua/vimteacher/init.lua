@@ -246,6 +246,7 @@ function M.start(lesson_name)
 
 	state.all_stats = stats_mod.load()
 	state.source_window_line_numbers = buffer.capture_line_numbers(current_win())
+	state.preferred_lesson_line_numbers = buffer.capture_preferred_line_numbers(current_win())
 
 	state.buf, state.win = buffer.create()
 	gameplay_controller.setup_autocmds()

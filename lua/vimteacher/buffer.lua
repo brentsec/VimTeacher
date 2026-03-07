@@ -15,6 +15,8 @@ local layout_meta = {
 	progress_line = nil,
 }
 
+local PLAYING_STATUSCOLUMN = "%!v:lua.require'vimteacher.buffer'.lesson_statuscolumn()"
+
 local function valid_win(win)
 	return win and vim.api.nvim_win_is_valid(win)
 end
@@ -29,6 +31,58 @@ local function set_line_numbers(win, opts)
 	if type(opts.statuscolumn) == "string" then
 		vim.wo[win].statuscolumn = opts.statuscolumn
 	end
+end
+
+local function is_ui_buffer(buf)
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		return false
+	end
+	local buftype = vim.bo[buf].buftype or ""
+	local filetype = vim.bo[buf].filetype or ""
+	if buftype ~= "" then
+		return true
+	end
+	return filetype == "snacks_dashboard"
+		or filetype == "alpha"
+		or filetype == "dashboard"
+		or filetype == "starter"
+end
+
+local function derive_normal_window_line_numbers(win)
+	if not valid_win(win) then
+		return {
+			number = false,
+			relativenumber = false,
+			statuscolumn = "",
+		}
+	end
+
+	local original_buf = vim.api.nvim_win_get_buf(win)
+	local temp_buf
+	local captured = nil
+
+	local ok = pcall(vim.cmd, "enew")
+	if ok and valid_win(win) then
+		temp_buf = vim.api.nvim_win_get_buf(win)
+		captured = {
+			number = vim.wo[win].number == true,
+			relativenumber = vim.wo[win].relativenumber == true,
+			statuscolumn = vim.wo[win].statuscolumn,
+		}
+	end
+
+	if valid_win(win) and original_buf and vim.api.nvim_buf_is_valid(original_buf) then
+		pcall(vim.api.nvim_win_set_buf, win, original_buf)
+	end
+	if temp_buf and temp_buf ~= original_buf and vim.api.nvim_buf_is_valid(temp_buf) then
+		pcall(vim.api.nvim_buf_delete, temp_buf, { force = true })
+	end
+
+	return captured or {
+		number = false,
+		relativenumber = false,
+		statuscolumn = "",
+	}
 end
 
 --- Capture the current window-local line number settings.
@@ -49,25 +103,94 @@ function M.capture_line_numbers(win)
 	}
 end
 
+--- Capture the preferred lesson line-number settings.
+--- Falls back to the user's global editing defaults when VimTeacher starts from a UI/dashboard buffer.
+--- @param win number|nil Window handle
+--- @return table { number: boolean, relativenumber: boolean, statuscolumn: string }
+function M.capture_preferred_line_numbers(win)
+	if not valid_win(win) then
+		return {
+			number = false,
+			relativenumber = false,
+			statuscolumn = "",
+		}
+	end
+	local buf = vim.api.nvim_win_get_buf(win)
+	if is_ui_buffer(buf) then
+		return derive_normal_window_line_numbers(win)
+	end
+	return M.capture_line_numbers(win)
+end
+
+--- Render a simple lesson-owned relative-number status column.
+--- Returns an empty string when the current lesson window should not show line numbers.
+--- @return string
+function M.lesson_statuscolumn()
+	local win = (vim.g.statusline_winid and vim.g.statusline_winid ~= 0) and vim.g.statusline_winid
+		or vim.api.nvim_get_current_win()
+	if not valid_win(win) then
+		return ""
+	end
+
+	local nu = vim.wo[win].number
+	local rnu = vim.wo[win].relativenumber
+	if not (nu or rnu) then
+		return ""
+	end
+
+	local num
+	if rnu and (not nu or vim.v.relnum ~= 0) then
+		num = vim.v.relnum
+	else
+		num = vim.v.lnum
+	end
+	return string.format("%4d ", num)
+end
+
+--- Inspect the current lesson window line-number state.
+--- Useful for integration tests that need to verify the live statuscolumn output.
+--- @param win number|nil Window handle
+--- @param row number|nil 1-indexed buffer row to evaluate for statuscolumn rendering
+--- @return table|nil
+function M.inspect_line_numbers(win, row)
+	if not valid_win(win) then
+		return nil
+	end
+	local statuscolumn = vim.wo[win].statuscolumn
+	local ok, result = pcall(vim.api.nvim_eval_statusline, statuscolumn, {
+		use_statuscol_lnum = math.max(1, tonumber(row) or 1),
+		winid = win,
+		maxwidth = 20,
+	})
+	return {
+		number = vim.wo[win].number == true,
+		relativenumber = vim.wo[win].relativenumber == true,
+		statuscolumn = statuscolumn,
+		signcolumn = vim.wo[win].signcolumn,
+		rendered = ok and vim.trim(result.str or "") or nil,
+	}
+end
+
 --- Apply the lesson-playing line number policy.
 --- @param win number|nil Window handle
 --- @param source_opts table|nil Captured user window options
 function M.apply_playing_line_numbers(win, source_opts)
+	local inherit_number = source_opts and source_opts.number == true
+	local inherit_relativenumber = source_opts and source_opts.relativenumber == true
 	set_line_numbers(win, {
-		number = false,
-		relativenumber = source_opts and source_opts.relativenumber == true,
-		statuscolumn = source_opts and source_opts.statuscolumn or nil,
+		number = inherit_number,
+		relativenumber = inherit_relativenumber,
+		statuscolumn = (inherit_number or inherit_relativenumber) and PLAYING_STATUSCOLUMN or "",
 	})
 end
 
 --- Disable line numbers for non-challenge screens.
 --- @param win number|nil Window handle
---- @param source_opts table|nil Captured user window options
-function M.apply_nonplaying_line_numbers(win, source_opts)
+function M.apply_nonplaying_line_numbers(win, _source_opts)
 	set_line_numbers(win, {
 		number = false,
 		relativenumber = false,
-		statuscolumn = source_opts and source_opts.statuscolumn or nil,
+		statuscolumn = "",
 	})
 end
 
