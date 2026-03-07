@@ -2,8 +2,8 @@
 -- First lesson: Basic cursor movement with h, j, k, l
 
 local base = require("vimteacher.lessons.base")
+local pool = require("vimteacher.lessons.pool")
 local snippets = require("vimteacher.snippets")
-local optimal = require("vimteacher.optimal")
 
 local M = base.define({
 	title_template = "Basic Movement: {{left}}, {{down}}, {{up}}, {{right}}",
@@ -26,27 +26,11 @@ local M = base.define({
 		right = "l",
 	},
 })
-local current_snippet = nil
 
---- Compute the minimum (optimal) moves between two positions.
---- Uses motion-aware shortest-path scoring on the current snippet.
---- @param start_pos table {row=number, col=number} 0-indexed
---- @param target table {row=number, col=number} 0-indexed
---- @return number Optimal move count
-function M.compute_optimal(start_pos, target)
-	if not current_snippet then
-		return optimal.manhattan(start_pos, target)
-	end
-	return optimal.nav_cost(current_snippet, start_pos, target, { "h", "j", "k", "l", "0", "^", "$" })
-end
+local NAV_MOTIONS = { "h", "j", "k", "l", "0", "^", "$" }
 
---- Generate a new challenge: random snippet + random target + start position.
---- @param buf number Buffer handle (unused for this lesson, but part of interface)
---- @param ns_id number Namespace ID (unused for this lesson)
---- @return table challenge {snippet_lines, target, start_pos}
-function M.generate_challenge()
-	local snippet = snippets.get_random()
-	current_snippet = snippet
+local function build_challenge(snippet)
+	snippet = snippet.snippet_lines
 
 	-- Build list of all valid target positions (non-whitespace characters)
 	local valid_positions = {}
@@ -64,7 +48,7 @@ function M.generate_challenge()
 
 	-- Safety: if no valid positions (should never happen with our pool), retry
 	if #valid_positions == 0 then
-		return M.generate_challenge()
+		return nil
 	end
 
 	-- Pick a random target
@@ -104,5 +88,17 @@ function M.generate_challenge()
 		start_pos = start_pos,
 	}
 end
+
+local snippet_challenges = {}
+for _, snippet in ipairs(snippets.pool) do
+	snippet_challenges[#snippet_challenges + 1] = { snippet_lines = snippet }
+end
+
+local challenge_pool = pool.new(snippet_challenges, {
+	transform_challenge = build_challenge,
+})
+
+M.compute_optimal = challenge_pool.nav_compute_optimal(NAV_MOTIONS)
+M.generate_challenge = challenge_pool.generate_challenge
 
 return M

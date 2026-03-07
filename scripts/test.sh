@@ -32,6 +32,7 @@ TESTS=(
   "test_docs_policy.lua"
   "test_intro_modes.lua"
   "test_basic_movement.lua"
+  "test_basic_movement_pool.lua"
   "test_word_movement.lua"
   "test_advanced_inserts_integration.lua"
   "test_essential_motions_integration.lua"
