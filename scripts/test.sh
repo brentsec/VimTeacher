@@ -27,6 +27,7 @@ TESTS=(
   "test_highlight_plan.lua"
   "test_stats.lua"
   "test_dwell_config.lua"
+  "test_tooling_policy.lua"
   "test_intro_modes.lua"
   "test_basic_movement.lua"
   "test_word_movement.lua"

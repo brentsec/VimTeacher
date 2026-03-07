@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-mise x stylua@latest -- stylua .
+mise x stylua@2.0.2 -- stylua .
