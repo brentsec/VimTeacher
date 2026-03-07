@@ -31,9 +31,12 @@ assert_test(vim.fn.exists(":VimTeacher") == 2, ":VimTeacher should be registered
 
 package.loaded["vimteacher.fake_module"] = { sentinel = "keep" }
 vim.cmd("VimTeacher basic_movement")
-assert_test(vim.wait(200, function()
-	return start_arg == "basic_movement"
-end, 10), ":VimTeacher should schedule the runtime start call")
+assert_test(
+	vim.wait(200, function()
+		return start_arg == "basic_movement"
+	end, 10),
+	":VimTeacher should schedule the runtime start call"
+)
 assert_test(
 	package.loaded["vimteacher.fake_module"] ~= nil,
 	"production :VimTeacher runs should keep cached vimteacher modules loaded"
@@ -43,9 +46,12 @@ start_arg = nil
 package.loaded["vimteacher.fake_module"] = { sentinel = "reload" }
 vim.g.vimteacher_dev_reload = true
 vim.cmd("VimTeacher intro_modes")
-assert_test(vim.wait(200, function()
-	return start_arg == "intro_modes"
-end, 10), "dev reload mode should still start the requested lesson")
+assert_test(
+	vim.wait(200, function()
+		return start_arg == "intro_modes"
+	end, 10),
+	"dev reload mode should still start the requested lesson"
+)
 assert_test(
 	package.loaded["vimteacher.fake_module"] == nil,
 	"dev reload mode should clear cached vimteacher modules before starting"
