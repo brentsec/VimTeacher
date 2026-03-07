@@ -27,6 +27,7 @@ TESTS=(
   "test_highlight.lua"
   "test_highlight_plan.lua"
   "test_stats.lua"
+  "test_buffer.lua"
   "test_dwell_config.lua"
   "test_tooling_policy.lua"
   "test_docs_policy.lua"
