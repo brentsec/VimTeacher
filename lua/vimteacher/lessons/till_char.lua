@@ -48,7 +48,7 @@ end
 --- @param buf number Buffer handle (unused)
 --- @param ns_id number Namespace ID (unused)
 --- @return table challenge {snippet_lines, target, start_pos}
-function M.generate_challenge(buf, ns_id)
+function M.generate_challenge()
 	local snippet = snippets.get_random()
 
 	-- Build list of valid till-targets per line
@@ -90,7 +90,7 @@ function M.generate_challenge(buf, ns_id)
 
 	-- Safety: need candidates
 	if #candidates == 0 then
-		return M.generate_challenge(buf, ns_id)
+		return M.generate_challenge()
 	end
 
 	-- Pick a random candidate

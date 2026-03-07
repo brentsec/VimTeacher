@@ -32,7 +32,7 @@ local M = base.define({
 --- @param start_pos table {row=number, col=number} 0-indexed
 --- @param target table {row=number, col=number} 0-indexed
 --- @return number Optimal move count
-function M.compute_optimal(start_pos, target)
+function M.compute_optimal()
 	return 1
 end
 
@@ -41,7 +41,7 @@ end
 --- @param buf number Buffer handle (unused for this lesson, but part of interface)
 --- @param ns_id number Namespace ID (unused for this lesson)
 --- @return table challenge {snippet_lines, target, start_pos}
-function M.generate_challenge(buf, ns_id)
+function M.generate_challenge()
 	local snippet = snippets.get_random()
 
 	-- Randomly choose first or last line for target

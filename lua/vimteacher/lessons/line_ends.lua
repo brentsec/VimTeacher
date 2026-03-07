@@ -67,13 +67,13 @@ end
 --- @param buf number Buffer handle (unused)
 --- @param ns_id number Namespace ID (unused)
 --- @return table challenge {snippet_lines, target, start_pos}
-function M.generate_challenge(buf, ns_id)
+function M.generate_challenge()
 	local snippet = snippets.get_random()
 	local boundaries = find_line_boundaries(snippet)
 
 	-- Safety: need at least 2 non-empty lines for meaningful start/target separation
 	if #boundaries < 2 then
-		return M.generate_challenge(buf, ns_id)
+		return M.generate_challenge()
 	end
 
 	-- Pick a random line

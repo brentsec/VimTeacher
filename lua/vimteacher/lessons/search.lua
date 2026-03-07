@@ -181,7 +181,7 @@ end
 --- @param buf number Buffer handle (unused for this lesson, but part of interface)
 --- @param ns_id number Namespace ID (unused for this lesson)
 --- @return table challenge {snippet_lines, target, target_end_col, start_pos, search_word, goal_text}
-function M.generate_challenge(buf, ns_id)
+function M.generate_challenge()
 	local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
 
 	-- Build word->positions map
@@ -230,7 +230,7 @@ function M.generate_challenge(buf, ns_id)
 
 	-- Safety: retry with different snippet if no repeated words
 	if #repeated == 0 then
-		return M.generate_challenge(buf, ns_id)
+		return M.generate_challenge()
 	end
 
 	local chosen = repeated[math.random(1, #repeated)]
@@ -253,7 +253,7 @@ function M.generate_challenge(buf, ns_id)
 
 	-- If no pairs 3+ rows apart, retry
 	if #valid_pairs == 0 then
-		return M.generate_challenge(buf, ns_id)
+		return M.generate_challenge()
 	end
 
 	-- Prefer pairs where target is NOT the immediately next occurrence (forces n/N)

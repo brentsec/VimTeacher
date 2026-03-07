@@ -185,7 +185,7 @@ end
 --- @param buf number Buffer handle (unused)
 --- @param ns_id number Namespace ID (unused)
 --- @return table challenge {snippet_lines, target, target_end_col, start_pos, goal_text}
-function M.generate_challenge(buf, ns_id)
+function M.generate_challenge()
 	-- Pick a random snippet
 	local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
 
@@ -224,7 +224,7 @@ function M.generate_challenge(buf, ns_id)
 
 	-- Safety: retry if no repeated words (shouldn't happen with our snippets)
 	if #repeated_words == 0 then
-		return M.generate_challenge(buf, ns_id)
+		return M.generate_challenge()
 	end
 
 	-- Pick a random repeated word
@@ -246,7 +246,7 @@ function M.generate_challenge(buf, ns_id)
 
 	-- If no pairs 3+ rows apart, try a different word or retry
 	if #valid_pairs == 0 then
-		return M.generate_challenge(buf, ns_id)
+		return M.generate_challenge()
 	end
 
 	-- Prefer non-adjacent pairs (target is NOT the immediately next/prev occurrence)

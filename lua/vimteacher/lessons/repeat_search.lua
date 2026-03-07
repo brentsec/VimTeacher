@@ -145,7 +145,7 @@ end
 --- @param buf number Buffer handle (unused for this lesson, but part of interface)
 --- @param ns_id number Namespace ID (unused for this lesson)
 --- @return table challenge {snippet_lines, target, start_pos}
-function M.generate_challenge(buf, ns_id)
+function M.generate_challenge()
 	-- Pick a random snippet from our custom pool
 	local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
 
@@ -165,7 +165,7 @@ function M.generate_challenge(buf, ns_id)
 
 	-- Safety: if no valid positions (should never happen), retry
 	if #valid_positions == 0 then
-		return M.generate_challenge(buf, ns_id)
+		return M.generate_challenge()
 	end
 
 	-- Pick a random target
