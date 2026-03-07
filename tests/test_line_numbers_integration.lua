@@ -254,7 +254,7 @@ local function run_info_screen_case()
 	}, "cleanup should restore source window options after an info lesson")
 end
 
-local function run_dashboard_fallback_case()
+local function run_dashboard_fallback_case(filetype)
 	local augroup = vim.api.nvim_create_augroup("VimTeacherDashboardLineNumberTest", { clear = true })
 	vim.api.nvim_create_autocmd("BufEnter", {
 		group = augroup,
@@ -267,7 +267,7 @@ local function run_dashboard_fallback_case()
 	})
 	vim.api.nvim_create_autocmd("FileType", {
 		group = augroup,
-		pattern = "snacks_dashboard",
+		pattern = filetype,
 		callback = function()
 			vim.wo.number = false
 			vim.wo.relativenumber = false
@@ -279,30 +279,31 @@ local function run_dashboard_fallback_case()
 		global_relativenumber = true,
 		local_number = true,
 		local_relativenumber = true,
-		filetype = "snacks_dashboard",
+		filetype = filetype,
 		buftype = "nofile",
 	})
 
-	assert_test(launch_vimteacher("small_edits"), "dashboard start should initialize VimTeacher through the :VimTeacher command")
+	assert_test(launch_vimteacher("small_edits"), filetype .. " start should initialize VimTeacher through the :VimTeacher command")
 	assert_test(integration.wait_for(function()
 		local state = runtime_state()
 		return state.mode == "playing" and integration.buf_has_text("Challenge 1/10")
-	end, 1000), "dashboard start should render the playing screen")
-	assert_live_window_matches_state("dashboard lesson start")
+	end, 1000), filetype .. " start should render the playing screen")
+	assert_live_window_matches_state(filetype .. " lesson start")
 	assert_line_numbers({
 		number = true,
 		relativenumber = true,
-	}, "playing screen should fall back to global editing defaults when started from a dashboard buffer")
-	assert_statuscolumn_visible("dashboard start should render the line-number gutter from global defaults")
+	}, "playing screen should fall back to global editing defaults when started from a UI buffer (" .. filetype .. ")")
+	assert_statuscolumn_visible(filetype .. " start should render the line-number gutter from global defaults")
 
 	stop_from_current_screen()
-	assert_test(vim.api.nvim_get_current_win() ~= nil, "cleanup should leave a valid active window after a dashboard-launched lesson")
+	assert_test(vim.api.nvim_get_current_win() ~= nil, "cleanup should leave a valid active window after a UI-buffer-launched lesson (" .. filetype .. ")")
 	pcall(vim.api.nvim_del_augroup_by_id, augroup)
 end
 
 run_menu_to_playing_case()
 run_local_over_global_case()
 run_info_screen_case()
-run_dashboard_fallback_case()
+run_dashboard_fallback_case("snacks_dashboard")
+run_dashboard_fallback_case("nvdash")
 
 counter.finish("test_line_numbers_integration")

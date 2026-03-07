@@ -45,6 +45,7 @@ local function is_ui_buffer(buf)
 	return filetype == "snacks_dashboard"
 		or filetype == "alpha"
 		or filetype == "dashboard"
+		or filetype == "nvdash"
 		or filetype == "starter"
 end
 
