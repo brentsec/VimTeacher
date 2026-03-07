@@ -116,7 +116,7 @@ local GLOBAL_ADAPTIVE_KEYS = {
 	".",
 }
 
-local cleanup, show_menu, start_lesson, advance_challenge, begin_challenge_timing, rerender_menu_layout
+local actions = {}
 local input_controller, gameplay_controller, mode_keymap_controller, session_controller
 
 local state = state_mod.session
@@ -137,7 +137,7 @@ local function merged_config()
 	return vim.tbl_deep_extend("force", vim.deepcopy(DEFAULT_CONFIG), stored)
 end
 
-cleanup = function()
+local function cleanup()
 	if session_controller then
 		session_controller.stop()
 	end
@@ -153,27 +153,27 @@ input_controller = input_mod.new({
 })
 
 local function setup_menu_keymaps()
-	input_controller.setup_menu_keymaps(start_lesson, cleanup)
+	input_controller.setup_menu_keymaps(actions.start_lesson, cleanup)
 end
 
 local function clear_menu_keymaps()
 	input_controller.clear_menu_keymaps()
 end
 
-rerender_menu_layout = function()
+local function rerender_menu_layout()
 	input_controller.rerender_menu_layout(buffer.render_menu)
 end
 
 gameplay_controller = gameplay_mod.new({
 	state = state,
 	advance_challenge = function()
-		if advance_challenge then
-			advance_challenge()
+		if actions.advance_challenge then
+			actions.advance_challenge()
 		end
 	end,
 	begin_challenge_timing = function()
-		if begin_challenge_timing then
-			begin_challenge_timing()
+		if actions.begin_challenge_timing then
+			actions.begin_challenge_timing()
 		end
 	end,
 	cleanup = cleanup,
@@ -194,19 +194,19 @@ session_controller = session_mod.new({
 	},
 })
 
-advance_challenge = function()
+actions.advance_challenge = function()
 	session_controller.advance_challenge()
 end
 
-begin_challenge_timing = function()
+actions.begin_challenge_timing = function()
 	session_controller.begin_challenge_timing()
 end
 
-show_menu = function()
+actions.show_menu = function()
 	session_controller.show_menu()
 end
 
-start_lesson = function(lesson_name)
+actions.start_lesson = function(lesson_name)
 	session_controller.start(lesson_name)
 end
 
@@ -262,9 +262,10 @@ function M.start(lesson_name)
 	block_insert_keys()
 
 	if lesson_name and lesson_name ~= "" then
-		start_lesson(lesson_name)
+		actions.start_lesson(lesson_name)
 	else
-		show_menu()
+		actions.show_menu()
 	end
 end
+
 return M
