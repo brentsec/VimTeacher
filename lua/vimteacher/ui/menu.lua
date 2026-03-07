@@ -131,6 +131,7 @@ function M.render_menu(buf, sections, all_stats, win)
 	local topic_col_width = math.max(20, menu_layout.box_width - 33)
 	local lines = {}
 	local row_to_lesson = {}
+	local row_to_lesson_col = {}
 
 	lines[#lines + 1] = M.border_top(menu_layout)
 	lines[#lines + 1] = M.bordered("", menu_layout)
@@ -186,11 +187,21 @@ function M.render_menu(buf, sections, all_stats, win)
 					best_acc = string.format("%d%%", best_acc_num)
 				end
 			end
-			lines[#lines + 1] = M.bordered(
-				M.build_menu_row(lesson_num .. ".", common.as_text(lesson.title), best_time, best_acc, topic_col_width),
-				menu_layout
+			local lesson_num_text = lesson_num .. "."
+			local lesson_row = M.build_menu_row(
+				lesson_num_text,
+				common.as_text(lesson.title),
+				best_time,
+				best_acc,
+				topic_col_width
 			)
+			local bordered_row = M.bordered(lesson_row, menu_layout)
+			lines[#lines + 1] = bordered_row
 			row_to_lesson[#lines] = lesson_num
+			local num_col = bordered_row:find(lesson_num_text, 1, true)
+			if num_col then
+				row_to_lesson_col[#lines] = num_col - 1
+			end
 		end
 	end
 	local menu_end = #lines
@@ -207,6 +218,7 @@ function M.render_menu(buf, sections, all_stats, win)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modifiable = false
 	vim.api.nvim_buf_set_var(buf, "vimteacher_menu_row_to_lesson", row_to_lesson)
+	vim.api.nvim_buf_set_var(buf, "vimteacher_menu_row_to_col", row_to_lesson_col)
 
 	highlight.apply_line_highlight(buf, 0, 1, "VimTeacherBorder")
 	highlight.apply_line_highlight(buf, #lines - 1, #lines, "VimTeacherBorder")

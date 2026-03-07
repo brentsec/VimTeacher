@@ -157,15 +157,27 @@ local function run_menu_to_playing_case()
 	assert_statuscolumn("", "menu screen should not render a line-number status column")
 
 	local row_map = vim.api.nvim_buf_get_var(0, "vimteacher_menu_row_to_lesson")
+	local row_to_col = vim.api.nvim_buf_get_var(0, "vimteacher_menu_row_to_col")
+	local intro_row = nil
 	local basic_movement_row = nil
 	for row, lesson_num in pairs(row_map) do
+		if lesson_num == 1 then
+			intro_row = row
+		end
 		if lesson_num == 2 then
 			basic_movement_row = row
-			break
 		end
 	end
+	assert_test(intro_row ~= nil, "menu should expose a row mapping for Intro to Modes")
 	assert_test(basic_movement_row ~= nil, "menu should expose a row mapping for Basic Movement")
-	if not basic_movement_row then
+	local intro_col = intro_row and row_to_col[intro_row] or nil
+	assert_test(type(intro_col) == "number", "menu should expose a cursor column for the first lesson row")
+	local menu_cursor = vim.api.nvim_win_get_cursor(0)
+	assert_test(
+		intro_row ~= nil and intro_col ~= nil and menu_cursor[1] == intro_row and menu_cursor[2] == intro_col,
+		"menu should place the cursor on the first lesson number when VimTeacher opens"
+	)
+	if not intro_row or not basic_movement_row then
 		return
 	end
 

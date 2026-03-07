@@ -30,6 +30,39 @@ function M.new(deps)
 		buffer.apply_nonplaying_line_numbers(state.win, state.source_window_line_numbers)
 	end
 
+	local function first_menu_lesson_row(buf)
+		if not buf or not vim.api.nvim_buf_is_valid(buf) then
+			return 1
+		end
+		local ok, row_map = pcall(vim.api.nvim_buf_get_var, buf, "vimteacher_menu_row_to_lesson")
+		if not ok or type(row_map) ~= "table" then
+			return 1
+		end
+
+		local first_row = nil
+		for row, lesson_num in pairs(row_map) do
+			if lesson_num and lesson_num >= 1 and (not first_row or row < first_row) then
+				first_row = row
+			end
+		end
+		return first_row or 1
+	end
+
+	local function first_menu_lesson_col(buf, row)
+		if not buf or not vim.api.nvim_buf_is_valid(buf) then
+			return 0
+		end
+		local ok, row_to_col = pcall(vim.api.nvim_buf_get_var, buf, "vimteacher_menu_row_to_col")
+		if not ok or type(row_to_col) ~= "table" then
+			return 0
+		end
+		local col = tonumber(row_to_col[row])
+		if not col or col < 0 then
+			return 0
+		end
+		return col
+	end
+
 	local function stop_elapsed_timer()
 		if state.elapsed_timer then
 			vim.fn.timer_stop(state.elapsed_timer)
@@ -118,7 +151,8 @@ function M.new(deps)
 		end
 		if state.win and vim.api.nvim_win_is_valid(state.win) then
 			vim.fn.winrestview({ topline = 1, leftcol = 0 })
-			vim.api.nvim_win_set_cursor(state.win, { 1, 0 })
+			local row = first_menu_lesson_row(state.buf)
+			vim.api.nvim_win_set_cursor(state.win, { row, first_menu_lesson_col(state.buf, row) })
 		end
 		if menu.setup then
 			menu.setup()
