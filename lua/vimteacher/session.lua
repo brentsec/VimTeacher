@@ -213,9 +213,9 @@ function M.new(deps)
 				if mode_keymaps.setup_completion_keymaps then
 					mode_keymaps.setup_completion_keymaps(controller.start, controller.show_menu, controller.stop)
 				end
-				else
-					controller.load_challenge()
-				end
+			else
+				controller.load_challenge()
+			end
 			end, ADVANCE_DELAY_MS)
 		end
 

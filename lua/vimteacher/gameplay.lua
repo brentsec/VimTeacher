@@ -249,14 +249,14 @@ function M.new(deps)
 				end
 				if not state.lesson.allowed_modify_keys then
 					return
-					end
-					if macro_session_busy() then
-						local busy_ms = state.insert_busy_since and ((vim.loop.hrtime() - state.insert_busy_since) / 1e6) or 0
-						if busy_ms >= MACRO_BUSY_THRESHOLD_MS and snippet_matches_expected(state.current_challenge.expected_lines) then
-							state.insert_busy_since = nil
-							if not advance_challenge_phase() then
-								on_target_reached()
-							end
+				end
+				if macro_session_busy() then
+					local busy_ms = state.insert_busy_since and ((vim.loop.hrtime() - state.insert_busy_since) / 1e6) or 0
+					if busy_ms >= MACRO_BUSY_THRESHOLD_MS and snippet_matches_expected(state.current_challenge.expected_lines) then
+						state.insert_busy_since = nil
+						if not advance_challenge_phase() then
+							on_target_reached()
+						end
 						return
 					end
 					schedule_insert_validation_retry()
