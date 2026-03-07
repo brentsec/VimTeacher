@@ -3,8 +3,8 @@
 -- Auto-sourced by Neovim when the plugin is on the runtimepath
 
 -- Version check
-if vim.fn.has("nvim-0.7") == 0 then
-	vim.notify("VimTeacher requires Neovim >= 0.7", vim.log.levels.ERROR)
+if vim.fn.has("nvim-0.9") == 0 then
+	vim.notify("VimTeacher requires Neovim >= 0.9", vim.log.levels.ERROR)
 	return
 end
 

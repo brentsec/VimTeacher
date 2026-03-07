@@ -1,0 +1,8 @@
+:VimTeacher	vimteacher.txt	/*:VimTeacher*
+:VimTeacher-{lesson}	vimteacher.txt	/*:VimTeacher-{lesson}*
+vimteacher-cmds	vimteacher.txt	/*vimteacher-cmds*
+vimteacher-config	vimteacher.txt	/*vimteacher-config*
+vimteacher-contents	vimteacher.txt	/*vimteacher-contents*
+vimteacher-lessons	vimteacher.txt	/*vimteacher-lessons*
+vimteacher-usage	vimteacher.txt	/*vimteacher-usage*
+vimteacher.txt	vimteacher.txt	/*vimteacher.txt*

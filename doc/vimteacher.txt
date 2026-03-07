@@ -1,0 +1,79 @@
+*vimteacher.txt*    Interactive Vim lessons for Neovim
+
+VimTeacher is a Neovim plugin that teaches Vim motions, operators, text
+objects, and editing workflows inside a lesson buffer.
+
+==============================================================================
+CONTENTS                                                *vimteacher-contents*
+
+1. Commands
+2. Usage
+3. Configuration
+4. Lessons
+
+==============================================================================
+COMMANDS                                                   *vimteacher-cmds*
+
+                                                        *:VimTeacher*
+:VimTeacher
+    Open the VimTeacher lesson menu.
+
+                                                *:VimTeacher-{lesson}*
+:VimTeacher {lesson}
+    Jump directly to a lesson by name, for example:
+    >
+      :VimTeacher basic_movement
+<
+
+==============================================================================
+USAGE                                                     *vimteacher-usage*
+
+Inside a lesson:
+
+- Move to the highlighted target using the keys being taught.
+- Stop on the target long enough to satisfy dwell validation.
+- Complete 10 challenges to finish the lesson and see session stats.
+
+Default lesson keys:
+
+- `q` returns to the menu.
+- `Q` restarts the current lesson.
+
+After a lesson:
+
+- `n` starts the next lesson.
+- `p` starts the previous lesson.
+- `r` restarts the current lesson.
+- `m` returns to the menu.
+- `q` quits VimTeacher.
+
+==============================================================================
+CONFIGURATION                                            *vimteacher-config*
+
+VimTeacher exposes `require("vimteacher").setup()` for adaptive key display:
+
+>
+  require("vimteacher").setup({
+    keymaps = {
+      mode = "adaptive_display", -- strict | adaptive_display | adaptive_runtime
+      distro = "auto",           -- auto | neovim | lazyvim
+      overrides = {},            -- optional: canonical_key -> display_key
+    },
+  })
+<
+
+The `:VimTeacher` command is available after the plugin is loaded.
+
+==============================================================================
+LESSONS                                                  *vimteacher-lessons*
+
+Topics include:
+
+- Basic movement with `h`, `j`, `k`, `l`
+- Word movement, line boundaries, and search
+- Operators, text objects, and visual mode
+- Repetition, macros, and editing efficiency
+
+See the README for the full lesson list and contributor guidance.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

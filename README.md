@@ -6,7 +6,7 @@ Interactive Vim tutorial plugin that teaches Vim concepts directly inside Neovim
 
 ## Requirements
 
-- Neovim >= 0.7 (tested on 0.11.6)
+- Neovim >= 0.9 (tested on 0.11.6)
 
 ## Installation
 
@@ -23,6 +23,15 @@ Then open Neovim and run `:VimTeacher`.
 ### With lazy.nvim (LazyVim)
 
 Add to `~/.config/nvim/lua/plugins/vimteacher.lua`:
+
+```lua
+return {
+  "brentsec/VimTeacher",
+  cmd = "VimTeacher",
+}
+```
+
+For a local checkout during development, replace the repo spec with:
 
 ```lua
 return {
