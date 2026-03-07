@@ -121,6 +121,14 @@ local input_controller, gameplay_controller, mode_keymap_controller, session_con
 
 local state = state_mod.session
 
+local function current_win()
+	local ok, win = pcall(vim.api.nvim_get_current_win)
+	if ok and win and vim.api.nvim_win_is_valid(win) then
+		return win
+	end
+	return nil
+end
+
 local function merged_config()
 	local stored = vim.g.vimteacher_config
 	if type(stored) ~= "table" then
@@ -237,6 +245,8 @@ function M.start(lesson_name)
 	end
 
 	state.all_stats = stats_mod.load()
+	state.source_window_line_numbers = buffer.capture_line_numbers(current_win())
+	state.preferred_lesson_line_numbers = buffer.capture_preferred_line_numbers(current_win())
 
 	state.buf, state.win = buffer.create()
 	gameplay_controller.setup_autocmds()

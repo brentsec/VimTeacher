@@ -25,7 +25,7 @@ Describe major components, boundaries, and data flow.
 - `lua/vimteacher/init.lua`: entrypoint, setup, commands, and top-level wiring
 - `lua/vimteacher/gameplay.lua`: active-lesson render loop, validation, and autocmd handlers
 - `lua/vimteacher/state.lua`: shared session state and mode transitions
-- `lua/vimteacher/session.lua`: lesson/session lifecycle, challenge loading, completion flow
+- `lua/vimteacher/session.lua`: lesson/session lifecycle, challenge loading, completion flow, and mode-specific lesson-window line-number policy
 - `lua/vimteacher/input.lua`: menu input buffering and menu rerender behavior
 - `lua/vimteacher/mode_keymaps.lua`: mode-specific buffer-local keymaps outside menu input handling
 - `lua/vimteacher/key_display.lua`: adaptive key text rewriting and lesson-view construction
@@ -33,7 +33,7 @@ Describe major components, boundaries, and data flow.
 - `lua/vimteacher/goal.lua`: goal-bar metadata derived from lesson command keys
 - `lua/vimteacher/recent.lua`: shared recency-window selection helper for snippets and challenge pools
 - `lua/vimteacher/optimal.lua`: shared motion-cost utilities for lesson scoring
-- `lua/vimteacher/buffer.lua`: thin facade over UI renderers
+- `lua/vimteacher/buffer.lua`: thin facade over UI renderers and window-local lesson buffer option helpers
 - `lua/vimteacher/ui/menu.lua`: topic menu layout and rendering
 - `lua/vimteacher/ui/lesson.lua`: active lesson/challenge rendering
 - `lua/vimteacher/ui/stats.lua`: between-challenge stats overlay
