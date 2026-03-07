@@ -167,7 +167,7 @@ For full behavior and coverage details, see:
 
 All movement-based challenges require the cursor to **dwell** on the target position for 50ms before the challenge completes. This prevents users from holding down a movement key and flying past the target without intentionally stopping.
 
-The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handler, so it applies to **all lessons automatically**. No per-lesson opt-in is needed. If a future lesson type genuinely doesn't need dwell validation (e.g., a timed command execution lesson), it can set `dwell_ms = 0` in its lesson table to bypass it.
+The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handler, so it applies to **all lessons automatically**. No per-lesson opt-in is needed. If a future lesson type genuinely doesn't need dwell validation (e.g., a timed command execution lesson), it can set `dwell_time = 0` in its lesson table to bypass it. `dwell_ms` is still accepted as a compatibility alias.
 
 ### Neovim/LazyVim Support Notes
 
@@ -184,7 +184,7 @@ The dwell check is enforced centrally in `init.lua`'s `on_cursor_moved()` handle
    - `hint_lines` (string[])
    - `generate_challenge(buf, ns_id)` (function returning `{snippet_lines, target, start_pos}`)
    - `compute_optimal(start_pos, target)` (optional, defaults to Manhattan distance)
-   - `dwell_ms` (optional number, defaults to 50; set to 0 to disable dwell validation)
+   - `dwell_time` (optional number, defaults to 50; set to 0 to disable dwell validation; `dwell_ms` is accepted as a compatibility alias)
    - For adaptive text-heavy lessons, prefer `lua/vimteacher/lessons/base.lua` and define `*_template` fields instead of duplicating `get_title` / `get_description` / `get_hint_lines` boilerplate
 2. Add `"your_lesson"` to the `M.order` table in `lua/vimteacher/lessons/init.lua`
 3. Dwell-time validation is applied automatically by the orchestrator — no lesson-level code needed

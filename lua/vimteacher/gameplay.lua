@@ -14,6 +14,19 @@ local INSERT_VALIDATION_RETRY_MS = 25
 local MACRO_BUSY_THRESHOLD_MS = 150
 local DEFAULT_DWELL_TIME_MS = 50
 
+local function lesson_dwell_time_ms(lesson)
+	if type(lesson) ~= "table" then
+		return DEFAULT_DWELL_TIME_MS
+	end
+	if type(lesson.dwell_time) == "number" then
+		return lesson.dwell_time
+	end
+	if type(lesson.dwell_ms) == "number" then
+		return lesson.dwell_ms
+	end
+	return DEFAULT_DWELL_TIME_MS
+end
+
 local function lines_equal(a, b, normalizer)
 	if #a ~= #b then
 		return false
@@ -416,7 +429,7 @@ function M.new(deps)
 					if is_on_target() then
 						on_target_reached()
 					end
-				end, state.lesson.dwell_time or DEFAULT_DWELL_TIME_MS)
+				end, lesson_dwell_time_ms(state.lesson))
 			end
 		else
 			state.dwell_pending = false
