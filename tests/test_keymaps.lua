@@ -175,14 +175,8 @@ keymaps.capture()
 local open_display, open_diag = keymaps.resolve_many({ "o", "O" })
 assert_test(open_display["o"] == "m", "Expected lowercase o to resolve to lowercase m")
 assert_test(open_display["O"] == "M", "Expected uppercase O to resolve to uppercase M")
-assert_test(
-	vim.tbl_contains(open_diag.custom, "o->m"),
-	"Expected diagnostics.custom to include lowercase o remap"
-)
-assert_test(
-	vim.tbl_contains(open_diag.custom, "O->M"),
-	"Expected diagnostics.custom to include uppercase O remap"
-)
+assert_test(vim.tbl_contains(open_diag.custom, "o->m"), "Expected diagnostics.custom to include lowercase o remap")
+assert_test(vim.tbl_contains(open_diag.custom, "O->M"), "Expected diagnostics.custom to include uppercase O remap")
 
 -- Default baseline test: no custom mappings means canonical display keys.
 clear_maps(cleanup_keys)
@@ -251,10 +245,7 @@ local display_commands = keymaps.resolve_many(vim.tbl_map(function(pair)
 end, command_pairs))
 
 local absolute_title = absolute_line_jumps.get_title({ key_display = display_commands })
-assert_test(
-	absolute_title:find("Z, X", 1, true) ~= nil,
-	"absolute_line_jumps title should render remapped gg/G keys"
-)
+assert_test(absolute_title:find("Z, X", 1, true) ~= nil, "absolute_line_jumps title should render remapped gg/G keys")
 
 local operators_desc = intro_operators.get_description({ key_display = display_commands })
 assert_test(
@@ -280,10 +271,7 @@ assert_test(
 )
 
 local search_title = search.get_title({ key_display = display_commands })
-assert_test(
-	search_title:find(";, ], [", 1, true) ~= nil,
-	"search title should render remapped search and repeat keys"
-)
+assert_test(search_title:find(";, ], [", 1, true) ~= nil, "search title should render remapped search and repeat keys")
 local search_hints = search.get_hint_lines({ key_display = display_commands })
 assert_test(
 	search_hints[1]:find("%[;word Enter%] Search") ~= nil and search_hints[1]:find("%[,word%] Backward") ~= nil,
@@ -298,13 +286,15 @@ assert_test(
 
 local quick_hints = quick_word_search.get_hint_lines({ key_display = display_commands })
 assert_test(
-	quick_hints[1]:find("%[gs%] Search word forward") ~= nil and quick_hints[1]:find("%[gS%] Search word backward") ~= nil,
+	quick_hints[1]:find("%[gs%] Search word forward") ~= nil
+		and quick_hints[1]:find("%[gS%] Search word backward") ~= nil,
 	"quick_word_search hints should render remapped */# commands"
 )
 
 local intro_text_hints = intro_text_objects.get_hint_lines({ key_display = display_commands })
 assert_test(
-	intro_text_hints[1]:find("%[z%(%] Delete inside %(%)") ~= nil and intro_text_hints[1]:find("%[x\"%] Change inside \"\"") ~= nil,
+	intro_text_hints[1]:find("%[z%(%] Delete inside %(%)") ~= nil
+		and intro_text_hints[1]:find('%[x"%] Change inside ""') ~= nil,
 	"intro_text_objects hints should render remapped text-object commands"
 )
 
@@ -317,7 +307,7 @@ assert_test(
 local quote_title = quote_text_objects.get_title({ key_display = display_commands })
 assert_test(
 	quote_title:find('di", x", da", ca"', 1, true) ~= nil,
-	"quote_text_objects title should render remapped ci\" command"
+	'quote_text_objects title should render remapped ci" command'
 )
 
 local paragraph_hints = paragraph_text_objects.get_hint_lines({ key_display = display_commands })
@@ -345,10 +335,7 @@ assert_test(
 )
 
 local switch_title = switch_selection_ends.get_title({ key_display = display_commands })
-assert_test(
-	switch_title:find("zo", 1, true) ~= nil,
-	"switch_selection_ends title should render remapped o key"
-)
+assert_test(switch_title:find("zo", 1, true) ~= nil, "switch_selection_ends title should render remapped o key")
 
 clear_maps(command_cleanup_keys)
 keymaps.capture()
@@ -379,16 +366,10 @@ local display_edits = keymaps.resolve_many(vim.tbl_map(function(pair)
 end, edit_pairs))
 
 local line_insert_title = line_inserts.get_title({ key_display = display_edits })
-assert_test(
-	line_insert_title:find("U, P", 1, true) ~= nil,
-	"line_inserts title should render remapped I/A keys"
-)
+assert_test(line_insert_title:find("U, P", 1, true) ~= nil, "line_inserts title should render remapped I/A keys")
 
 local open_lines_title = open_lines.get_title({ key_display = display_edits })
-assert_test(
-	open_lines_title:find("m, M", 1, true) ~= nil,
-	"open_lines title should render remapped o/O keys"
-)
+assert_test(open_lines_title:find("m, M", 1, true) ~= nil, "open_lines title should render remapped o/O keys")
 
 local small_edits_hints = small_edits.get_hint_lines({ key_display = display_edits })
 assert_test(
@@ -398,7 +379,8 @@ assert_test(
 
 local repeat_hints_power = repeat_power.get_hint_lines({ key_display = display_edits })
 assert_test(
-	repeat_hints_power[1]:find("%[b%] Delete char") ~= nil and repeat_hints_power[1]:find("%[3b%] Delete 3 chars") ~= nil,
+	repeat_hints_power[1]:find("%[b%] Delete char") ~= nil
+		and repeat_hints_power[1]:find("%[3b%] Delete 3 chars") ~= nil,
 	"repeat_power hints should render remapped x command in counted form"
 )
 

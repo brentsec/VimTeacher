@@ -5,7 +5,7 @@ local base = require("vimteacher.lessons.base")
 local pool = require("vimteacher.lessons.pool")
 
 local M = base.define({
-	title_template = 'Quote Objects: {{di_quote}}, {{ci_quote}}, {{da_quote}}, {{ca_quote}}',
+	title_template = "Quote Objects: {{di_quote}}, {{ci_quote}}, {{da_quote}}, {{ca_quote}}",
 	type = "insert",
 	allowed_keys = { "c" },
 	allowed_modify_keys = { "d" },
@@ -24,16 +24,16 @@ local M = base.define({
 		"Act on text inside or around quotation marks:",
 		"",
 		'  {{di_quote}} = delete inside double quotes: "hello" becomes ""',
-		'  {{da_quote}} = delete around double quotes: removes quotes too',
-		'  {{ci_quote}} = change inside quotes: clears content, type replacement',
-		'  {{ca_quote}} = change around quotes: removes quotes, type replacement',
+		"  {{da_quote}} = delete around double quotes: removes quotes too",
+		"  {{ci_quote}} = change inside quotes: clears content, type replacement",
+		"  {{ca_quote}} = change around quotes: removes quotes, type replacement",
 		"",
 		"  Same keys work with single quotes: {{di_squote}} {{da_squote}} {{ci_squote}} {{ca_squote}}",
 		"",
 		"Navigate inside the quotes and use the indicated command.",
 	},
 	hint_template = {
-		'[{{di_quote}}] Del inside  [{{da_quote}}] Del around  [{{ci_quote}}] Change inside  [{{ca_quote}}] Change around',
+		"[{{di_quote}}] Del inside  [{{da_quote}}] Del around  [{{ci_quote}}] Change inside  [{{ca_quote}}] Change around",
 	},
 })
 

@@ -47,7 +47,10 @@ assert_test(spd5 == 100, "Extreme fast case should cap at 100%, got " .. spd5)
 
 -- Test 10: persistent stats path uses Neovim's data directory
 local expected_path = vim.fn.stdpath("data") .. "/vimteacher/stats.json"
-assert_test(stats._get_stats_path() == expected_path, "Stats path should use stdpath('data'), got " .. stats._get_stats_path())
+assert_test(
+	stats._get_stats_path() == expected_path,
+	"Stats path should use stdpath('data'), got " .. stats._get_stats_path()
+)
 
 -- Test 11: record_session — first session
 local all = {}

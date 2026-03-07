@@ -38,16 +38,22 @@ local function challenge_by_key(module, key)
 end
 
 local function assert_started(case)
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Challenge 1/10")
-	end, 1000), case.lesson_name .. " should render challenge 1 for " .. case.label)
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Challenge 1/10")
+		end, 1000),
+		case.lesson_name .. " should render challenge 1 for " .. case.label
+	)
 	for _, expected_ui in ipairs(case.expected_ui or {}) do
 		assert_test(
 			integration.buf_has_text(expected_ui),
 			case.lesson_name .. " should render adaptive text '" .. expected_ui .. "' for " .. case.label
 		)
 	end
-	assert_test(integration.snippet_matches(vimteacher, case.challenge.snippet_lines), case.lesson_name .. " should render deterministic snippet for " .. case.label)
+	assert_test(
+		integration.snippet_matches(vimteacher, case.challenge.snippet_lines),
+		case.lesson_name .. " should render deterministic snippet for " .. case.label
+	)
 end
 
 local function move_to_target(target)
@@ -68,10 +74,16 @@ end
 
 local function run_intro_case()
 	vimteacher.start("intro_visual_mode")
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Intro to Visual Mode")
-	end, 1000), "intro_visual_mode should render its title")
-	assert_test(integration.buf_has_text("[z] Start visual mode"), "intro_visual_mode should render the remapped visual-mode hint")
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Intro to Visual Mode")
+		end, 1000),
+		"intro_visual_mode should render its title"
+	)
+	assert_test(
+		integration.buf_has_text("[z] Start visual mode"),
+		"intro_visual_mode should render the remapped visual-mode hint"
+	)
 
 	local sandbox_row = integration.find_line_index('const items = ["apple", "banana", "cherry"];')
 	assert_test(sandbox_row ~= nil, "intro_visual_mode should render the sandbox snippet")
@@ -87,9 +99,12 @@ local function run_intro_case()
 	assert_test(vim.fn.mode() == "n", "canonical v should remain blocked in intro_visual_mode")
 
 	integration.send_sequence(remaps.remap_for["v"])
-	assert_test(integration.wait_for(function()
-		return vim.fn.mode() == "v"
-	end, 200), "remapped visual-mode key should enter visual mode in intro_visual_mode")
+	assert_test(
+		integration.wait_for(function()
+			return vim.fn.mode() == "v"
+		end, 200),
+		"remapped visual-mode key should enter visual mode in intro_visual_mode"
+	)
 	integration.send_sequence("<Esc>")
 end
 
@@ -106,9 +121,12 @@ local function run_visual_operator_case(case)
 		assert_test(vim.fn.mode() == "n", "canonical v should remain blocked for " .. case.label)
 
 		integration.send_sequence(remaps.remap_for["v"])
-		assert_test(integration.wait_for(function()
-			return vim.fn.mode() == "v"
-		end, 200), case.lesson_name .. " should enter visual mode with the remapped key for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return vim.fn.mode() == "v"
+			end, 200),
+			case.lesson_name .. " should enter visual mode with the remapped key for " .. case.label
+		)
 
 		local motion = horizontal_motion(case.challenge.target.col, case.challenge.select_end.col)
 		if motion ~= "" then
@@ -132,12 +150,18 @@ local function run_visual_operator_case(case)
 			integration.send_sequence(case.challenge.char .. "<Esc>", "mtx")
 		end
 
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 700), case.lesson_name .. " should apply the expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped visual edit for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 700),
+			case.lesson_name .. " should apply the expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped visual edit for " .. case.label
+		)
 	end)
 end
 
@@ -154,9 +178,12 @@ local function run_visual_line_case(case)
 		assert_test(vim.fn.mode() == "n", "canonical V should remain blocked for " .. case.label)
 
 		integration.send_sequence(remaps.remap_for["V"])
-		assert_test(integration.wait_for(function()
-			return vim.fn.mode() == "V"
-		end, 200), case.lesson_name .. " should enter visual-line mode with the remapped key for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return vim.fn.mode() == "V"
+			end, 200),
+			case.lesson_name .. " should enter visual-line mode with the remapped key for " .. case.label
+		)
 
 		local motion = case.challenge.key:sub(2, -2)
 		if motion ~= "" then
@@ -180,12 +207,18 @@ local function run_visual_line_case(case)
 			integration.send_sequence(case.challenge.char .. "<Esc>", "mtx")
 		end
 
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 700), case.lesson_name .. " should apply the expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped visual-line edit for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 700),
+			case.lesson_name .. " should apply the expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped visual-line edit for " .. case.label
+		)
 	end)
 end
 
@@ -199,9 +232,12 @@ local function run_switch_case(case)
 		local target_abs_row = state.snippet_offset + case.challenge.target.row + 1
 
 		integration.send_sequence(remaps.remap_for["v"])
-		assert_test(integration.wait_for(function()
-			return vim.fn.mode() == "v"
-		end, 200), case.lesson_name .. " should enter visual mode with the remapped key for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return vim.fn.mode() == "v"
+			end, 200),
+			case.lesson_name .. " should enter visual mode with the remapped key for " .. case.label
+		)
 
 		local motion = horizontal_motion(case.challenge.target.col, case.challenge.select_end.col)
 		if motion ~= "" then
@@ -212,10 +248,13 @@ local function run_switch_case(case)
 		end
 
 		integration.send_sequence(remaps.remap_for["o"])
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == target_abs_row and cur[2] == case.challenge.target.col
-		end, 200), case.lesson_name .. " should switch the active selection end with the remapped o key for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == target_abs_row and cur[2] == case.challenge.target.col
+			end, 200),
+			case.lesson_name .. " should switch the active selection end with the remapped o key for " .. case.label
+		)
 
 		integration.send_sequence(remaps.remap_for["d"])
 		integration.wait_for(function()
@@ -223,12 +262,18 @@ local function run_switch_case(case)
 		end, 60, 20)
 		integration.fire_text_changed(0)
 
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 700), case.lesson_name .. " should apply the expected delete after switching selection ends for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after the remapped vod flow for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 700),
+			case.lesson_name .. " should apply the expected delete after switching selection ends for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after the remapped vod flow for " .. case.label
+		)
 	end)
 end
 

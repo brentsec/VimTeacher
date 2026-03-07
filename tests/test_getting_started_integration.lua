@@ -48,9 +48,12 @@ end
 local function run_intro_modes_case()
 	vimteacher.start("intro_modes")
 
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Intro to Modes")
-	end, 1000), "intro_modes should render its title")
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Intro to Modes")
+		end, 1000),
+		"intro_modes should render its title"
+	)
 	assert_test(integration.buf_has_text("[u] Enter insert mode"), "intro_modes should render remapped insert hint")
 
 	local sandbox_row = integration.find_line_index("function hello()")
@@ -61,7 +64,10 @@ local function run_intro_modes_case()
 
 	vim.api.nvim_win_set_cursor(0, { sandbox_row, 0 })
 	local base_line = integration.line_at(sandbox_row)
-	assert_test(type(base_line) == "string" and #base_line > 2, "intro_modes sandbox line should be usable for movement")
+	assert_test(
+		type(base_line) == "string" and #base_line > 2,
+		"intro_modes sandbox line should be usable for movement"
+	)
 
 	integration.send_key("l")
 	integration.wait_for(function()
@@ -71,24 +77,36 @@ local function run_intro_modes_case()
 	assert_test(cur_after_blocked[1] == sandbox_row and cur_after_blocked[2] == 0, "canonical l should stay blocked")
 
 	integration.send_key(remap_for["l"])
-	assert_test(integration.wait_for(function()
-		return integration.current_cursor()[2] == 1
-	end, 300), "remapped right key should move one column right in intro_modes")
+	assert_test(
+		integration.wait_for(function()
+			return integration.current_cursor()[2] == 1
+		end, 300),
+		"remapped right key should move one column right in intro_modes"
+	)
 
 	integration.send_key(remap_for["j"])
-	assert_test(integration.wait_for(function()
-		return integration.current_cursor()[1] == sandbox_row + 1
-	end, 300), "remapped down key should move one row down in intro_modes")
+	assert_test(
+		integration.wait_for(function()
+			return integration.current_cursor()[1] == sandbox_row + 1
+		end, 300),
+		"remapped down key should move one row down in intro_modes"
+	)
 
 	integration.send_key(remap_for["k"])
-	assert_test(integration.wait_for(function()
-		return integration.current_cursor()[1] == sandbox_row
-	end, 300), "remapped up key should move one row up in intro_modes")
+	assert_test(
+		integration.wait_for(function()
+			return integration.current_cursor()[1] == sandbox_row
+		end, 300),
+		"remapped up key should move one row up in intro_modes"
+	)
 
 	integration.send_key(remap_for["h"])
-	assert_test(integration.wait_for(function()
-		return integration.current_cursor()[2] == 0
-	end, 300), "remapped left key should move one column left in intro_modes")
+	assert_test(
+		integration.wait_for(function()
+			return integration.current_cursor()[2] == 0
+		end, 300),
+		"remapped left key should move one column left in intro_modes"
+	)
 
 	integration.send_key("i")
 	integration.wait_for(function()
@@ -97,9 +115,12 @@ local function run_intro_modes_case()
 	assert_test(integration.line_at(sandbox_row) == base_line, "canonical i should stay blocked in intro_modes")
 
 	integration.perform_insert_sequence(remap_for["i"], "Z")
-	assert_test(integration.wait_for(function()
-		return integration.line_at(sandbox_row) == "Z" .. base_line
-	end, 300), "typing through remapped insert key should modify the intro_modes sandbox")
+	assert_test(
+		integration.wait_for(function()
+			return integration.line_at(sandbox_row) == "Z" .. base_line
+		end, 300),
+		"typing through remapped insert key should modify the intro_modes sandbox"
+	)
 end
 
 local function run_basic_movement_case(case)
@@ -113,10 +134,16 @@ local function run_basic_movement_case(case)
 		start_pos = case.start_pos,
 	}, function()
 		vimteacher.start("basic_movement")
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 1/10")
-		end, 1000), "basic_movement should render challenge 1 for " .. case.label)
-		assert_test(integration.buf_has_text("Move to target using z/x/c/v"), "basic_movement should render remapped helper text")
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 1/10")
+			end, 1000),
+			"basic_movement should render challenge 1 for " .. case.label
+		)
+		assert_test(
+			integration.buf_has_text("Move to target using z/x/c/v"),
+			"basic_movement should render remapped helper text"
+		)
 		integration.prime_pending_cursor_event()
 
 		local snippet_row = integration.find_line_index("abc")
@@ -133,12 +160,18 @@ local function run_basic_movement_case(case)
 			"basic_movement should place cursor at deterministic start for " .. case.label
 		)
 		local state = integration.runtime_state(vimteacher)
-		assert_test(state.timer_start == nil, "basic_movement should not start timing before the first move for " .. case.label)
+		assert_test(
+			state.timer_start == nil,
+			"basic_movement should not start timing before the first move for " .. case.label
+		)
 		if case.delay_ms then
 			vim.wait(case.delay_ms, function()
 				return false
 			end, case.delay_ms)
-			assert_test(state.timer_start == nil, "basic_movement should keep timing off during pre-move delay for " .. case.label)
+			assert_test(
+				state.timer_start == nil,
+				"basic_movement should keep timing off during pre-move delay for " .. case.label
+			)
 		end
 
 		integration.send_key(case.canonical)
@@ -157,15 +190,24 @@ local function run_basic_movement_case(case)
 		)
 
 		integration.send_key(case.remap)
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == expected_target_row and cur[2] == case.target.col
-		end, 300), "remapped " .. case.remap .. " should move to target for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == expected_target_row and cur[2] == case.target.col
+			end, 300),
+			"remapped " .. case.remap .. " should move to target for " .. case.label
+		)
 		integration.fire_cursor_moved(0)
-		assert_test(state.timer_start ~= nil, "basic_movement should start timing on the first actual move for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1500), "basic_movement should advance after remapped " .. case.remap .. " for " .. case.label)
+		assert_test(
+			state.timer_start ~= nil,
+			"basic_movement should start timing on the first actual move for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1500),
+			"basic_movement should advance after remapped " .. case.remap .. " for " .. case.label
+		)
 		assert_recorded_time_below("basic_movement " .. case.label, case.max_recorded_secs)
 	end)
 end
@@ -177,10 +219,16 @@ local function run_word_movement_case(case)
 		start_pos = case.start_pos,
 	}, function()
 		vimteacher.start("word_movement")
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 1/10")
-		end, 1000), "word_movement should render challenge 1 for " .. case.label)
-		assert_test(integration.buf_has_text("Move to target using g/y/n"), "word_movement should render remapped helper text")
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 1/10")
+			end, 1000),
+			"word_movement should render challenge 1 for " .. case.label
+		)
+		assert_test(
+			integration.buf_has_text("Move to target using g/y/n"),
+			"word_movement should render remapped helper text"
+		)
 		integration.prime_pending_cursor_event()
 
 		local snippet_row = integration.find_line_index(case.snippet)
@@ -209,23 +257,32 @@ local function run_word_movement_case(case)
 		)
 
 		integration.send_key(case.remap)
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == expected_target_row and cur[2] == case.target.col
-		end, 300), "remapped " .. case.remap .. " should move to target for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == expected_target_row and cur[2] == case.target.col
+			end, 300),
+			"remapped " .. case.remap .. " should move to target for " .. case.label
+		)
 		integration.fire_cursor_moved(0)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), "word_movement should advance after remapped " .. case.remap .. " for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			"word_movement should advance after remapped " .. case.remap .. " for " .. case.label
+		)
 	end)
 end
 
 local function run_insert_mode_case(case)
 	integration.with_overridden_generate(insert_mode, case.challenge, function()
 		vimteacher.start("insert_mode")
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 1/10")
-		end, 1000), "insert_mode should render challenge 1 for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 1/10")
+			end, 1000),
+			"insert_mode should render challenge 1 for " .. case.label
+		)
 		assert_test(integration.buf_has_text("Insert Mode: u, p"), "insert_mode should render remapped title")
 		assert_test(
 			integration.buf_has_text("[u] Insert before cursor  [p] Append after cursor"),
@@ -245,7 +302,10 @@ local function run_insert_mode_case(case)
 			"insert_mode should place cursor at deterministic start for " .. case.label
 		)
 		local state = integration.runtime_state(vimteacher)
-		assert_test(state.timer_start == nil, "insert_mode should not start timing before any cursor movement for " .. case.label)
+		assert_test(
+			state.timer_start == nil,
+			"insert_mode should not start timing before any cursor movement for " .. case.label
+		)
 
 		local original_line = integration.line_at(snippet_row + case.challenge.target.row)
 		integration.send_key(case.challenge.key)
@@ -265,17 +325,29 @@ local function run_insert_mode_case(case)
 			vim.wait(case.delay_ms, function()
 				return false
 			end, case.delay_ms)
-			assert_test(state.timer_start == nil, "insert_mode should keep timing off while the user has not moved the cursor for " .. case.label)
+			assert_test(
+				state.timer_start == nil,
+				"insert_mode should keep timing off while the user has not moved the cursor for " .. case.label
+			)
 		end
 
 		integration.perform_insert_sequence(case.remap, case.challenge.char)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text(case.expected_line)
-		end, 300), "insert_mode should apply the expected text edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1500), "insert_mode should advance after correct remapped edit for " .. case.label)
-		assert_test(state.timer_start == nil, "insert_mode should not start timing when the cursor never moved for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text(case.expected_line)
+			end, 300),
+			"insert_mode should apply the expected text edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1500),
+			"insert_mode should advance after correct remapped edit for " .. case.label
+		)
+		assert_test(
+			state.timer_start == nil,
+			"insert_mode should not start timing when the cursor never moved for " .. case.label
+		)
 		assert_recorded_time_below("insert_mode " .. case.label, case.max_recorded_secs)
 	end)
 end

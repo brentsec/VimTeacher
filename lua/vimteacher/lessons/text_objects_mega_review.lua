@@ -393,7 +393,10 @@ local challenge_pool = pool.new(CHALLENGES, {
 			end
 			local bot = 0
 			for i = 0, math.min(#challenge.snippet_lines, #challenge.expected_lines) - top - 1 do
-				if challenge.snippet_lines[#challenge.snippet_lines - i] == challenge.expected_lines[#challenge.expected_lines - i] then
+				if
+					challenge.snippet_lines[#challenge.snippet_lines - i]
+					== challenge.expected_lines[#challenge.expected_lines - i]
+				then
 					bot = i + 1
 				else
 					break

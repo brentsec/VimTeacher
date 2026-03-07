@@ -28,9 +28,12 @@ integration.configure_adaptive(vimteacher)
 local function run_case(case)
 	integration.with_overridden_generate(case.module, case.challenge, function()
 		vimteacher.start(case.lesson_name)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 1/10")
-		end, 1000), case.lesson_name .. " should render challenge 1 for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 1/10")
+			end, 1000),
+			case.lesson_name .. " should render challenge 1 for " .. case.label
+		)
 		for _, expected_ui in ipairs(case.expected_ui or {}) do
 			assert_test(
 				integration.buf_has_text(expected_ui),
@@ -75,12 +78,18 @@ local function run_case(case)
 			integration.fire_text_changed(0)
 		end
 
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text(case.expected_text)
-		end, 400), case.lesson_name .. " should apply expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1500), case.lesson_name .. " should advance after remapped command for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text(case.expected_text)
+			end, 400),
+			case.lesson_name .. " should apply expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1500),
+			case.lesson_name .. " should advance after remapped command for " .. case.label
+		)
 	end)
 end
 

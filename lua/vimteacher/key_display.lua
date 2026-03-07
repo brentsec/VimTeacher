@@ -40,23 +40,25 @@ end
 
 local function replace_single_alpha_token(text, canonical, display)
 	local escaped = escape_lua_pattern(canonical)
-	return (text:gsub("()" .. escaped .. "()", function(start_pos, end_pos)
-		local prev_char = start_pos > 1 and text:sub(start_pos - 1, start_pos - 1) or nil
-		local next_char = end_pos <= #text and text:sub(end_pos, end_pos) or nil
-		if is_word_char(prev_char) or is_word_char(next_char) then
+	return (
+		text:gsub("()" .. escaped .. "()", function(start_pos, end_pos)
+			local prev_char = start_pos > 1 and text:sub(start_pos - 1, start_pos - 1) or nil
+			local next_char = end_pos <= #text and text:sub(end_pos, end_pos) or nil
+			if is_word_char(prev_char) or is_word_char(next_char) then
+				return canonical
+			end
+
+			local prev_nonspace = prev_nonspace_char(text, start_pos - 1)
+			local next_nonspace = next_nonspace_char(text, end_pos)
+			local prev_ok = prev_nonspace == nil or prev_nonspace:match("[%[%(%{:,/]") ~= nil
+			local next_ok = next_nonspace == nil or next_nonspace:match("[%],:/=%)%}]") ~= nil
+			if prev_ok and next_ok then
+				return display
+			end
+
 			return canonical
-		end
-
-		local prev_nonspace = prev_nonspace_char(text, start_pos - 1)
-		local next_nonspace = next_nonspace_char(text, end_pos)
-		local prev_ok = prev_nonspace == nil or prev_nonspace:match("[%[%(%{:,/]") ~= nil
-		local next_ok = next_nonspace == nil or next_nonspace:match("[%],:/=%)%}]") ~= nil
-		if prev_ok and next_ok then
-			return display
-		end
-
-		return canonical
-	end))
+		end)
+	)
 end
 
 local function has_count_prefix(text, start_pos)
@@ -99,7 +101,11 @@ local function replace_bounded_plain_token(text, canonical, display)
 			replace = true
 		elseif has_count_prefix(text, start_pos) and is_boundary_char(next_char) then
 			replace = true
-		elseif (canonical == "/" or canonical == "?" or canonical == ":") and is_boundary_char(prev) and is_prompt_prefix_char(next_char) then
+		elseif
+			(canonical == "/" or canonical == "?" or canonical == ":")
+			and is_boundary_char(prev)
+			and is_prompt_prefix_char(next_char)
+		then
 			replace = true
 		end
 

@@ -28,16 +28,22 @@ local remaps = integration.install_command_maps({
 integration.configure_adaptive(vimteacher)
 
 local function assert_started(case)
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Challenge 1/10")
-	end, 1000), case.lesson_name .. " should render challenge 1 for " .. case.label)
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Challenge 1/10")
+		end, 1000),
+		case.lesson_name .. " should render challenge 1 for " .. case.label
+	)
 	for _, expected_ui in ipairs(case.expected_ui or {}) do
 		assert_test(
 			integration.buf_has_text(expected_ui),
 			case.lesson_name .. " should render adaptive text '" .. expected_ui .. "' for " .. case.label
 		)
 	end
-	assert_test(integration.snippet_matches(vimteacher, case.challenge.snippet_lines), case.lesson_name .. " should render deterministic snippet for " .. case.label)
+	assert_test(
+		integration.snippet_matches(vimteacher, case.challenge.snippet_lines),
+		case.lesson_name .. " should render deterministic snippet for " .. case.label
+	)
 	integration.prime_pending_cursor_event()
 end
 
@@ -48,7 +54,10 @@ local function run_search_case(case)
 		assert_started(case)
 
 		local snippet_row = integration.find_line_index(case.challenge.snippet_lines[1])
-		assert_test(snippet_row ~= nil, case.lesson_name .. " should render the deterministic snippet for " .. case.label)
+		assert_test(
+			snippet_row ~= nil,
+			case.lesson_name .. " should render the deterministic snippet for " .. case.label
+		)
 		if not snippet_row then
 			return
 		end
@@ -88,13 +97,19 @@ local function run_search_case(case)
 			integration.fire_cursor_moved(0)
 		end
 
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == (snippet_row + case.challenge.target.row) and cur[2] == case.challenge.target.col
-		end, 500), case.lesson_name .. " should move to the expected target for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped command(s) for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == (snippet_row + case.challenge.target.row) and cur[2] == case.challenge.target.col
+			end, 500),
+			case.lesson_name .. " should move to the expected target for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped command(s) for " .. case.label
+		)
 	end)
 end
 
@@ -105,7 +120,10 @@ local function run_search_timing_case(case)
 		assert_started(case)
 
 		local state = integration.runtime_state(vimteacher)
-		assert_test(state.timer_start == nil, case.lesson_name .. " should not start timing when the challenge is shown")
+		assert_test(
+			state.timer_start == nil,
+			case.lesson_name .. " should not start timing when the challenge is shown"
+		)
 
 		vim.wait(case.delay_ms, function()
 			return false
@@ -123,14 +141,18 @@ local function run_search_timing_case(case)
 				end, 60, 20)
 			end
 			integration.fire_cursor_moved(0)
-			saw_timer_start = saw_timer_start or integration.wait_for(function()
-				return state.timer_start ~= nil
-			end, 120, 20)
+			saw_timer_start = saw_timer_start
+				or integration.wait_for(function()
+					return state.timer_start ~= nil
+				end, 120, 20)
 		end
 
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after delayed remapped search timing case")
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after delayed remapped search timing case"
+		)
 		assert_test(saw_timer_start, case.lesson_name .. " should start timing once the search moves the cursor")
 		assert_test(
 			#state.session_challenges >= 1 and state.session_challenges[1].time <= case.max_recorded_secs,
@@ -162,12 +184,18 @@ local function run_search_replace_case(case)
 
 		integration.perform_prompt_sequence(case.remap, case.command)
 		integration.fire_text_changed(0)
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 600), case.lesson_name .. " should apply the expected substitution for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped substitution for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 600),
+			case.lesson_name .. " should apply the expected substitution for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped substitution for " .. case.label
+		)
 	end)
 end
 

@@ -113,9 +113,9 @@ for i = 1, 50 do
 			tc ~= " " and tc ~= "\t" and tc ~= "",
 			"Generation " .. i .. ": target on whitespace/empty at (" .. ch.target.row .. "," .. ch.target.col .. ")"
 		)
-		else
-			assert_test(false, "Generation " .. i .. ": target_line is nil at row " .. ch.target.row)
-		end
+	else
+		assert_test(false, "Generation " .. i .. ": target_line is nil at row " .. ch.target.row)
+	end
 
 	-- Verify start is 3+ rows away
 	local rd = math.abs(ch.start_pos.row - ch.target.row)

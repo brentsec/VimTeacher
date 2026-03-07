@@ -198,7 +198,8 @@ function M.new(deps)
 					total_optimal = total_optimal + challenge.optimal
 				end
 				local overall_accuracy = stats_mod.calc_overall_accuracy_pct(total_optimal, total_moves)
-				local lesson_stats = stats_mod.record_session(state.all_stats, state.lesson_name, total_time, overall_accuracy)
+				local lesson_stats =
+					stats_mod.record_session(state.all_stats, state.lesson_name, total_time, overall_accuracy)
 				stats_mod.save(state.all_stats)
 
 				state_mod.transition("stats", "complete")
@@ -238,7 +239,8 @@ function M.new(deps)
 		if state.lesson.compute_optimal then
 			state.optimal_moves = state.lesson.compute_optimal(start, challenge.target, challenge)
 		else
-			state.optimal_moves = math.abs(start.row - challenge.target.row) + math.abs(start.col - challenge.target.col)
+			state.optimal_moves = math.abs(start.row - challenge.target.row)
+				+ math.abs(start.col - challenge.target.col)
 		end
 
 		if gameplay.render_current_challenge then

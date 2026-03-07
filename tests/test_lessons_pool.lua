@@ -32,7 +32,10 @@ local challenge_pool = pool.new(challenges)
 
 local generated = challenge_pool.generate_challenge()
 assert_test(type(generated) == "table", "generate_challenge should return a table")
-assert_test(generated ~= challenges[1] and generated ~= challenges[2], "generate_challenge must deep-copy the challenge")
+assert_test(
+	generated ~= challenges[1] and generated ~= challenges[2],
+	"generate_challenge must deep-copy the challenge"
+)
 generated.snippet_lines[1] = "changed"
 assert_test(challenges[1].snippet_lines[1] == "alpha", "generated challenge must not mutate source data")
 
@@ -42,7 +45,10 @@ assert_test(vertical == 1, "Default nav_cost should use j/k motions, got " .. to
 
 local compute_optimal = challenge_pool.nav_compute_optimal({ "h", "j", "k", "l" })
 local fallback = compute_optimal({ row = 0, col = 0 }, { row = 1, col = 2 })
-assert_test(fallback == 3, "Without a current snippet, nav_compute_optimal should fall back to Manhattan, got " .. fallback)
+assert_test(
+	fallback == 3,
+	"Without a current snippet, nav_compute_optimal should fall back to Manhattan, got " .. fallback
+)
 
 challenge_pool.generate_challenge()
 local current = challenge_pool.get_current_snippet()

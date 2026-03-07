@@ -27,16 +27,22 @@ local remaps = integration.install_command_maps({
 integration.configure_adaptive(vimteacher)
 
 local function assert_started(case)
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Challenge 1/10")
-	end, 1000), case.lesson_name .. " should render challenge 1 for " .. case.label)
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Challenge 1/10")
+		end, 1000),
+		case.lesson_name .. " should render challenge 1 for " .. case.label
+	)
 	for _, expected_ui in ipairs(case.expected_ui or {}) do
 		assert_test(
 			integration.buf_has_text(expected_ui),
 			case.lesson_name .. " should render adaptive text '" .. expected_ui .. "' for " .. case.label
 		)
 	end
-	assert_test(integration.snippet_matches(vimteacher, case.challenge.snippet_lines), case.lesson_name .. " should render deterministic snippet for " .. case.label)
+	assert_test(
+		integration.snippet_matches(vimteacher, case.challenge.snippet_lines),
+		case.lesson_name .. " should render deterministic snippet for " .. case.label
+	)
 	integration.prime_pending_cursor_event()
 end
 
@@ -58,23 +64,32 @@ local function run_movement_case(case)
 		)
 
 		integration.send_sequence(case.remap)
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			local snippet_row = integration.find_line_index(case.challenge.snippet_lines[1])
-			return cur[1] == (snippet_row + case.challenge.target.row) and cur[2] == case.challenge.target.col
-		end, 400), "remapped command should move to target for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				local snippet_row = integration.find_line_index(case.challenge.snippet_lines[1])
+				return cur[1] == (snippet_row + case.challenge.target.row) and cur[2] == case.challenge.target.col
+			end, 400),
+			"remapped command should move to target for " .. case.label
+		)
 		integration.fire_cursor_moved(0)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped command for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped command for " .. case.label
+		)
 	end)
 end
 
 local function run_info_scroll_case()
 	vimteacher.start("window_scrolls")
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Scrolling: H, L")
-	end, 1000), "window_scrolls should render adaptive title")
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Scrolling: H, L")
+		end, 1000),
+		"window_scrolls should render adaptive title"
+	)
 	assert_test(integration.buf_has_text("[L] Scroll down"), "window_scrolls should render remapped scroll-down hint")
 	assert_test(integration.buf_has_text("[H] Scroll up"), "window_scrolls should render remapped scroll-up hint")
 
@@ -93,12 +108,18 @@ local function run_info_scroll_case()
 		return true
 	end, 80, 20)
 	local view_after_blocked_down = vim.fn.winsaveview()
-	assert_test(view_after_blocked_down.topline == view0.topline, "canonical <C-d> should remain blocked in window_scrolls")
+	assert_test(
+		view_after_blocked_down.topline == view0.topline,
+		"canonical <C-d> should remain blocked in window_scrolls"
+	)
 
 	integration.send_sequence("L")
-	assert_test(integration.wait_for(function()
-		return vim.fn.winsaveview().topline > view0.topline
-	end, 300), "remapped scroll-down key should move the window view")
+	assert_test(
+		integration.wait_for(function()
+			return vim.fn.winsaveview().topline > view0.topline
+		end, 300),
+		"remapped scroll-down key should move the window view"
+	)
 
 	local view1 = vim.fn.winsaveview()
 	integration.send_sequence("<C-u>")
@@ -106,12 +127,18 @@ local function run_info_scroll_case()
 		return true
 	end, 80, 20)
 	local view_after_blocked_up = vim.fn.winsaveview()
-	assert_test(view_after_blocked_up.topline == view1.topline, "canonical <C-u> should remain blocked in window_scrolls")
+	assert_test(
+		view_after_blocked_up.topline == view1.topline,
+		"canonical <C-u> should remain blocked in window_scrolls"
+	)
 
 	integration.send_sequence("H")
-	assert_test(integration.wait_for(function()
-		return vim.fn.winsaveview().topline < view1.topline
-	end, 300), "remapped scroll-up key should move the window view back")
+	assert_test(
+		integration.wait_for(function()
+			return vim.fn.winsaveview().topline < view1.topline
+		end, 300),
+		"remapped scroll-up key should move the window view back"
+	)
 end
 
 run_movement_case({

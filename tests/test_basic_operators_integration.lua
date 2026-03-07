@@ -34,16 +34,22 @@ local remaps = integration.install_command_maps({
 integration.configure_adaptive(vimteacher)
 
 local function assert_started(case)
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Challenge 1/10")
-	end, 1000), case.lesson_name .. " should render challenge 1 for " .. case.label)
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Challenge 1/10")
+		end, 1000),
+		case.lesson_name .. " should render challenge 1 for " .. case.label
+	)
 	for _, expected_ui in ipairs(case.expected_ui or {}) do
 		assert_test(
 			integration.buf_has_text(expected_ui),
 			case.lesson_name .. " should render adaptive text '" .. expected_ui .. "' for " .. case.label
 		)
 	end
-	assert_test(integration.snippet_matches(vimteacher, case.challenge.snippet_lines), case.lesson_name .. " should render the deterministic snippet for " .. case.label)
+	assert_test(
+		integration.snippet_matches(vimteacher, case.challenge.snippet_lines),
+		case.lesson_name .. " should render the deterministic snippet for " .. case.label
+	)
 end
 
 local function run_delete_case(case)
@@ -65,12 +71,18 @@ local function run_delete_case(case)
 			return true
 		end, 80, 20)
 		integration.fire_text_changed(0)
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 400), case.lesson_name .. " should apply the expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped command for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 400),
+			case.lesson_name .. " should apply the expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped command for " .. case.label
+		)
 	end)
 end
 
@@ -89,12 +101,18 @@ local function run_change_case(case)
 		)
 
 		integration.perform_insert_sequence(case.remap, case.challenge.char)
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 500), case.lesson_name .. " should apply the expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped command for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 500),
+			case.lesson_name .. " should apply the expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped command for " .. case.label
+		)
 	end)
 end
 
@@ -128,20 +146,29 @@ local function run_copy_paste_case(case)
 			return true
 		end, 80, 20)
 		integration.fire_text_changed(0)
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 500), case.lesson_name .. " should apply the expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped command for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 500),
+			case.lesson_name .. " should apply the expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped command for " .. case.label
+		)
 	end)
 end
 
 local function run_intro_case()
 	vimteacher.start("intro_operators")
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Intro to Operators")
-	end, 1000), "intro_operators should render its title")
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Intro to Operators")
+		end, 1000),
+		"intro_operators should render its title"
+	)
 	assert_test(integration.buf_has_text("[zg] Delete word"), "intro_operators should render remapped delete-word hint")
 
 	local sandbox_row = integration.find_line_index('const greeting = "hello world";')
@@ -157,12 +184,18 @@ local function run_intro_case()
 	integration.wait_for(function()
 		return true
 	end, 80, 20)
-	assert_test(integration.line_at(sandbox_row) == original_line, "canonical dw should remain blocked in intro_operators")
+	assert_test(
+		integration.line_at(sandbox_row) == original_line,
+		"canonical dw should remain blocked in intro_operators"
+	)
 
 	integration.send_sequence(remaps.remap_for["dw"])
-	assert_test(integration.wait_for(function()
-		return integration.line_at(sandbox_row) == 'const = "hello world";'
-	end, 300), "remapped delete-word command should edit the intro_operators sandbox")
+	assert_test(
+		integration.wait_for(function()
+			return integration.line_at(sandbox_row) == 'const = "hello world";'
+		end, 300),
+		"remapped delete-word command should edit the intro_operators sandbox"
+	)
 end
 
 run_intro_case()

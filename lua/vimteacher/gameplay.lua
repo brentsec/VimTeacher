@@ -71,7 +71,8 @@ function M.new(deps)
 		if not expected or not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
 			return false
 		end
-		local actual = vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_offset + #expected, false)
+		local actual =
+			vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_offset + #expected, false)
 
 		local match = lines_equal(actual, expected)
 		if not match and lines_equal(actual, expected, text_normalize.normalize_bracket_spaces) then
@@ -198,7 +199,8 @@ function M.new(deps)
 
 		local cursor = vim.api.nvim_win_get_cursor(state.win)
 		local rel_cursor = { row = cursor[1] - 1 - state.snippet_offset, col = cursor[2] }
-		challenge.snippet_lines = vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_end + 1, false)
+		challenge.snippet_lines =
+			vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_end + 1, false)
 		if not apply_phase(challenge, next_idx) then
 			return false
 		end
@@ -251,8 +253,12 @@ function M.new(deps)
 					return
 				end
 				if macro_session_busy() then
-					local busy_ms = state.insert_busy_since and ((vim.loop.hrtime() - state.insert_busy_since) / 1e6) or 0
-					if busy_ms >= MACRO_BUSY_THRESHOLD_MS and snippet_matches_expected(state.current_challenge.expected_lines) then
+					local busy_ms = state.insert_busy_since and ((vim.loop.hrtime() - state.insert_busy_since) / 1e6)
+						or 0
+					if
+						busy_ms >= MACRO_BUSY_THRESHOLD_MS
+						and snippet_matches_expected(state.current_challenge.expected_lines)
+					then
 						state.insert_busy_since = nil
 						if not advance_challenge_phase() then
 							on_target_reached()
@@ -292,7 +298,9 @@ function M.new(deps)
 			end
 
 			local busy_ms = (vim.loop.hrtime() - state.insert_busy_since) / 1e6
-			if busy_ms >= MACRO_BUSY_THRESHOLD_MS and snippet_matches_expected(state.current_challenge.expected_lines) then
+			if
+				busy_ms >= MACRO_BUSY_THRESHOLD_MS and snippet_matches_expected(state.current_challenge.expected_lines)
+			then
 				state.insert_busy_since = nil
 				if not advance_challenge_phase() then
 					on_target_reached()

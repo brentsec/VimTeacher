@@ -25,16 +25,28 @@ for _, lesson_name in ipairs(lessons.order) do
 		vimteacher.start(lesson_name)
 		local state = integration.runtime_state(vimteacher)
 		if lesson.type == "info" then
-			assert_test(integration.wait_for(function()
-				return integration.buf_has_text(lesson.title)
-			end, 1000), lesson_name .. " should render info lesson title")
+			assert_test(
+				integration.wait_for(function()
+					return integration.buf_has_text(lesson.title)
+				end, 1000),
+				lesson_name .. " should render info lesson title"
+			)
 			assert_test(state.timer_start == nil, lesson_name .. " should not start a challenge timer in info mode")
-			assert_test(state.challenge_load_time == nil, lesson_name .. " should not set challenge_load_time in info mode")
+			assert_test(
+				state.challenge_load_time == nil,
+				lesson_name .. " should not set challenge_load_time in info mode"
+			)
 		else
-			assert_test(integration.wait_for(function()
-				return integration.buf_has_text("Challenge 1/10")
-			end, 1000), lesson_name .. " should render challenge 1")
-			assert_test(state.timer_start == nil, lesson_name .. " should keep timer_start unset until the first user cursor move")
+			assert_test(
+				integration.wait_for(function()
+					return integration.buf_has_text("Challenge 1/10")
+				end, 1000),
+				lesson_name .. " should render challenge 1"
+			)
+			assert_test(
+				state.timer_start == nil,
+				lesson_name .. " should keep timer_start unset until the first user cursor move"
+			)
 			assert_test(
 				state.challenge_load_time == nil,
 				lesson_name .. " should keep challenge_load_time unset until the first user cursor move"

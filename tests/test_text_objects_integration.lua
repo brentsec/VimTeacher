@@ -43,16 +43,22 @@ local function challenge_by_key(module, key)
 end
 
 local function assert_started(case)
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Challenge 1/10")
-	end, 1000), case.lesson_name .. " should render challenge 1 for " .. case.label)
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Challenge 1/10")
+		end, 1000),
+		case.lesson_name .. " should render challenge 1 for " .. case.label
+	)
 	for _, expected_ui in ipairs(case.expected_ui or {}) do
 		assert_test(
 			integration.buf_has_text(expected_ui),
 			case.lesson_name .. " should render adaptive text '" .. expected_ui .. "' for " .. case.label
 		)
 	end
-	assert_test(integration.snippet_matches(vimteacher, case.challenge.snippet_lines), case.lesson_name .. " should render deterministic snippet for " .. case.label)
+	assert_test(
+		integration.snippet_matches(vimteacher, case.challenge.snippet_lines),
+		case.lesson_name .. " should render deterministic snippet for " .. case.label
+	)
 end
 
 local function move_to_target(target)
@@ -81,12 +87,18 @@ local function run_delete_case(case)
 			return true
 		end, 80, 20)
 		integration.fire_text_changed(0)
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 500), case.lesson_name .. " should apply the expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped text-object command for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 500),
+			case.lesson_name .. " should apply the expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped text-object command for " .. case.label
+		)
 	end)
 end
 
@@ -106,23 +118,41 @@ local function run_change_case(case)
 		)
 
 		integration.perform_insert_sequence(case.remap, case.challenge.char)
-		assert_test(integration.wait_for(function()
-			return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
-		end, 600), case.lesson_name .. " should apply the expected edit for " .. case.label)
-		assert_test(integration.wait_for(function()
-			return integration.buf_has_text("Challenge 2/10")
-		end, 1800), case.lesson_name .. " should advance after remapped text-object command for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				return integration.snippet_matches(vimteacher, case.challenge.expected_lines)
+			end, 600),
+			case.lesson_name .. " should apply the expected edit for " .. case.label
+		)
+		assert_test(
+			integration.wait_for(function()
+				return integration.buf_has_text("Challenge 2/10")
+			end, 1800),
+			case.lesson_name .. " should advance after remapped text-object command for " .. case.label
+		)
 	end)
 end
 
 local function run_intro_case()
 	vimteacher.start("intro_text_objects")
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Intro to Text Objects")
-	end, 1000), "intro_text_objects should render its title")
-	assert_test(integration.buf_has_text("[zg] Delete inside ()"), "intro_text_objects should render remapped delete-inside hint")
-	assert_test(integration.buf_has_text("[z)] Delete around ()"), "intro_text_objects should render remapped delete-around hint")
-	assert_test(integration.buf_has_text("[ci\"] Change inside"), "intro_text_objects should still render quote guidance")
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Intro to Text Objects")
+		end, 1000),
+		"intro_text_objects should render its title"
+	)
+	assert_test(
+		integration.buf_has_text("[zg] Delete inside ()"),
+		"intro_text_objects should render remapped delete-inside hint"
+	)
+	assert_test(
+		integration.buf_has_text("[z)] Delete around ()"),
+		"intro_text_objects should render remapped delete-around hint"
+	)
+	assert_test(
+		integration.buf_has_text('[ci"] Change inside'),
+		"intro_text_objects should still render quote guidance"
+	)
 
 	local sandbox_row = integration.find_line_index("function greet(name, age) {")
 	assert_test(sandbox_row ~= nil, "intro_text_objects should render the sandbox snippet")
@@ -137,13 +167,19 @@ local function run_intro_case()
 	integration.wait_for(function()
 		return true
 	end, 80, 20)
-	assert_test(integration.line_at(sandbox_row) == original_line, "canonical di( should remain blocked in intro_text_objects")
+	assert_test(
+		integration.line_at(sandbox_row) == original_line,
+		"canonical di( should remain blocked in intro_text_objects"
+	)
 
 	integration.send_sequence(remaps.remap_for["di("])
 	integration.fire_text_changed(0)
-	assert_test(integration.wait_for(function()
-		return integration.line_at(sandbox_row) == "function greet() {"
-	end, 400), "remapped delete-inside command should edit the intro_text_objects sandbox")
+	assert_test(
+		integration.wait_for(function()
+			return integration.line_at(sandbox_row) == "function greet() {"
+		end, 400),
+		"remapped delete-inside command should edit the intro_text_objects sandbox"
+	)
 end
 
 run_intro_case()

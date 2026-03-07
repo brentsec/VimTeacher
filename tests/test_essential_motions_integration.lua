@@ -31,9 +31,12 @@ local remaps = integration.install_command_maps({
 integration.configure_adaptive(vimteacher)
 
 local function assert_started(case)
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Challenge 1/10")
-	end, 1000), case.lesson_name .. " should render challenge 1 for " .. case.label)
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Challenge 1/10")
+		end, 1000),
+		case.lesson_name .. " should render challenge 1 for " .. case.label
+	)
 	for _, expected_ui in ipairs(case.expected_ui or {}) do
 		assert_test(
 			integration.buf_has_text(expected_ui),
@@ -59,9 +62,12 @@ local function assert_started(case)
 end
 
 local function assert_challenge_advanced(case)
-	assert_test(integration.wait_for(function()
-		return integration.buf_has_text("Challenge 2/10")
-	end, 1800), case.lesson_name .. " should advance after remapped command for " .. case.label)
+	assert_test(
+		integration.wait_for(function()
+			return integration.buf_has_text("Challenge 2/10")
+		end, 1800),
+		case.lesson_name .. " should advance after remapped command for " .. case.label
+	)
 end
 
 local function run_motion_case(case)
@@ -85,10 +91,13 @@ local function run_motion_case(case)
 		)
 
 		integration.send_key(case.remap)
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == expected_row and cur[2] == case.challenge.target.col
-		end, 300), "remapped " .. case.remap .. " should move to target for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == expected_row and cur[2] == case.challenge.target.col
+			end, 300),
+			"remapped " .. case.remap .. " should move to target for " .. case.label
+		)
 		integration.fire_cursor_moved(0)
 		assert_challenge_advanced(case)
 	end)
@@ -115,10 +124,13 @@ local function run_payload_case(case)
 		)
 
 		integration.perform_normal_with_payload(case.remap, case.arg)
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == expected_row and cur[2] == case.challenge.target.col
-		end, 300), "remapped " .. case.remap .. " should move to target for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == expected_row and cur[2] == case.challenge.target.col
+			end, 300),
+			"remapped " .. case.remap .. " should move to target for " .. case.label
+		)
 		integration.fire_cursor_moved(0)
 		assert_challenge_advanced(case)
 	end)
@@ -134,12 +146,18 @@ local function run_repeat_case(case)
 		local expected_row = snippet_row + case.challenge.target.row
 
 		integration.perform_normal_with_payload(case.primer_remap, case.primer_arg)
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == cur0[1] and cur[2] == case.mid_col
-		end, 300), case.lesson_name .. " should land on the first match before repeat for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == cur0[1] and cur[2] == case.mid_col
+			end, 300),
+			case.lesson_name .. " should land on the first match before repeat for " .. case.label
+		)
 		integration.fire_cursor_moved(0)
-		assert_test(integration.buf_has_text("Challenge 1/10"), case.lesson_name .. " should stay on challenge 1 before repeat")
+		assert_test(
+			integration.buf_has_text("Challenge 1/10"),
+			case.lesson_name .. " should stay on challenge 1 before repeat"
+		)
 
 		integration.send_key(case.canonical)
 		integration.wait_for(function()
@@ -153,10 +171,13 @@ local function run_repeat_case(case)
 		)
 
 		integration.send_key(case.repeat_remap)
-		assert_test(integration.wait_for(function()
-			local cur = integration.current_cursor()
-			return cur[1] == expected_row and cur[2] == case.challenge.target.col
-		end, 300), "remapped repeat key " .. case.repeat_remap .. " should move to target for " .. case.label)
+		assert_test(
+			integration.wait_for(function()
+				local cur = integration.current_cursor()
+				return cur[1] == expected_row and cur[2] == case.challenge.target.col
+			end, 300),
+			"remapped repeat key " .. case.repeat_remap .. " should move to target for " .. case.label
+		)
 		integration.fire_cursor_moved(0)
 		assert_challenge_advanced(case)
 	end)

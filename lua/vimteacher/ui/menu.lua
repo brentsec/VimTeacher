@@ -149,11 +149,13 @@ function M.render_menu(buf, sections, all_stats, win)
 	lines[#lines + 1] = M.bordered("", menu_layout)
 
 	local hint_row = #lines
-	lines[#lines + 1] = M.bordered("Type a number or highlight a lesson and press Enter to start, or q to quit", menu_layout)
+	lines[#lines + 1] =
+		M.bordered("Type a number or highlight a lesson and press Enter to start, or q to quit", menu_layout)
 	lines[#lines + 1] = M.bordered("", menu_layout)
 
 	local header_row = #lines
-	lines[#lines + 1] = M.bordered(M.build_menu_row("#", "Topic", "Best Time", "Best Accuracy", topic_col_width), menu_layout)
+	lines[#lines + 1] =
+		M.bordered(M.build_menu_row("#", "Topic", "Best Time", "Best Accuracy", topic_col_width), menu_layout)
 
 	local header_sep_row = #lines
 	lines[#lines + 1] = inner_separator(menu_layout)
@@ -188,13 +190,8 @@ function M.render_menu(buf, sections, all_stats, win)
 				end
 			end
 			local lesson_num_text = lesson_num .. "."
-			local lesson_row = M.build_menu_row(
-				lesson_num_text,
-				common.as_text(lesson.title),
-				best_time,
-				best_acc,
-				topic_col_width
-			)
+			local lesson_row =
+				M.build_menu_row(lesson_num_text, common.as_text(lesson.title), best_time, best_acc, topic_col_width)
 			local bordered_row = M.bordered(lesson_row, menu_layout)
 			lines[#lines + 1] = bordered_row
 			row_to_lesson[#lines] = lesson_num

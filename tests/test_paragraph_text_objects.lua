@@ -205,11 +205,11 @@ for idx, c in ipairs(challenges) do
 					.. c.expected_lines[i]
 					.. "'"
 			)
-			else
-				counter.state.pass_count = counter.state.pass_count + 1
-			end
+		else
+			counter.state.pass_count = counter.state.pass_count + 1
 		end
 	end
+end
 
 -- Test 8: Verify line count changes for dip/dap
 local dip_found = false

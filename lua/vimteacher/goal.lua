@@ -4,26 +4,50 @@
 local M = {}
 
 local GOAL_MATCHERS = {
-	{ pattern = "^%d+x$", action = "delete", preposition = function(key)
-		return key:sub(1, -2) .. " chars at cursor"
-	end },
-	{ pattern = "^%d+%.$", action = "repeat last change", preposition = function(key)
-		return key:sub(1, -2) .. " times"
-	end },
+	{
+		pattern = "^%d+x$",
+		action = "delete",
+		preposition = function(key)
+			return key:sub(1, -2) .. " chars at cursor"
+		end,
+	},
+	{
+		pattern = "^%d+%.$",
+		action = "repeat last change",
+		preposition = function(key)
+			return key:sub(1, -2) .. " times"
+		end,
+	},
 	{ pattern = "^d%d*j$", action = "delete lines", preposition = "downward" },
 	{ pattern = "^d%d*k$", action = "delete lines", preposition = "upward" },
-	{ pattern = "^ci", action = function(key)
-		return "change inside " .. key:sub(3)
-	end, preposition = "at cursor" },
-	{ pattern = "^ca", action = function(key)
-		return "change around " .. key:sub(3)
-	end, preposition = "at cursor" },
-	{ pattern = "^di", action = function(key)
-		return "delete inside " .. key:sub(3)
-	end, preposition = "at cursor" },
-	{ pattern = "^da", action = function(key)
-		return "delete around " .. key:sub(3)
-	end, preposition = "at cursor" },
+	{
+		pattern = "^ci",
+		action = function(key)
+			return "change inside " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
+	{
+		pattern = "^ca",
+		action = function(key)
+			return "change around " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
+	{
+		pattern = "^di",
+		action = function(key)
+			return "delete inside " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
+	{
+		pattern = "^da",
+		action = function(key)
+			return "delete around " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
 	{ pattern = "^V.*c$", action = "visual line change to", preposition = "selected lines" },
 	{ pattern = "^V.*d$", action = "visual line delete", preposition = "selected lines" },
 	{ pattern = "^v.*d$", action = "visual delete", preposition = "selected text" },
