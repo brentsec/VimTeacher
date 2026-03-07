@@ -216,8 +216,8 @@ function M.new(deps)
 			else
 				controller.load_challenge()
 			end
-			end, ADVANCE_DELAY_MS)
-		end
+		end, ADVANCE_DELAY_MS)
+	end
 
 	function controller.load_challenge()
 		state.challenge_num = state.challenge_num + 1
