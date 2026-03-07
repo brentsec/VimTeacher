@@ -29,6 +29,9 @@ mise run <task>
 
 Standard tasks in this repo: `fmt lint test docs:verify docs:build verify`
 
+If you need live module reloads while iterating on `:VimTeacher`, set
+`vim.g.vimteacher_dev_reload = true` before launching the command.
+
 ## Release Versioning
 
 Use the semantic versioning policy in `docs/reference/semantic-versioning.md` before creating a release tag.
