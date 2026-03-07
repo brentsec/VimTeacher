@@ -10,6 +10,7 @@ local state_mod = require("vimteacher.state")
 local stats_mod = require("vimteacher.stats")
 
 local M = {}
+local ADVANCE_DELAY_MS = 300
 
 --- Build a session controller around the shared plugin dependencies.
 --- @param deps table|nil
@@ -212,11 +213,11 @@ function M.new(deps)
 				if mode_keymaps.setup_completion_keymaps then
 					mode_keymaps.setup_completion_keymaps(controller.start, controller.show_menu, controller.stop)
 				end
-			else
-				controller.load_challenge()
-			end
-		end, 300)
-	end
+				else
+					controller.load_challenge()
+				end
+			end, ADVANCE_DELAY_MS)
+		end
 
 	function controller.load_challenge()
 		state.challenge_num = state.challenge_num + 1

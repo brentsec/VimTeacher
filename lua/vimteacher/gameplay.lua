@@ -9,6 +9,9 @@ local key_display = require("vimteacher.key_display")
 local validate = require("vimteacher.validate")
 
 local M = {}
+local INSERT_VALIDATION_RETRY_MS = 25
+local MACRO_BUSY_THRESHOLD_MS = 150
+local DEFAULT_DWELL_TIME_MS = 50
 
 --- Normalize spaces immediately inside bracket pairs for tolerant matching.
 --- Strips whitespace after ( [ { and before ) ] }.
@@ -244,7 +247,7 @@ function M.new(deps)
 		if state.insert_validate_timer then
 			return
 		end
-		state.insert_validate_timer = vim.fn.timer_start(25, function()
+		state.insert_validate_timer = vim.fn.timer_start(INSERT_VALIDATION_RETRY_MS, function()
 			state.insert_validate_timer = nil
 			vim.schedule(function()
 				if state.mode ~= "playing" then
@@ -255,14 +258,14 @@ function M.new(deps)
 				end
 				if not state.lesson.allowed_modify_keys then
 					return
-				end
-				if macro_session_busy() then
-					local busy_ms = state.insert_busy_since and ((vim.loop.hrtime() - state.insert_busy_since) / 1e6) or 0
-					if busy_ms >= 150 and snippet_matches_expected(state.current_challenge.expected_lines) then
-						state.insert_busy_since = nil
-						if not advance_challenge_phase() then
-							on_target_reached()
-						end
+					end
+					if macro_session_busy() then
+						local busy_ms = state.insert_busy_since and ((vim.loop.hrtime() - state.insert_busy_since) / 1e6) or 0
+						if busy_ms >= MACRO_BUSY_THRESHOLD_MS and snippet_matches_expected(state.current_challenge.expected_lines) then
+							state.insert_busy_since = nil
+							if not advance_challenge_phase() then
+								on_target_reached()
+							end
 						return
 					end
 					schedule_insert_validation_retry()
@@ -298,7 +301,7 @@ function M.new(deps)
 			end
 
 			local busy_ms = (vim.loop.hrtime() - state.insert_busy_since) / 1e6
-			if busy_ms >= 150 and snippet_matches_expected(state.current_challenge.expected_lines) then
+			if busy_ms >= MACRO_BUSY_THRESHOLD_MS and snippet_matches_expected(state.current_challenge.expected_lines) then
 				state.insert_busy_since = nil
 				if not advance_challenge_phase() then
 					on_target_reached()
@@ -414,7 +417,7 @@ function M.new(deps)
 					if is_on_target() then
 						on_target_reached()
 					end
-				end, state.lesson.dwell_time or 50)
+				end, state.lesson.dwell_time or DEFAULT_DWELL_TIME_MS)
 			end
 		else
 			state.dwell_pending = false
