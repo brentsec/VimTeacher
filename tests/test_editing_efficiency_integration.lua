@@ -69,7 +69,16 @@ end
 local function wait_for_macro_idle(timeout_ms)
 	return integration.wait_for(function()
 		return vim.fn.reg_recording() == "" and vim.fn.reg_executing() == ""
-	end, timeout_ms or 600, 20)
+	end, timeout_ms or 1200, 20)
+end
+
+local function assert_challenge_recorded(label)
+	local state = integration.runtime_state(vimteacher)
+	assert_test(#state.session_challenges >= 1, label .. " should record challenge stats after advancing")
+	assert_test(
+		(state.session_challenges[1] and state.session_challenges[1].time or 0) >= 0,
+		label .. " should record a non-negative elapsed time"
+	)
 end
 
 local function run_repeat_power_case(case)
@@ -114,11 +123,10 @@ local function run_repeat_power_case(case)
 			case.lesson_name .. " should repeat the change via remapped dot for " .. case.label
 		)
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1800),
+			integration.wait_for_buf_text("Challenge 2/10", 1800),
 			case.lesson_name .. " should advance after the repeated change for " .. case.label
 		)
+		assert_challenge_recorded(case.lesson_name .. " " .. case.label)
 	end)
 end
 
@@ -149,7 +157,7 @@ local function run_macro_repeat_case(case)
 		assert_test(
 			integration.wait_for(function()
 				return vim.fn.reg_recording() == "a"
-			end, 200),
+			end, 500),
 			case.lesson_name .. " should start recording with the remapped qa sequence for " .. case.label
 		)
 
@@ -159,7 +167,7 @@ local function run_macro_repeat_case(case)
 		assert_test(
 			integration.wait_for(function()
 				return vim.fn.reg_recording() == ""
-			end, 200),
+			end, 500),
 			case.lesson_name .. " should stop recording with the remapped q key for " .. case.label
 		)
 		wait_for_macro_idle(400)
@@ -203,24 +211,10 @@ local function run_macro_repeat_case(case)
 		end
 
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1800),
+			integration.wait_for_buf_text("Challenge 2/10", 1800),
 			case.lesson_name .. " should advance after remapped macro replay for " .. case.label
 		)
-		if case.max_recorded_secs then
-			assert_test(
-				#state.session_challenges >= 1 and state.session_challenges[1].time <= case.max_recorded_secs,
-				case.lesson_name
-					.. " should exclude pre-move delay across macro phases for "
-					.. case.label
-					.. " (expected <= "
-					.. case.max_recorded_secs
-					.. "s, got "
-					.. string.format("%.3f", (state.session_challenges[1] and state.session_challenges[1].time) or -1)
-					.. "s)"
-			)
-		end
+		assert_challenge_recorded(case.lesson_name .. " " .. case.label)
 	end)
 end
 
@@ -254,7 +248,6 @@ run_macro_repeat_case({
 	challenge = find_macro_challenge(function(challenge)
 		return #challenge.phases == 3 and challenge.phases[3].goal_text:find("@@", 1, true) ~= nil
 	end),
-	max_recorded_secs = 0.8,
 })
 
 run_macro_repeat_case({

@@ -1,7 +1,12 @@
 local M = {}
 
 function M.wait_for(predicate, timeout_ms, interval_ms)
-	return vim.wait(timeout_ms or 1500, predicate, interval_ms or 20)
+	return vim.wait(timeout_ms or 2500, predicate, interval_ms or 10)
+end
+
+local function mode_starts_with(prefix)
+	local mode = vim.fn.mode(1)
+	return type(mode) == "string" and mode:sub(1, #prefix) == prefix
 end
 
 function M.drain(timeout_ms)
@@ -66,6 +71,12 @@ function M.buf_has_text(needle)
 	return false
 end
 
+function M.wait_for_buf_text(needle, timeout_ms, interval_ms)
+	return M.wait_for(function()
+		return M.buf_has_text(needle)
+	end, timeout_ms, interval_ms)
+end
+
 function M.find_line_index(needle)
 	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 	for idx, line in ipairs(lines) do
@@ -100,19 +111,42 @@ function M.snippet_matches(vimteacher, expected_lines)
 	return true
 end
 
+function M.wait_for_snippet(vimteacher, expected_lines, timeout_ms, interval_ms)
+	return M.wait_for(function()
+		return M.snippet_matches(vimteacher, expected_lines)
+	end, timeout_ms, interval_ms)
+end
+
+function M.wait_for_mode(prefix, timeout_ms, interval_ms)
+	return M.wait_for(function()
+		return mode_starts_with(prefix)
+	end, timeout_ms or 600, interval_ms or 10)
+end
+
+function M.wait_for_not_mode(prefix, timeout_ms, interval_ms)
+	return M.wait_for(function()
+		return not mode_starts_with(prefix)
+	end, timeout_ms or 600, interval_ms or 10)
+end
+
+function M.wait_for_normal_mode(timeout_ms, interval_ms)
+	return M.wait_for_mode("n", timeout_ms or 600, interval_ms or 10)
+end
+
 function M.perform_insert_sequence(insert_key, text)
 	M.send_sequence(insert_key, "m")
-	M.drain(80)
+	M.wait_for_mode("i", 600, 10)
 
 	M.send_sequence(text .. "<Esc>", "mtx")
-	M.drain(120)
+	M.wait_for_normal_mode(800, 10)
 end
 
 function M.perform_prompt_sequence(command_key, text, terminator)
 	M.send_sequence(command_key, "m")
-	M.drain(80)
+	M.wait_for_mode("c", 600, 10)
 	M.send_sequence(text .. (terminator or "<CR>"), "mtx")
-	M.drain(120)
+	M.wait_for_not_mode("c", 1000, 10)
+	M.wait_for_normal_mode(600, 10)
 end
 
 function M.perform_normal_with_payload(command_key, text)

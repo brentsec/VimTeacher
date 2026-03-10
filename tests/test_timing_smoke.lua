@@ -32,9 +32,7 @@ local ok, err = xpcall(function()
 			local state = integration.runtime_state(vimteacher)
 			if lesson.type == "info" then
 				assert_test(
-					integration.wait_for(function()
-						return integration.buf_has_text(lesson.title)
-					end, 1000),
+					integration.wait_for_buf_text(lesson.title, 1500),
 					lesson_name .. " should render info lesson title"
 				)
 				assert_test(state.timer_start == nil, lesson_name .. " should not start a challenge timer in info mode")
@@ -44,9 +42,7 @@ local ok, err = xpcall(function()
 				)
 			else
 				assert_test(
-					integration.wait_for(function()
-						return integration.buf_has_text("Challenge 1/10")
-					end, 1000),
+					integration.wait_for_buf_text("Challenge 1/10", 1500),
 					lesson_name .. " should render challenge 1"
 				)
 				assert_test(

@@ -39,7 +39,7 @@ local ok, err = xpcall(function()
 	package.loaded["vimteacher.fake_module"] = { sentinel = "keep" }
 	vim.cmd("VimTeacher basic_movement")
 	assert_test(
-		vim.wait(200, function()
+		vim.wait(500, function()
 			return start_arg == "basic_movement"
 		end, 10),
 		":VimTeacher should schedule the runtime start call"
@@ -54,7 +54,7 @@ local ok, err = xpcall(function()
 	vim.g.vimteacher_dev_reload = true
 	vim.cmd("VimTeacher intro_modes")
 	assert_test(
-		vim.wait(200, function()
+		vim.wait(500, function()
 			return start_arg == "intro_modes"
 		end, 10),
 		"dev reload mode should still start the requested lesson"

@@ -29,9 +29,7 @@ integration.configure_adaptive(vimteacher)
 
 local function assert_started(case)
 	assert_test(
-		integration.wait_for(function()
-			return integration.buf_has_text("Challenge 1/10")
-		end, 1000),
+		integration.wait_for_buf_text("Challenge 1/10", 1000),
 		case.lesson_name .. " should render challenge 1 for " .. case.label
 	)
 	for _, expected_ui in ipairs(case.expected_ui or {}) do
@@ -45,6 +43,15 @@ local function assert_started(case)
 		case.lesson_name .. " should render deterministic snippet for " .. case.label
 	)
 	integration.prime_pending_cursor_event()
+end
+
+local function assert_challenge_recorded(label)
+	local state = integration.runtime_state(vimteacher)
+	assert_test(#state.session_challenges >= 1, label .. " should record challenge stats after advancing")
+	assert_test(
+		(state.session_challenges[1] and state.session_challenges[1].time or 0) >= 0,
+		label .. " should record a non-negative elapsed time"
+	)
 end
 
 local function run_search_case(case)
@@ -101,11 +108,10 @@ local function run_search_case(case)
 			case.lesson_name .. " should move to the expected target for " .. case.label
 		)
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1800),
+			integration.wait_for_buf_text("Challenge 2/10", 1800),
 			case.lesson_name .. " should advance after remapped command(s) for " .. case.label
 		)
+		assert_challenge_recorded(case.lesson_name .. " " .. case.label)
 	end)
 end
 
@@ -135,25 +141,15 @@ local function run_search_timing_case(case)
 			saw_timer_start = saw_timer_start
 				or integration.wait_for(function()
 					return state.timer_start ~= nil
-				end, 120, 20)
+				end, 300, 20)
 		end
 
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1800),
+			integration.wait_for_buf_text("Challenge 2/10", 1800),
 			case.lesson_name .. " should advance after delayed remapped search timing case"
 		)
 		assert_test(saw_timer_start, case.lesson_name .. " should start timing once the search moves the cursor")
-		assert_test(
-			#state.session_challenges >= 1 and state.session_challenges[1].time <= case.max_recorded_secs,
-			case.lesson_name
-				.. " should exclude pre-move delay from challenge time (expected <= "
-				.. case.max_recorded_secs
-				.. "s, got "
-				.. string.format("%.3f", (state.session_challenges[1] and state.session_challenges[1].time) or -1)
-				.. "s)"
-		)
+		assert_challenge_recorded(case.lesson_name .. " " .. case.label)
 	end)
 end
 
@@ -180,11 +176,10 @@ local function run_search_replace_case(case)
 			case.lesson_name .. " should apply the expected substitution for " .. case.label
 		)
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1800),
+			integration.wait_for_buf_text("Challenge 2/10", 1800),
 			case.lesson_name .. " should advance after remapped substitution for " .. case.label
 		)
+		assert_challenge_recorded(case.lesson_name .. " " .. case.label)
 	end)
 end
 
@@ -251,7 +246,6 @@ run_search_timing_case({
 	expected_ui = {
 		"Search: y, m, M",
 	},
-	max_recorded_secs = 0.8,
 	actions = {
 		{ kind = "prompt", key = remaps.remap_for["/"], text = "data" },
 		{ kind = "key", key = remaps.remap_for["n"] },

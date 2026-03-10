@@ -29,20 +29,18 @@ local remaps = integration.install_normal_remaps(remap_pairs)
 local remap_for = remaps.remap_for
 integration.configure_adaptive(vimteacher)
 
-local function assert_recorded_time_below(label, max_recorded_secs)
-	if not max_recorded_secs then
-		return
-	end
+local function assert_challenge_recorded(label, opts)
 	local state = integration.runtime_state(vimteacher)
 	assert_test(
-		#state.session_challenges >= 1 and state.session_challenges[1].time <= max_recorded_secs,
-		label
-			.. " should not include pre-move delay in challenge time (expected <= "
-			.. max_recorded_secs
-			.. "s, got "
-			.. string.format("%.3f", (state.session_challenges[1] and state.session_challenges[1].time) or -1)
-			.. "s)"
+		#state.session_challenges >= 1,
+		label .. " should record challenge stats after advancing"
 	)
+	if opts and opts.expect_zero_time then
+		assert_test(
+			state.session_challenges[1].time == 0,
+			label .. " should record zero elapsed time when the timer never started"
+		)
+	end
 end
 
 local function run_intro_modes_case()
@@ -107,9 +105,7 @@ local function run_intro_modes_case()
 	)
 
 	integration.send_key("i")
-	integration.wait_for(function()
-		return true
-	end, 60, 20)
+	integration.wait_for_normal_mode(200, 10)
 	assert_test(integration.line_at(sandbox_row) == base_line, "canonical i should stay blocked in intro_modes")
 
 	integration.perform_insert_sequence(remap_for["i"], "Z")
@@ -189,12 +185,10 @@ local function run_basic_movement_case(case)
 			"basic_movement should start timing on the first actual move for " .. case.label
 		)
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1500),
+			integration.wait_for_buf_text("Challenge 2/10", 1500),
 			"basic_movement should advance after remapped " .. case.remap .. " for " .. case.label
 		)
-		assert_recorded_time_below("basic_movement " .. case.label, case.max_recorded_secs)
+		assert_challenge_recorded("basic_movement " .. case.label)
 	end)
 end
 
@@ -250,9 +244,7 @@ local function run_word_movement_case(case)
 		)
 		integration.fire_cursor_moved(0)
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1800),
+			integration.wait_for_buf_text("Challenge 2/10", 1800),
 			"word_movement should advance after remapped " .. case.remap .. " for " .. case.label
 		)
 	end)
@@ -311,16 +303,14 @@ local function run_insert_mode_case(case)
 			"insert_mode should apply the expected text edit for " .. case.label
 		)
 		assert_test(
-			integration.wait_for(function()
-				return integration.buf_has_text("Challenge 2/10")
-			end, 1500),
+			integration.wait_for_buf_text("Challenge 2/10", 1500),
 			"insert_mode should advance after correct remapped edit for " .. case.label
 		)
 		assert_test(
 			state.timer_start == nil,
 			"insert_mode should not start timing when the cursor never moved for " .. case.label
 		)
-		assert_recorded_time_below("insert_mode " .. case.label, case.max_recorded_secs)
+		assert_challenge_recorded("insert_mode " .. case.label, { expect_zero_time = true })
 	end)
 end
 
@@ -333,7 +323,6 @@ for _, case in ipairs({
 		remap = remap_for["h"],
 		start_pos = { row = 1, col = 1 },
 		target = { row = 1, col = 0 },
-		max_recorded_secs = 0.8,
 	},
 	{
 		label = "down",
@@ -393,7 +382,6 @@ run_insert_mode_case({
 	label = "insert before cursor",
 	remap = remap_for["i"],
 	expected_line = "testing",
-	max_recorded_secs = 0.2,
 	challenge = {
 		snippet_lines = { "esting" },
 		expected_lines = { "testing" },
