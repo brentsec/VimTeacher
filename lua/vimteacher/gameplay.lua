@@ -365,95 +365,140 @@ function M.new(deps)
 		return validate.check_position(state.win, target_buf_row, state.target.col)
 	end
 
-	function controller.on_cursor_moved()
+	local function current_cursor()
+		return vim.api.nvim_win_get_cursor(state.win)
+	end
+
+	local function can_handle_cursor_move()
 		if state.mode == "info" then
 			validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
-			return
+			return false
 		end
 
 		if state.mode ~= "playing" then
-			return
+			return false
 		end
 		if state.loading then
-			return
+			return false
 		end
 		if not state.target then
-			return
+			return false
 		end
 		if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
-			return
+			return false
 		end
 		if not state.win or not vim.api.nvim_win_is_valid(state.win) then
-			return
+			return false
 		end
+		return true
+	end
 
+	local function suppress_programmatic_cursor(cur)
 		if state.pending_programmatic_cursor then
-			local cur = vim.api.nvim_win_get_cursor(state.win)
 			local p = state.pending_programmatic_cursor
 			state.pending_programmatic_cursor = nil
 			if cur[1] == p.row and cur[2] == p.col then
-				return
+				return true
 			end
 		end
+		return false
+	end
 
-		local cur = vim.api.nvim_win_get_cursor(state.win)
-		if state.last_cursor and cur[1] == state.last_cursor[1] and cur[2] == state.last_cursor[2] then
-			return
-		end
+	local function cursor_unchanged(cur)
+		return state.last_cursor and cur[1] == state.last_cursor[1] and cur[2] == state.last_cursor[2]
+	end
 
+	local function begin_cursor_move_timing()
 		if deps.begin_challenge_timing then
 			deps.begin_challenge_timing()
 		end
+	end
 
-		local was_constrained = validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
-		cur = vim.api.nvim_win_get_cursor(state.win)
+	local function update_last_cursor()
+		local cur = current_cursor()
 		state.last_cursor = { cur[1], cur[2] }
-		if was_constrained then
-			if state.lesson and state.lesson.type ~= "insert" and is_on_target() then
-				state.move_count = state.move_count + 1
-				on_target_reached()
-			end
+		return cur
+	end
+
+	local function handle_constrained_cursor_move()
+		if state.lesson and state.lesson.type ~= "insert" and is_on_target() then
+			state.move_count = state.move_count + 1
+			on_target_reached()
+		end
+	end
+
+	local function reset_dwell()
+		state.dwell_pending = false
+		state.dwell_generation = (state.dwell_generation or 0) + 1
+	end
+
+	local function schedule_dwell_completion()
+		if state.dwell_pending then
 			return
 		end
+		state.dwell_pending = true
+		state.dwell_generation = (state.dwell_generation or 0) + 1
+		local dwell_generation = state.dwell_generation
+		local session_generation = state.session_generation
+		local challenge_generation = state.challenge_generation
+		vim.defer_fn(function()
+			if not generations_match(session_generation, challenge_generation) then
+				return
+			end
+			if state.dwell_generation ~= dwell_generation then
+				return
+			end
+			state.dwell_pending = false
+			if state.mode ~= "playing" then
+				return
+			end
+			if not state.target then
+				return
+			end
+			if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+				return
+			end
+			if is_on_target() then
+				on_target_reached()
+			end
+		end, lesson_dwell_time_ms(state.lesson))
+	end
 
+	local function handle_active_cursor_move()
 		state.move_count = state.move_count + 1
 		if state.lesson and state.lesson.type == "insert" then
 			return
 		end
-
 		if is_on_target() then
-			if not state.dwell_pending then
-				state.dwell_pending = true
-				state.dwell_generation = (state.dwell_generation or 0) + 1
-				local dwell_generation = state.dwell_generation
-				local session_generation = state.session_generation
-				local challenge_generation = state.challenge_generation
-				vim.defer_fn(function()
-					if not generations_match(session_generation, challenge_generation) then
-						return
-					end
-					if state.dwell_generation ~= dwell_generation then
-						return
-					end
-					state.dwell_pending = false
-					if state.mode ~= "playing" then
-						return
-					end
-					if not state.target then
-						return
-					end
-					if not state.win or not vim.api.nvim_win_is_valid(state.win) then
-						return
-					end
-					if is_on_target() then
-						on_target_reached()
-					end
-				end, lesson_dwell_time_ms(state.lesson))
-			end
+			schedule_dwell_completion()
 		else
-			state.dwell_pending = false
-			state.dwell_generation = (state.dwell_generation or 0) + 1
+			reset_dwell()
 		end
+	end
+
+	function controller.on_cursor_moved()
+		if not can_handle_cursor_move() then
+			return
+		end
+
+		local cur = current_cursor()
+		if suppress_programmatic_cursor(cur) then
+			return
+		end
+		if cursor_unchanged(cur) then
+			return
+		end
+
+		begin_cursor_move_timing()
+
+		local was_constrained = validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
+		update_last_cursor()
+		if was_constrained then
+			handle_constrained_cursor_move()
+			return
+		end
+
+		handle_active_cursor_move()
 	end
 
 	function controller.setup_autocmds()
