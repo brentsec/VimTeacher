@@ -9,6 +9,16 @@ local assert_test = counter.assert_test
 
 print("test_key_display_direct: running...")
 
+local original_notify = vim.notify
+local notify_calls = {}
+
+vim.notify = function(msg, level)
+	notify_calls[#notify_calls + 1] = {
+		msg = msg,
+		level = level,
+	}
+end
+
 local rewritten = key_display.apply_to_text("Use [h], h, and 5h but not ghost or json.", {
 	h = "z",
 })
@@ -61,5 +71,23 @@ assert_test(view.goal_text == "Press zg", "build_lesson_view should rewrite goal
 
 view.sandbox_snippet[1] = "mutated"
 assert_test(lesson.sandbox_snippet[1] == "h dw", "build_lesson_view should deep-copy sandbox snippet content")
+
+notify_calls = {}
+local fallback_view = key_display.build_lesson_view({
+	title = "Fallback",
+	description = { "desc" },
+	hint_lines = { "hint" },
+	get_title = function()
+		error("boom")
+	end,
+}, {})
+assert_test(fallback_view.title == "Fallback", "getter failures should preserve the fallback lesson title")
+assert_test(#notify_calls == 1, "getter failures should surface a notify error")
+assert_test(
+	notify_calls[1].msg:find("lesson title getter failed", 1, true) ~= nil,
+	"getter failure notifications should include the failing getter context"
+)
+
+vim.notify = original_notify
 
 counter.finish("test_key_display_direct")

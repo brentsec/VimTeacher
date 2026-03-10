@@ -58,31 +58,38 @@ local function derive_normal_window_line_numbers(win)
 		}
 	end
 
-	local original_buf = vim.api.nvim_win_get_buf(win)
-	local temp_buf
+	local original_win = vim.api.nvim_get_current_win()
+	local probe_buf = nil
+	local probe_win = nil
 	local captured = nil
-
-	local ok = pcall(vim.cmd, "enew")
-	if ok and valid_win(win) then
-		temp_buf = vim.api.nvim_win_get_buf(win)
+	local ok = pcall(function()
+		vim.cmd("keepalt aboveleft 1new")
+		probe_win = vim.api.nvim_get_current_win()
+		probe_buf = vim.api.nvim_get_current_buf()
 		captured = {
-			number = vim.wo[win].number == true,
-			relativenumber = vim.wo[win].relativenumber == true,
-			statuscolumn = vim.wo[win].statuscolumn,
+			number = vim.wo[probe_win].number == true,
+			relativenumber = vim.wo[probe_win].relativenumber == true,
+			statuscolumn = vim.wo[probe_win].statuscolumn,
 		}
+	end)
+
+	if valid_win(original_win) then
+		pcall(vim.api.nvim_set_current_win, original_win)
+	end
+	if probe_win and vim.api.nvim_win_is_valid(probe_win) then
+		pcall(vim.api.nvim_win_close, probe_win, true)
+	end
+	if probe_buf and vim.api.nvim_buf_is_valid(probe_buf) then
+		pcall(vim.api.nvim_buf_delete, probe_buf, { force = true })
 	end
 
-	if valid_win(win) and original_buf and vim.api.nvim_buf_is_valid(original_buf) then
-		pcall(vim.api.nvim_win_set_buf, win, original_buf)
+	if ok and captured then
+		return captured
 	end
-	if temp_buf and temp_buf ~= original_buf and vim.api.nvim_buf_is_valid(temp_buf) then
-		pcall(vim.api.nvim_buf_delete, temp_buf, { force = true })
-	end
-
-	return captured or {
-		number = false,
-		relativenumber = false,
-		statuscolumn = "",
+	return {
+		number = vim.opt_global.number:get() == true,
+		relativenumber = vim.opt_global.relativenumber:get() == true,
+		statuscolumn = vim.opt_global.statuscolumn:get(),
 	}
 end
 

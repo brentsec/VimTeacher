@@ -8,6 +8,16 @@ local assert_test = counter.assert_test
 
 print("test_menu_input: running...")
 
+local original_notify = vim.notify
+local notify_calls = {}
+
+vim.notify = function(msg, level)
+	notify_calls[#notify_calls + 1] = {
+		msg = msg,
+		level = level,
+	}
+end
+
 local buf = vim.api.nvim_create_buf(false, true)
 local win = vim.api.nvim_get_current_win()
 vim.api.nvim_win_set_buf(win, buf)
@@ -20,6 +30,7 @@ vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
 local state = {
 	buf = buf,
 	win = win,
+	mode = "menu",
 }
 
 local controller = input.new({
@@ -30,6 +41,9 @@ local controller = input.new({
 				{ name = "intro_modes", title = "Intro to Modes" },
 				{ name = "basic_movement", title = "Basic Movement" },
 			}
+		end,
+		get_sections = function()
+			return {}
 		end,
 	},
 })
@@ -61,6 +75,16 @@ vim.cmd("redraw")
 
 assert_test(started == nil, "Enter on a non-lesson row should do nothing")
 
+controller.rerender_menu_layout(function()
+	error("layout boom")
+end)
+assert_test(#notify_calls == 1, "rerender_menu_layout should surface render errors")
+assert_test(
+	notify_calls[1].msg:find("failed to rerender the menu layout", 1, true) ~= nil,
+	"rerender_menu_layout notifications should include context"
+)
+
 controller.clear_menu_keymaps()
+vim.notify = original_notify
 
 counter.finish("test_menu_input")

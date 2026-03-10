@@ -67,6 +67,42 @@ assert_test(
 	"apply_nonplaying_line_numbers should hide lesson line numbers outside active challenges"
 )
 
-vim.api.nvim_buf_delete(buf, { force = true })
+local original_global_number = vim.go.number
+local original_global_relativenumber = vim.go.relativenumber
+local original_global_statuscolumn = vim.go.statuscolumn
+local restore_buf = vim.api.nvim_create_buf(false, false)
+local ui_buf = vim.api.nvim_create_buf(false, true)
+vim.bo[ui_buf].filetype = "alpha"
+vim.api.nvim_win_set_buf(win, ui_buf)
+vim.go.number = true
+vim.go.relativenumber = true
+vim.go.statuscolumn = "global-statuscolumn"
+
+local preferred = buffer.capture_preferred_line_numbers(win)
+assert_test(preferred.number == true, "dashboard buffers should read global absolute number defaults")
+assert_test(preferred.relativenumber == true, "dashboard buffers should read global relative number defaults")
+assert_test(
+	preferred.statuscolumn == "global-statuscolumn",
+	"dashboard buffers should read the global statuscolumn default"
+)
+assert_test(
+	vim.api.nvim_win_get_buf(win) == ui_buf,
+	"capture_preferred_line_numbers should not replace the current buffer"
+)
+
+vim.go.number = original_global_number
+vim.go.relativenumber = original_global_relativenumber
+vim.go.statuscolumn = original_global_statuscolumn
+vim.api.nvim_win_set_buf(win, restore_buf)
+if vim.api.nvim_buf_is_valid(ui_buf) then
+	vim.api.nvim_buf_delete(ui_buf, { force = true })
+end
+if vim.api.nvim_buf_is_valid(restore_buf) then
+	vim.api.nvim_buf_delete(restore_buf, { force = true })
+end
+
+if vim.api.nvim_buf_is_valid(buf) then
+	vim.api.nvim_buf_delete(buf, { force = true })
+end
 
 counter.finish("test_buffer")

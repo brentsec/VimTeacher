@@ -2,6 +2,7 @@
 -- Session lifecycle helpers for the active VimTeacher run.
 
 local buffer = require("vimteacher.buffer")
+local errors = require("vimteacher.errors")
 local highlight = require("vimteacher.highlight")
 local key_blocking = require("vimteacher.key_blocking")
 local lessons = require("vimteacher.lessons")
@@ -168,7 +169,14 @@ function M.new(deps)
 		end
 
 		local all_sections = lessons.get_sections()
-		local ok = pcall(buffer.render_menu, state.buf, all_sections, state.all_stats, state.win)
+		local ok = errors.call(
+			"failed to render the menu",
+			buffer.render_menu,
+			state.buf,
+			all_sections,
+			state.all_stats,
+			state.win
+		)
 		if not ok then
 			return
 		end

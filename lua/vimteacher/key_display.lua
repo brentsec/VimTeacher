@@ -1,6 +1,8 @@
 -- vimteacher/key_display.lua
 -- Adaptive key display text rewriting and lesson view construction.
 
+local errors = require("vimteacher.errors")
+
 local M = {}
 
 local function escape_lua_pattern(text)
@@ -184,35 +186,35 @@ function M.build_lesson_view(lesson, key_display)
 	}
 
 	if type(lesson.get_title) == "function" then
-		local ok, title = pcall(lesson.get_title, ctx)
+		local ok, title = errors.call("lesson title getter failed", lesson.get_title, ctx)
 		if ok and type(title) == "string" and title ~= "" then
 			view.title = title
 		end
 	end
 
 	if type(lesson.get_description) == "function" then
-		local ok, lines = pcall(lesson.get_description, ctx)
+		local ok, lines = errors.call("lesson description getter failed", lesson.get_description, ctx)
 		if ok and type(lines) == "table" then
 			view.description = lines
 		end
 	end
 
 	if type(lesson.get_hint_lines) == "function" then
-		local ok, lines = pcall(lesson.get_hint_lines, ctx)
+		local ok, lines = errors.call("lesson hint getter failed", lesson.get_hint_lines, ctx)
 		if ok and type(lines) == "table" then
 			view.hint_lines = lines
 		end
 	end
 
 	if type(lesson.get_goal_text) == "function" then
-		local ok, text = pcall(lesson.get_goal_text, ctx)
+		local ok, text = errors.call("lesson goal getter failed", lesson.get_goal_text, ctx)
 		if ok and type(text) == "string" and text ~= "" then
 			view.goal_text = text
 		end
 	end
 
 	if type(lesson.get_sandbox_snippet) == "function" then
-		local ok, lines = pcall(lesson.get_sandbox_snippet, ctx)
+		local ok, lines = errors.call("lesson sandbox getter failed", lesson.get_sandbox_snippet, ctx)
 		if ok and type(lines) == "table" then
 			view.sandbox_snippet = lines
 		end

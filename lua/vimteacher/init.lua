@@ -2,6 +2,7 @@
 -- Main orchestrator: session lifecycle, state machine, and controller wiring.
 
 local buffer = require("vimteacher.buffer")
+local command_catalog = require("vimteacher.command_catalog")
 local gameplay_mod = require("vimteacher.gameplay")
 local highlight = require("vimteacher.highlight")
 local input_mod = require("vimteacher.input")
@@ -21,99 +22,6 @@ local DEFAULT_CONFIG = {
 		distro = "auto",
 		overrides = {},
 	},
-}
-
-local GLOBAL_ADAPTIVE_KEYS = {
-	"h",
-	"j",
-	"k",
-	"l",
-	"w",
-	"e",
-	"b",
-	"W",
-	"E",
-	"B",
-	"0",
-	"$",
-	"_",
-	"f",
-	"F",
-	"t",
-	"T",
-	";",
-	"i",
-	"a",
-	"I",
-	"A",
-	"o",
-	"O",
-	"x",
-	"r",
-	"cl",
-	"cw",
-	"cW",
-	"dw",
-	"dW",
-	"dd",
-	"dj",
-	"dk",
-	"d2j",
-	"d2k",
-	"D",
-	"yy",
-	"p",
-	"P",
-	"gg",
-	"G",
-	"{",
-	"}",
-	"/",
-	"?",
-	":",
-	"n",
-	"N",
-	"*",
-	"#",
-	"d",
-	"c",
-	"di(",
-	"di[",
-	"di{",
-	"da(",
-	"da[",
-	"da{",
-	"ci(",
-	"ci[",
-	"ci{",
-	"ca(",
-	"ca[",
-	"ca{",
-	'di"',
-	'da"',
-	'ci"',
-	'ca"',
-	"di'",
-	"da'",
-	"ci'",
-	"ca'",
-	"diw",
-	"daw",
-	"ciw",
-	"caw",
-	"dip",
-	"dap",
-	"cip",
-	"cap",
-	"qa",
-	"q",
-	"@a",
-	"@@",
-	"<C-u>",
-	"<C-d>",
-	"v",
-	"V",
-	".",
 }
 
 local actions = {}
@@ -239,7 +147,7 @@ function M.start(lesson_name)
 		keymaps.capture()
 		keymaps.capture_deferred()
 		local diagnostics
-		state.key_display, diagnostics = keymaps.resolve_many(GLOBAL_ADAPTIVE_KEYS)
+		state.key_display, diagnostics = keymaps.resolve_many(command_catalog.adaptive_keys)
 		if diagnostics and #diagnostics.custom > 0 then
 			local preview = {}
 			for i = 1, math.min(8, #diagnostics.custom) do

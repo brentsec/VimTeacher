@@ -1,6 +1,8 @@
 -- vimteacher/input.lua
 -- Menu input handling for the VimTeacher topic screen.
 
+local errors = require("vimteacher.errors")
+
 local M = {}
 
 --- Build menu input handlers for the active session.
@@ -128,7 +130,14 @@ function M.new(deps)
 		end
 
 		local cursor = vim.api.nvim_win_get_cursor(state.win)
-		local ok = pcall(render_menu, state.buf, deps.lessons.get_sections(), state.all_stats, state.win)
+		local ok = errors.call(
+			"failed to rerender the menu layout",
+			render_menu,
+			state.buf,
+			deps.lessons.get_sections(),
+			state.all_stats,
+			state.win
+		)
 		if not ok then
 			return
 		end

@@ -1,0 +1,173 @@
+-- vimteacher/command_catalog.lua
+-- Shared command metadata used by adaptive key display and goal rendering.
+
+local M = {}
+
+M.adaptive_keys = {
+	"h",
+	"j",
+	"k",
+	"l",
+	"w",
+	"e",
+	"b",
+	"W",
+	"E",
+	"B",
+	"0",
+	"$",
+	"_",
+	"f",
+	"F",
+	"t",
+	"T",
+	";",
+	"i",
+	"a",
+	"I",
+	"A",
+	"o",
+	"O",
+	"x",
+	"r",
+	"cl",
+	"cw",
+	"cW",
+	"dw",
+	"dW",
+	"dd",
+	"dj",
+	"dk",
+	"d2j",
+	"d2k",
+	"D",
+	"yy",
+	"p",
+	"P",
+	"gg",
+	"G",
+	"{",
+	"}",
+	"/",
+	"?",
+	":",
+	"n",
+	"N",
+	"*",
+	"#",
+	"d",
+	"c",
+	"di(",
+	"di[",
+	"di{",
+	"da(",
+	"da[",
+	"da{",
+	"ci(",
+	"ci[",
+	"ci{",
+	"ca(",
+	"ca[",
+	"ca{",
+	'di"',
+	'da"',
+	'ci"',
+	'ca"',
+	"di'",
+	"da'",
+	"ci'",
+	"ca'",
+	"diw",
+	"daw",
+	"ciw",
+	"caw",
+	"dip",
+	"dap",
+	"cip",
+	"cap",
+	"qa",
+	"q",
+	"@a",
+	"@@",
+	"<C-u>",
+	"<C-d>",
+	"v",
+	"V",
+	".",
+}
+
+M.goal_matchers = {
+	{
+		pattern = "^%d+x$",
+		action = "delete",
+		preposition = function(key)
+			return key:sub(1, -2) .. " chars at cursor"
+		end,
+	},
+	{
+		pattern = "^%d+%.$",
+		action = "repeat last change",
+		preposition = function(key)
+			return key:sub(1, -2) .. " times"
+		end,
+	},
+	{ pattern = "^d%d*j$", action = "delete lines", preposition = "downward" },
+	{ pattern = "^d%d*k$", action = "delete lines", preposition = "upward" },
+	{
+		pattern = "^ci",
+		action = function(key)
+			return "change inside " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
+	{
+		pattern = "^ca",
+		action = function(key)
+			return "change around " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
+	{
+		pattern = "^di",
+		action = function(key)
+			return "delete inside " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
+	{
+		pattern = "^da",
+		action = function(key)
+			return "delete around " .. key:sub(3)
+		end,
+		preposition = "at cursor",
+	},
+	{ pattern = "^V.*c$", action = "visual line change to", preposition = "selected lines" },
+	{ pattern = "^V.*d$", action = "visual line delete", preposition = "selected lines" },
+	{ pattern = "^v.*d$", action = "visual delete", preposition = "selected text" },
+	{ pattern = "^v.*c$", action = "visual change to", preposition = "selected text" },
+}
+
+M.goal_exact = {
+	i = { action = "insert", preposition = "before cursor" },
+	a = { action = "append", preposition = "after cursor" },
+	I = { action = "insert", preposition = "at line start" },
+	A = { action = "append", preposition = "at line end" },
+	o = { action = "open below", preposition = "and type" },
+	O = { action = "open above", preposition = "and type" },
+	cl = { action = "change letter", preposition = "under cursor" },
+	x = { action = "delete", preposition = "under cursor" },
+	r = { action = "replace with", preposition = "under cursor" },
+	["."] = { action = "repeat last change", preposition = "at cursor" },
+	cw = { action = "change word to", preposition = "at cursor" },
+	cW = { action = "change WORD to", preposition = "at cursor" },
+	dw = { action = "delete word", preposition = "at cursor" },
+	dW = { action = "delete WORD", preposition = "at cursor" },
+	dd = { action = "delete", preposition = "entire line" },
+	D = { action = "delete to", preposition = "end of line" },
+	p = { action = "paste", preposition = "below current line" },
+	P = { action = "paste", preposition = "above current line" },
+	vd = { action = "visual delete", preposition = "selected text" },
+	vc = { action = "visual change to", preposition = "selected text" },
+}
+
+return M
