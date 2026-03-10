@@ -48,12 +48,11 @@ function M.render_completion(buf, opts)
 		string.format("  Total time:     %-12sPersonal best:  %s", string.format("%.1fs", total_time), pb_str)
 
 	local speed_pct = stats.calc_speed_pct(opts.best_time, total_time)
-	local pb_hist_str = opts.best_time and string.format("%.1fs", opts.best_time) or "--"
 	lines[#lines + 1] = string.format(
 		"  Avg/challenge:  %-12sSpeed: %d%% (vs PB of %s)",
 		string.format("%.1fs", avg_time),
 		speed_pct,
-		pb_hist_str
+		pb_str
 	)
 
 	lines[#lines + 1] = string.format(

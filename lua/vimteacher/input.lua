@@ -161,11 +161,13 @@ function M.new(deps)
 			return
 		end
 
-		local line_count = vim.api.nvim_buf_line_count(state.buf)
-		local row = math.max(1, math.min(cursor[1], line_count))
-		vim.api.nvim_win_set_cursor(state.win, { row, 0 })
-		vim.fn.winrestview({ leftcol = 0 })
-	end
+			local line_count = vim.api.nvim_buf_line_count(state.buf)
+			local row = math.max(1, math.min(cursor[1], line_count))
+			local line = vim.api.nvim_buf_get_lines(state.buf, row - 1, row, false)[1] or ""
+			local col = math.max(0, math.min(cursor[2], #line))
+			vim.api.nvim_win_set_cursor(state.win, { row, col })
+			vim.fn.winrestview({ leftcol = 0 })
+		end
 
 	return controller
 end

@@ -290,7 +290,23 @@ function M.flash_success(buf, target_buf_row, target_col)
 	end
 
 	local line = vim.api.nvim_buf_get_lines(buf, target_buf_row, target_buf_row + 1, false)[1]
-	if not line or target_col >= #line then
+	if not line then
+		return
+	end
+
+	if #line == 0 or target_col >= #line then
+		local opts = {
+			line_hl_group = "VimTeacherSuccess",
+			priority = 200,
+		}
+		if #line == 0 then
+			opts.virt_text = { { " ← success", "VimTeacherSuccess" } }
+			opts.virt_text_pos = "overlay"
+		else
+			opts.end_col = #line
+			opts.hl_group = "VimTeacherSuccess"
+		end
+		vim.api.nvim_buf_set_extmark(buf, M.ns_target, target_buf_row, 0, opts)
 		return
 	end
 

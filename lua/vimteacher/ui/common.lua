@@ -4,6 +4,7 @@
 local M = {}
 
 M.SEPARATOR = string.rep("─", 68)
+M.CONTENT_WIDTH = #M.SEPARATOR
 
 -- ASCII art logo: heavy blocks for "Vim", box-drawing for "Teacher"
 M.LOGO = {

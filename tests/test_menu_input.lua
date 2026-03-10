@@ -136,6 +136,23 @@ local ok, err = xpcall(function()
 	state.mode = "menu"
 	state.buf = buf
 
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
+		"header",
+		"lesson one",
+		"lesson two",
+	})
+	vim.api.nvim_win_set_cursor(win, { 3, 5 })
+	controller.rerender_menu_layout(function(bufnr)
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+			"header",
+			"lesson one",
+			"lesson two extended",
+		})
+	end)
+	local preserved_cursor = vim.api.nvim_win_get_cursor(win)
+	assert_test(preserved_cursor[1] == 3, "rerender_menu_layout should preserve the current menu row")
+	assert_test(preserved_cursor[2] == 5, "rerender_menu_layout should preserve the current menu column when valid")
+
 	controller.rerender_menu_layout(function()
 		error("layout boom")
 	end)

@@ -63,6 +63,7 @@ end
 local buf = vim.api.nvim_create_buf(false, true)
 vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
 	"abcdef",
+	"",
 	"z",
 })
 
@@ -107,11 +108,11 @@ if mark then
 end
 
 -- Test 5: Single-char line still renders for zero-width input
-highlight.place_target(buf, 1, 0, 0)
+highlight.place_target(buf, 2, 0, 0)
 mark, count = get_target_mark(buf)
 assert_test(mark ~= nil, "Expected one target extmark on single-char line, got " .. tostring(count))
 if mark then
-	assert_test(mark[2] == 1, "Expected row 1, got " .. mark[2])
+	assert_test(mark[2] == 2, "Expected row 2, got " .. mark[2])
 	assert_test(mark[3] == 0, "Expected start col 0, got " .. mark[3])
 	assert_test(mark[4].end_col == 1, "Expected end_col 1, got " .. tostring(mark[4].end_col))
 end
@@ -120,6 +121,33 @@ end
 highlight.place_target(buf, 0, 99, 100)
 local marks = vim.api.nvim_buf_get_extmarks(buf, highlight.ns_target, 0, -1, { details = true })
 assert_test(#marks == 0, "Out-of-bounds target should create no extmark, got " .. #marks)
+
+-- Test 7: flash_success falls back to a full-line highlight when the target is past end-of-line
+highlight.flash_success(buf, 0, 99)
+mark, count = get_target_mark(buf)
+assert_test(mark ~= nil, "Expected one success extmark for full-line fallback, got " .. tostring(count))
+if mark then
+	assert_test(mark[2] == 0, "Expected success row 0, got " .. mark[2])
+	assert_test(mark[3] == 0, "Expected full-line success to start at col 0, got " .. mark[3])
+	assert_test(
+		mark[4].line_hl_group == "VimTeacherSuccess",
+		"Expected full-line success highlight group, got " .. tostring(mark[4].line_hl_group)
+	)
+	assert_test(mark[4].end_col == 6, "Expected full-line success end_col 6, got " .. tostring(mark[4].end_col))
+end
+
+-- Test 8: flash_success keeps empty-line targets visible with virtual text
+highlight.flash_success(buf, 1, 0)
+mark, count = get_target_mark(buf)
+assert_test(mark ~= nil, "Expected one success extmark for empty-line fallback, got " .. tostring(count))
+if mark then
+	assert_test(mark[2] == 1, "Expected empty-line success row 1, got " .. mark[2])
+	assert_test(
+		mark[4].line_hl_group == "VimTeacherSuccess",
+		"Expected empty-line success highlight group, got " .. tostring(mark[4].line_hl_group)
+	)
+	assert_test(mark[4].virt_text ~= nil, "Expected empty-line success fallback to add virtual text")
+end
 
 vim.api.nvim_buf_delete(buf, { force = true })
 
