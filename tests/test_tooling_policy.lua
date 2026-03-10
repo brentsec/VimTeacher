@@ -25,6 +25,13 @@ local fmt_script = read("scripts/fmt")
 assert_test(fmt_script:find("stylua@2%.0%.2") ~= nil, "scripts/fmt should pin the Stylua version")
 assert_test(fmt_script:find("stylua@latest", 1, true) == nil, "scripts/fmt should not use stylua@latest")
 
+local test_script = read("scripts/test.sh")
+assert_test(
+	test_script:find("printf '%s\\n' test_*.lua", 1, true) ~= nil,
+	"scripts/test.sh should auto-discover top-level test files"
+)
+assert_test(test_script:find("TESTS=%(", 1, false) == nil, "scripts/test.sh should not hardcode the test file list")
+
 local luacheckrc = read(".luacheckrc")
 assert_test(
 	luacheckrc:find('files%["lua/vimteacher/lessons/%*%.lua"%]') == nil,
