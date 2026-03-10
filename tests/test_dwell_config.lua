@@ -11,10 +11,16 @@ print("test_dwell_config: running...")
 
 local original_defer_fn = vim.defer_fn
 local deferred = {}
+local created_buffers = {}
 
-vim.defer_fn = function(cb, _ms)
-	deferred[#deferred + 1] = cb
-	return #deferred
+local function cleanup()
+	vim.defer_fn = original_defer_fn
+	deferred = {}
+	for _, buf in ipairs(created_buffers) do
+		if vim.api.nvim_buf_is_valid(buf) then
+			vim.api.nvim_buf_delete(buf, { force = true })
+		end
+	end
 end
 
 local function run_deferred(index)
@@ -26,6 +32,7 @@ end
 
 local function new_state(lesson)
 	local buf = vim.api.nvim_create_buf(false, true)
+	created_buffers[#created_buffers + 1] = buf
 	local win = vim.api.nvim_get_current_win()
 	vim.api.nvim_win_set_buf(win, buf)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "ab" })
@@ -95,28 +102,39 @@ local function run_leave_and_return_case()
 	return before_second_dwell, advances
 end
 
-local before_default, after_default = run_cursor_case({}, nil, function()
-	run_deferred(1)
-end)
-assert_test(before_default == 0, "default dwell should not advance before the dwell timer elapses")
-assert_test(after_default == 1, "default dwell should advance after the dwell timer elapses")
+local ok, err = xpcall(function()
+	vim.defer_fn = function(cb, _ms)
+		deferred[#deferred + 1] = cb
+		return #deferred
+	end
 
-local before_explicit, after_explicit = run_cursor_case({ dwell_time = 5 }, function()
-	run_deferred(1)
-end)
-assert_test(before_explicit == 1, "dwell_time should control the dwell delay")
-assert_test(after_explicit == 1, "dwell_time should only advance once")
+	local before_default, after_default = run_cursor_case({}, nil, function()
+		run_deferred(1)
+	end)
+	assert_test(before_default == 0, "default dwell should not advance before the dwell timer elapses")
+	assert_test(after_default == 1, "default dwell should advance after the dwell timer elapses")
 
-local before_alias, after_alias = run_cursor_case({ dwell_ms = 0 }, function()
-	run_deferred(1)
-end)
-assert_test(before_alias == 1, "dwell_ms compatibility alias should be accepted")
-assert_test(after_alias == 1, "dwell_ms alias should only advance once")
+	local before_explicit, after_explicit = run_cursor_case({ dwell_time = 5 }, function()
+		run_deferred(1)
+	end)
+	assert_test(before_explicit == 1, "dwell_time should control the dwell delay")
+	assert_test(after_explicit == 1, "dwell_time should only advance once")
 
-local before_reentry, after_reentry = run_leave_and_return_case()
-assert_test(before_reentry == 0, "leaving and re-entering should restart the dwell timer")
-assert_test(after_reentry == 1, "re-entering should still advance after the full second dwell")
+	local before_alias, after_alias = run_cursor_case({ dwell_ms = 0 }, function()
+		run_deferred(1)
+	end)
+	assert_test(before_alias == 1, "dwell_ms compatibility alias should be accepted")
+	assert_test(after_alias == 1, "dwell_ms alias should only advance once")
 
-vim.defer_fn = original_defer_fn
+	local before_reentry, after_reentry = run_leave_and_return_case()
+	assert_test(before_reentry == 0, "leaving and re-entering should restart the dwell timer")
+	assert_test(after_reentry == 1, "re-entering should still advance after the full second dwell")
+end, debug.traceback)
+
+cleanup()
+
+if not ok then
+	error(err)
+end
 
 counter.finish("test_dwell_config")

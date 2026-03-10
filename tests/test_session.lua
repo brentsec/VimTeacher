@@ -69,9 +69,38 @@ local observed = {
 	restore_called = false,
 }
 local deferred_callbacks = {}
+local created_buffers = {}
+
+local function cleanup()
+	buffer.create = original.buffer_create
+	buffer.render = original.buffer_render
+	buffer.render_menu = original.buffer_render_menu
+	buffer.render_completion = original.buffer_render_completion
+	buffer.get_snippet_bounds = original.buffer_get_snippet_bounds
+	buffer.apply_playing_line_numbers = original.buffer_apply_playing
+	buffer.apply_nonplaying_line_numbers = original.buffer_apply_nonplaying
+	buffer.restore_line_numbers = original.buffer_restore
+	lessons.get_sections = original.lessons_get_sections
+	lessons.get_lesson = original.lessons_get_lesson
+	key_blocking.block_insert_keys = original.key_blocking_block_insert
+	highlight.flash_success = original.highlight_flash_success
+	snippets.reset_recent = original.snippets_reset_recent
+	stats.record_session = original.stats_record_session
+	stats.save = original.stats_save
+	vim.defer_fn = original.vim_defer_fn
+
+	for _, bufnr in ipairs(created_buffers) do
+		if vim.api.nvim_buf_is_valid(bufnr) then
+			pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
+		end
+	end
+
+	state_mod.reset()
+end
 
 buffer.create = function()
 	local buf = vim.api.nvim_create_buf(false, true)
+	created_buffers[#created_buffers + 1] = buf
 	local win = vim.api.nvim_get_current_win()
 	vim.api.nvim_win_set_buf(win, buf)
 	return buf, win
@@ -245,94 +274,85 @@ local controller = session_mod.new({
 	menu = menu,
 })
 
-controller.show_menu()
-assert_test(state.mode == "menu", "show_menu should switch the session into menu mode")
-assert_test(observed.render_menu == 1, "show_menu should render the lesson menu")
-assert_test(observed.menu_setup == 1, "show_menu should install menu keymaps")
-assert_test(observed.block_insert == 1, "show_menu should block insert keys for the menu buffer")
-assert_test(observed.setup_autocmds == 1, "show_menu should set up gameplay autocmds when creating the buffer")
-local menu_cursor = vim.api.nvim_win_get_cursor(state.win)
-assert_test(menu_cursor[1] == 2 and menu_cursor[2] == 0, "show_menu should move the cursor to the first lesson row")
+local ok, err = xpcall(function()
+	controller.show_menu()
+	assert_test(state.mode == "menu", "show_menu should switch the session into menu mode")
+	assert_test(observed.render_menu == 1, "show_menu should render the lesson menu")
+	assert_test(observed.menu_setup == 1, "show_menu should install menu keymaps")
+	assert_test(observed.block_insert == 1, "show_menu should block insert keys for the menu buffer")
+	assert_test(observed.setup_autocmds == 1, "show_menu should set up gameplay autocmds when creating the buffer")
+	local menu_cursor = vim.api.nvim_win_get_cursor(state.win)
+	assert_test(menu_cursor[1] == 2 and menu_cursor[2] == 0, "show_menu should move the cursor to the first lesson row")
 
-controller.start("test_lesson")
-assert_test(state.mode == "playing", "start should enter playing mode for a normal lesson")
-assert_test(observed.clear_mode_keymaps == 1, "start should clear existing mode keymaps before rebinding")
-assert_test(observed.reset_recent == 1, "start should reset lesson snippet recency")
-assert_test(state.challenge_num == 1, "start should load the first challenge immediately")
-assert_test(state.optimal_moves == 7, "start should compute the lesson's optimal move count")
-assert_test(observed.render_current == 1, "start should render the active challenge")
-assert_test(observed.playing_keymaps == 1, "start should install playing-mode keymaps")
+	controller.start("test_lesson")
+	assert_test(state.mode == "playing", "start should enter playing mode for a normal lesson")
+	assert_test(observed.clear_mode_keymaps == 1, "start should clear existing mode keymaps before rebinding")
+	assert_test(observed.reset_recent == 1, "start should reset lesson snippet recency")
+	assert_test(state.challenge_num == 1, "start should load the first challenge immediately")
+	assert_test(state.optimal_moves == 7, "start should compute the lesson's optimal move count")
+	assert_test(observed.render_current == 1, "start should render the active challenge")
+	assert_test(observed.playing_keymaps == 1, "start should install playing-mode keymaps")
 
-state.move_count = 5
-state.timer_start = vim.loop.hrtime() - 1e9
-controller.advance_challenge()
+	state.move_count = 5
+	state.timer_start = vim.loop.hrtime() - 1e9
+	controller.advance_challenge()
 
-assert_test(state.mode == "stats", "advance_challenge should enter stats mode before the deferred transition")
-assert_test(#state.session_challenges == 1, "advance_challenge should record the completed challenge stats")
-assert_test(type(deferred_callbacks[1]) == "function", "advance_challenge should schedule a deferred transition")
-deferred_callbacks[1]()
-assert_test(state.mode == "complete", "advance_challenge should reach the completion screen at the lesson boundary")
-assert_test(
-	observed.record_session ~= nil and observed.record_session.lesson_name == "test_lesson",
-	"advance_challenge should record lesson session statistics"
-)
-assert_test(observed.save_called == true, "advance_challenge should persist updated stats")
-assert_test(observed.render_completion ~= nil, "advance_challenge should render the completion screen")
-assert_test(observed.completion_keymaps == 1, "advance_challenge should install completion keymaps")
+	assert_test(state.mode == "stats", "advance_challenge should enter stats mode before the deferred transition")
+	assert_test(#state.session_challenges == 1, "advance_challenge should record the completed challenge stats")
+	assert_test(type(deferred_callbacks[1]) == "function", "advance_challenge should schedule a deferred transition")
+	deferred_callbacks[1]()
+	assert_test(state.mode == "complete", "advance_challenge should reach the completion screen at the lesson boundary")
+	assert_test(
+		observed.record_session ~= nil and observed.record_session.lesson_name == "test_lesson",
+		"advance_challenge should record lesson session statistics"
+	)
+	assert_test(observed.save_called == true, "advance_challenge should persist updated stats")
+	assert_test(observed.render_completion ~= nil, "advance_challenge should render the completion screen")
+	assert_test(observed.completion_keymaps == 1, "advance_challenge should install completion keymaps")
 
-observed.render_completion = nil
-controller.show_menu()
-controller.start("test_lesson")
-state.move_count = 3
-state.timer_start = vim.loop.hrtime() - 1e9
-controller.advance_challenge()
-assert_test(state.mode == "stats", "advance_challenge should still enter stats mode on a later run")
-assert_test(
-	type(deferred_callbacks[2]) == "function",
-	"later challenge transitions should also schedule deferred callbacks"
-)
-controller.show_menu()
-deferred_callbacks[2]()
-assert_test(state.mode == "menu", "stale deferred callbacks should not override a later mode change")
-assert_test(
-	observed.render_completion == nil,
-	"stale deferred callbacks should not render completion after leaving stats"
-)
+	observed.render_completion = nil
+	controller.show_menu()
+	controller.start("test_lesson")
+	state.move_count = 3
+	state.timer_start = vim.loop.hrtime() - 1e9
+	controller.advance_challenge()
+	assert_test(state.mode == "stats", "advance_challenge should still enter stats mode on a later run")
+	assert_test(
+		type(deferred_callbacks[2]) == "function",
+		"later challenge transitions should also schedule deferred callbacks"
+	)
+	controller.show_menu()
+	deferred_callbacks[2]()
+	assert_test(state.mode == "menu", "stale deferred callbacks should not override a later mode change")
+	assert_test(
+		observed.render_completion == nil,
+		"stale deferred callbacks should not render completion after leaving stats"
+	)
 
-controller.start("info_lesson")
-assert_test(state.mode == "info", "start should enter info mode for info lessons")
-assert_test(observed.render_info ~= nil, "info lessons should still render when lesson_view is unavailable")
-assert_test(observed.render_info.title == info_lesson.title, "info lesson fallback should use lesson title")
-assert_test(
-	observed.render_info.description[1] == info_lesson.description[1],
-	"info lesson fallback should use lesson description"
-)
-assert_test(
-	observed.render_info.snippet_lines[1] == info_lesson.sandbox_snippet[1],
-	"info lesson fallback should use lesson sandbox snippet"
-)
+	controller.start("info_lesson")
+	assert_test(state.mode == "info", "start should enter info mode for info lessons")
+	assert_test(observed.render_info ~= nil, "info lessons should still render when lesson_view is unavailable")
+	assert_test(observed.render_info.title == info_lesson.title, "info lesson fallback should use lesson title")
+	assert_test(
+		observed.render_info.description[1] == info_lesson.description[1],
+		"info lesson fallback should use lesson description"
+	)
+	assert_test(
+		observed.render_info.snippet_lines[1] == info_lesson.sandbox_snippet[1],
+		"info lesson fallback should use lesson sandbox snippet"
+	)
 
-local old_buf = state.buf
-controller.stop()
-assert_test(observed.restore_called == true, "stop should restore the source window line number settings")
-assert_test(not vim.api.nvim_buf_is_valid(old_buf), "stop should delete the session buffer")
-assert_test(state.buf == nil and state.mode == "menu", "stop should reset the shared session state")
+	local old_buf = state.buf
+	controller.stop()
+	assert_test(observed.restore_called == true, "stop should restore the source window line number settings")
+	assert_test(not vim.api.nvim_buf_is_valid(old_buf), "stop should delete the session buffer")
+	assert_test(state.buf == nil and state.mode == "menu", "stop should reset the shared session state")
+end, debug.traceback)
 
-buffer.create = original.buffer_create
-buffer.render = original.buffer_render
-buffer.render_menu = original.buffer_render_menu
-buffer.render_completion = original.buffer_render_completion
-buffer.get_snippet_bounds = original.buffer_get_snippet_bounds
-buffer.apply_playing_line_numbers = original.buffer_apply_playing
-buffer.apply_nonplaying_line_numbers = original.buffer_apply_nonplaying
-buffer.restore_line_numbers = original.buffer_restore
-lessons.get_sections = original.lessons_get_sections
-lessons.get_lesson = original.lessons_get_lesson
-key_blocking.block_insert_keys = original.key_blocking_block_insert
-highlight.flash_success = original.highlight_flash_success
-snippets.reset_recent = original.snippets_reset_recent
-stats.record_session = original.stats_record_session
-stats.save = original.stats_save
-vim.defer_fn = original.vim_defer_fn
+cleanup()
+
+if not ok then
+	error(err)
+end
 
 counter.finish("test_session")

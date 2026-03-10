@@ -18,6 +18,54 @@ local function runtime_state()
 	return require("vimteacher.state").session
 end
 
+local original = {
+	test_statuscolumn = _G._vimteacher_test_statuscolumn,
+	go_number = vim.go.number,
+	go_relativenumber = vim.go.relativenumber,
+	go_statuscolumn = vim.go.statuscolumn,
+	global_number = vim.opt_global.number:get(),
+	global_relativenumber = vim.opt_global.relativenumber:get(),
+	global_statuscolumn = vim.opt_global.statuscolumn:get(),
+	window_number = vim.wo[0].number,
+	window_relativenumber = vim.wo[0].relativenumber,
+	window_statuscolumn = vim.wo[0].statuscolumn,
+	buffer_filetype = vim.bo[0].filetype,
+	buffer_buftype = vim.bo[0].buftype,
+}
+local created_augroups = {}
+
+local function cleanup()
+	local state_mod = require("vimteacher.state")
+	local state = state_mod.session
+
+	if state.mode ~= "menu" and state.buf ~= nil then
+		pcall(vim.cmd, "VimTeacherStop")
+	end
+
+	if state.buf ~= nil and vim.api.nvim_buf_is_valid(state.buf) then
+		pcall(vim.api.nvim_buf_delete, state.buf, { force = true })
+	end
+
+	for _, augroup in ipairs(created_augroups) do
+		pcall(vim.api.nvim_del_augroup_by_id, augroup)
+	end
+
+	_G._vimteacher_test_statuscolumn = original.test_statuscolumn
+	vim.go.number = original.go_number
+	vim.go.relativenumber = original.go_relativenumber
+	vim.go.statuscolumn = original.go_statuscolumn
+	vim.opt_global.number = original.global_number
+	vim.opt_global.relativenumber = original.global_relativenumber
+	vim.opt_global.statuscolumn = original.global_statuscolumn
+	vim.wo[0].number = original.window_number
+	vim.wo[0].relativenumber = original.window_relativenumber
+	vim.wo[0].statuscolumn = original.window_statuscolumn
+	vim.bo[0].filetype = original.buffer_filetype
+	vim.bo[0].buftype = original.buffer_buftype
+
+	state_mod.reset()
+end
+
 _G._vimteacher_test_statuscolumn = function()
 	local win = (vim.g.statusline_winid and vim.g.statusline_winid ~= 0) and vim.g.statusline_winid
 		or vim.api.nvim_get_current_win()
@@ -306,6 +354,7 @@ end
 
 local function run_dashboard_fallback_case(filetype)
 	local augroup = vim.api.nvim_create_augroup("VimTeacherDashboardLineNumberTest", { clear = true })
+	created_augroups[#created_augroups + 1] = augroup
 	vim.api.nvim_create_autocmd("BufEnter", {
 		group = augroup,
 		callback = function(args)
@@ -356,13 +405,20 @@ local function run_dashboard_fallback_case(filetype)
 		vim.api.nvim_get_current_win() ~= nil,
 		"cleanup should leave a valid active window after a UI-buffer-launched lesson (" .. filetype .. ")"
 	)
-	pcall(vim.api.nvim_del_augroup_by_id, augroup)
 end
 
-run_menu_to_playing_case()
-run_local_over_global_case()
-run_info_screen_case()
-run_dashboard_fallback_case("snacks_dashboard")
-run_dashboard_fallback_case("nvdash")
+local ok, err = xpcall(function()
+	run_menu_to_playing_case()
+	run_local_over_global_case()
+	run_info_screen_case()
+	run_dashboard_fallback_case("snacks_dashboard")
+	run_dashboard_fallback_case("nvdash")
+end, debug.traceback)
+
+cleanup()
+
+if not ok then
+	error(err)
+end
 
 counter.finish("test_line_numbers_integration")

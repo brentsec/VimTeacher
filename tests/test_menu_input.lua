@@ -86,54 +86,70 @@ vim.api.nvim_buf_set_var(buf, "vimteacher_menu_row_to_lesson", {
 	[3] = 2,
 })
 
-vim.api.nvim_win_set_cursor(win, { 3, 0 })
-local enter = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
-vim.api.nvim_feedkeys(enter, "xt", false)
-vim.cmd("redraw")
+local function cleanup()
+	controller.clear_menu_keymaps()
+	vim.notify = original_notify
+	vim.fn.timer_start = original_timer_start
+	vim.fn.timer_stop = original_timer_stop
+	vim.schedule = original_schedule
+	if vim.api.nvim_buf_is_valid(buf) then
+		vim.api.nvim_buf_delete(buf, { force = true })
+	end
+end
 
-assert_test(started == "lesson_2", "Enter on a lesson row should start the highlighted lesson")
-assert_test(stopped == false, "Enter should not stop the session")
+local ok, err = xpcall(function()
+	vim.api.nvim_win_set_cursor(win, { 3, 0 })
+	local enter = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
+	vim.api.nvim_feedkeys(enter, "xt", false)
+	vim.cmd("redraw")
 
-started = nil
-vim.api.nvim_win_set_cursor(win, { 1, 0 })
-vim.api.nvim_feedkeys(enter, "xt", false)
-vim.cmd("redraw")
+	assert_test(started == "lesson_2", "Enter on a lesson row should start the highlighted lesson")
+	assert_test(stopped == false, "Enter should not stop the session")
 
-assert_test(started == nil, "Enter on a non-lesson row should do nothing")
+	started = nil
+	vim.api.nvim_win_set_cursor(win, { 1, 0 })
+	vim.api.nvim_feedkeys(enter, "xt", false)
+	vim.cmd("redraw")
 
-started = nil
-local digit_one = vim.api.nvim_replace_termcodes("1", true, false, true)
-local quit = vim.api.nvim_replace_termcodes("q", true, false, true)
-vim.api.nvim_feedkeys(digit_one, "xt", false)
-vim.cmd("redraw")
-assert_test(type(timer_callbacks[1]) == "function", "digit input should defer a potentially-extendable lesson number")
+	assert_test(started == nil, "Enter on a non-lesson row should do nothing")
 
-vim.api.nvim_feedkeys(quit, "xt", false)
-vim.cmd("redraw")
-assert_test(stopped == true, "q should stop the session from the menu")
-assert_test(stopped_timers[1] == true, "q should stop the pending digit timer")
+	started = nil
+	local digit_one = vim.api.nvim_replace_termcodes("1", true, false, true)
+	local quit = vim.api.nvim_replace_termcodes("q", true, false, true)
+	vim.api.nvim_feedkeys(digit_one, "xt", false)
+	vim.cmd("redraw")
+	assert_test(
+		type(timer_callbacks[1]) == "function",
+		"digit input should defer a potentially-extendable lesson number"
+	)
 
-timer_callbacks[1]()
-assert_test(type(scheduled_callbacks[1]) == "function", "digit timer should queue its flush on the event loop")
-scheduled_callbacks[1]()
-assert_test(started == nil, "a stale queued digit flush should not start a lesson after q")
+	vim.api.nvim_feedkeys(quit, "xt", false)
+	vim.cmd("redraw")
+	assert_test(stopped == true, "q should stop the session from the menu")
+	assert_test(stopped_timers[1] == true, "q should stop the pending digit timer")
 
-state.mode = "menu"
-state.buf = buf
+	timer_callbacks[1]()
+	assert_test(type(scheduled_callbacks[1]) == "function", "digit timer should queue its flush on the event loop")
+	scheduled_callbacks[1]()
+	assert_test(started == nil, "a stale queued digit flush should not start a lesson after q")
 
-controller.rerender_menu_layout(function()
-	error("layout boom")
-end)
-assert_test(#notify_calls == 1, "rerender_menu_layout should surface render errors")
-assert_test(
-	notify_calls[1].msg:find("failed to rerender the menu layout", 1, true) ~= nil,
-	"rerender_menu_layout notifications should include context"
-)
+	state.mode = "menu"
+	state.buf = buf
 
-controller.clear_menu_keymaps()
-vim.notify = original_notify
-vim.fn.timer_start = original_timer_start
-vim.fn.timer_stop = original_timer_stop
-vim.schedule = original_schedule
+	controller.rerender_menu_layout(function()
+		error("layout boom")
+	end)
+	assert_test(#notify_calls == 1, "rerender_menu_layout should surface render errors")
+	assert_test(
+		notify_calls[1].msg:find("failed to rerender the menu layout", 1, true) ~= nil,
+		"rerender_menu_layout notifications should include context"
+	)
+end, debug.traceback)
+
+cleanup()
+
+if not ok then
+	error(err)
+end
 
 counter.finish("test_menu_input")

@@ -12,82 +12,98 @@ print("test_key_display_direct: running...")
 local original_notify = vim.notify
 local notify_calls = {}
 
-vim.notify = function(msg, level)
-	notify_calls[#notify_calls + 1] = {
-		msg = msg,
-		level = level,
-	}
+local function cleanup()
+	vim.notify = original_notify
 end
 
-local rewritten = key_display.apply_to_text("Use [h], h, and 5h but not ghost or json.", {
-	h = "z",
-})
-assert_test(
-	rewritten == "Use [z], z, and 5z but not ghost or json.",
-	"single-key replacements should respect token boundaries and count prefixes"
-)
+local ok, err = xpcall(function()
+	vim.notify = function(msg, level)
+		notify_calls[#notify_calls + 1] = {
+			msg = msg,
+			level = level,
+		}
+	end
 
-local ordered = key_display.apply_to_text("[dw] = delete word; d = delete", {
-	dw = "zg",
-	d = "x",
-})
-assert_test(
-	ordered == "[zg] = delete word; x = delete",
-	"multi-key replacements should take precedence over shorter overlapping tokens"
-)
+	local rewritten = key_display.apply_to_text("Use [h], h, and 5h but not ghost or json.", {
+		h = "z",
+	})
+	assert_test(
+		rewritten == "Use [z], z, and 5z but not ghost or json.",
+		"single-key replacements should respect token boundaries and count prefixes"
+	)
 
-local prompts = key_display.apply_to_text("/target ?reverse :s/foo/bar", {
-	["/"] = "y",
-	["?"] = "Y",
-	[":"] = ";",
-})
-assert_test(
-	prompts == "ytarget Yreverse ;s/foo/bar",
-	"prompt prefixes should be rewritten when search and command keys are remapped"
-)
+	local ordered = key_display.apply_to_text("[dw] = delete word; d = delete", {
+		dw = "zg",
+		d = "x",
+	})
+	assert_test(
+		ordered == "[zg] = delete word; x = delete",
+		"multi-key replacements should take precedence over shorter overlapping tokens"
+	)
 
-local lesson = {
-	title = "Move with h",
-	description = { "Use h then dw." },
-	hint_lines = { "[h] and [dw]" },
-	goal_text = "Press dw",
-	sandbox_snippet = { "h dw" },
-	get_title = function(ctx)
-		return "Title " .. ctx.key_display.h
-	end,
-	get_description = function(ctx)
-		return { "Desc " .. ctx.key_display.dw }
-	end,
-}
+	local prompts = key_display.apply_to_text("/target ?reverse :s/foo/bar", {
+		["/"] = "y",
+		["?"] = "Y",
+		[":"] = ";",
+	})
+	assert_test(
+		prompts == "ytarget Yreverse ;s/foo/bar",
+		"prompt prefixes should be rewritten when search and command keys are remapped"
+	)
 
-local view = key_display.build_lesson_view(lesson, {
-	h = "z",
-	dw = "zg",
-})
-assert_test(view.title == "Title z", "build_lesson_view should use lesson getter overrides when they succeed")
-assert_test(vim.deep_equal(view.description, { "Desc zg" }), "build_lesson_view should use custom description getters")
-assert_test(vim.deep_equal(view.hint_lines, { "[z] and [zg]" }), "build_lesson_view should rewrite hint lines directly")
-assert_test(view.goal_text == "Press zg", "build_lesson_view should rewrite goal text directly")
+	local lesson = {
+		title = "Move with h",
+		description = { "Use h then dw." },
+		hint_lines = { "[h] and [dw]" },
+		goal_text = "Press dw",
+		sandbox_snippet = { "h dw" },
+		get_title = function(ctx)
+			return "Title " .. ctx.key_display.h
+		end,
+		get_description = function(ctx)
+			return { "Desc " .. ctx.key_display.dw }
+		end,
+	}
 
-view.sandbox_snippet[1] = "mutated"
-assert_test(lesson.sandbox_snippet[1] == "h dw", "build_lesson_view should deep-copy sandbox snippet content")
+	local view = key_display.build_lesson_view(lesson, {
+		h = "z",
+		dw = "zg",
+	})
+	assert_test(view.title == "Title z", "build_lesson_view should use lesson getter overrides when they succeed")
+	assert_test(
+		vim.deep_equal(view.description, { "Desc zg" }),
+		"build_lesson_view should use custom description getters"
+	)
+	assert_test(
+		vim.deep_equal(view.hint_lines, { "[z] and [zg]" }),
+		"build_lesson_view should rewrite hint lines directly"
+	)
+	assert_test(view.goal_text == "Press zg", "build_lesson_view should rewrite goal text directly")
 
-notify_calls = {}
-local fallback_view = key_display.build_lesson_view({
-	title = "Fallback",
-	description = { "desc" },
-	hint_lines = { "hint" },
-	get_title = function()
-		error("boom")
-	end,
-}, {})
-assert_test(fallback_view.title == "Fallback", "getter failures should preserve the fallback lesson title")
-assert_test(#notify_calls == 1, "getter failures should surface a notify error")
-assert_test(
-	notify_calls[1].msg:find("lesson title getter failed", 1, true) ~= nil,
-	"getter failure notifications should include the failing getter context"
-)
+	view.sandbox_snippet[1] = "mutated"
+	assert_test(lesson.sandbox_snippet[1] == "h dw", "build_lesson_view should deep-copy sandbox snippet content")
 
-vim.notify = original_notify
+	notify_calls = {}
+	local fallback_view = key_display.build_lesson_view({
+		title = "Fallback",
+		description = { "desc" },
+		hint_lines = { "hint" },
+		get_title = function()
+			error("boom")
+		end,
+	}, {})
+	assert_test(fallback_view.title == "Fallback", "getter failures should preserve the fallback lesson title")
+	assert_test(#notify_calls == 1, "getter failures should surface a notify error")
+	assert_test(
+		notify_calls[1].msg:find("lesson title getter failed", 1, true) ~= nil,
+		"getter failure notifications should include the failing getter context"
+	)
+end, debug.traceback)
+
+cleanup()
+
+if not ok then
+	error(err)
+end
 
 counter.finish("test_key_display_direct")
