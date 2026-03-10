@@ -4,6 +4,16 @@ function M.wait_for(predicate, timeout_ms, interval_ms)
 	return vim.wait(timeout_ms or 1500, predicate, interval_ms or 20)
 end
 
+function M.drain(timeout_ms)
+	local done = false
+	vim.schedule(function()
+		done = true
+	end)
+	return M.wait_for(function()
+		return done
+	end, timeout_ms or 200, 5)
+end
+
 function M.clear_maps(keys)
 	for _, key in ipairs(keys or {}) do
 		pcall(vim.keymap.del, "n", key)
@@ -92,32 +102,22 @@ end
 
 function M.perform_insert_sequence(insert_key, text)
 	M.send_sequence(insert_key, "m")
-	M.wait_for(function()
-		return true
-	end, 40, 20)
+	M.drain(80)
 
 	M.send_sequence(text .. "<Esc>", "mtx")
-	M.wait_for(function()
-		return true
-	end, 80, 20)
+	M.drain(120)
 end
 
 function M.perform_prompt_sequence(command_key, text, terminator)
 	M.send_sequence(command_key, "m")
-	M.wait_for(function()
-		return true
-	end, 40, 20)
+	M.drain(80)
 	M.send_sequence(text .. (terminator or "<CR>"), "mtx")
-	M.wait_for(function()
-		return true
-	end, 80, 20)
+	M.drain(120)
 end
 
 function M.perform_normal_with_payload(command_key, text)
 	M.send_sequence(command_key .. text, "mxt")
-	M.wait_for(function()
-		return true
-	end, 80, 20)
+	M.drain(120)
 end
 
 function M.move_cursor_to(row_1idx, col_0idx)
@@ -137,16 +137,12 @@ function M.move_cursor_to(row_1idx, col_0idx)
 		M.send_sequence(string.rep("h", math.abs(col_delta)))
 	end
 
-	M.wait_for(function()
-		return true
-	end, 80, 20)
+	M.drain(120)
 end
 
 function M.prime_pending_cursor_event()
 	M.fire_cursor_moved(0)
-	M.wait_for(function()
-		return true
-	end, 60, 20)
+	M.drain(100)
 end
 
 function M.build_remap_index(remap_pairs)

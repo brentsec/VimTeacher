@@ -12,6 +12,15 @@ local stats_mod = require("vimteacher.stats")
 local M = {}
 local ADVANCE_DELAY_MS = 300
 
+local function seed_random_for_lesson()
+	local test_seed = vim.g.vimteacher_test_seed
+	if type(test_seed) == "number" then
+		math.randomseed(test_seed)
+		return
+	end
+	math.randomseed(os.time() + math.floor(os.clock() * 1000))
+end
+
 --- Build a session controller around the shared plugin dependencies.
 --- @param deps table|nil
 --- @return table
@@ -283,7 +292,7 @@ function M.new(deps)
 		end
 
 		state_mod.bump_session_generation()
-		math.randomseed(os.time() + math.floor(os.clock() * 1000))
+		seed_random_for_lesson()
 		snippets.reset_recent()
 
 		state.lesson = lesson

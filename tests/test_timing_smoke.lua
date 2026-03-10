@@ -17,6 +17,7 @@ vimteacher.setup({
 		distro = "neovim",
 	},
 })
+vim.g.vimteacher_test_seed = 12345
 
 for _, lesson_name in ipairs(lessons.order) do
 	local lesson = lessons.get_lesson(lesson_name)
@@ -54,5 +55,7 @@ for _, lesson_name in ipairs(lessons.order) do
 		end
 	end
 end
+
+vim.g.vimteacher_test_seed = nil
 
 counter.finish("test_timing_smoke")

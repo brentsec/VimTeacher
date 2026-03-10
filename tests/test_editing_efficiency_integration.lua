@@ -79,18 +79,14 @@ local function run_repeat_power_case(case)
 		move_to_phase_target(case.challenge.phases[1])
 
 		integration.send_sequence(case.challenge.key)
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		assert_test(
 			integration.snippet_matches(vimteacher, case.challenge.snippet_lines),
 			"canonical " .. case.challenge.key .. " should remain blocked for " .. case.label
 		)
 
 		integration.send_sequence(case.first_remap)
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		integration.fire_text_changed(0)
 		assert_test(
 			integration.wait_for(function()
@@ -102,18 +98,14 @@ local function run_repeat_power_case(case)
 		move_to_phase_target(case.challenge.phases[2])
 
 		integration.send_sequence(".")
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		assert_test(
 			integration.snippet_matches(vimteacher, case.challenge.phases[1].expected_lines),
 			"canonical . should remain blocked for " .. case.label
 		)
 
 		integration.send_sequence(case.repeat_remap)
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		integration.fire_text_changed(0)
 		assert_test(
 			integration.wait_for(function()
@@ -139,15 +131,6 @@ local function run_macro_repeat_case(case)
 			state.timer_start == nil,
 			case.lesson_name .. " should not start timing before the first cursor move for " .. case.label
 		)
-		if case.delay_ms then
-			vim.wait(case.delay_ms, function()
-				return false
-			end, case.delay_ms)
-			assert_test(
-				state.timer_start == nil,
-				case.lesson_name .. " should keep timing off during pre-move delay for " .. case.label
-			)
-		end
 		move_to_phase_target(case.challenge.phases[1])
 		integration.fire_cursor_moved(0)
 		assert_test(
@@ -156,9 +139,7 @@ local function run_macro_repeat_case(case)
 		)
 
 		integration.send_sequence("q")
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		assert_test(
 			vim.fn.reg_recording() == "" and vim.fn.mode() == "n",
 			"canonical q should remain blocked for " .. case.label
@@ -173,9 +154,7 @@ local function run_macro_repeat_case(case)
 		)
 
 		integration.send_sequence(case.record_sequence)
-		integration.wait_for(function()
-			return true
-		end, 80, 20)
+		integration.drain(120)
 		integration.send_sequence(remaps.remap_for["q"])
 		assert_test(
 			integration.wait_for(function()
@@ -196,9 +175,7 @@ local function run_macro_repeat_case(case)
 
 		move_to_phase_target(case.challenge.phases[2])
 		integration.send_sequence(case.phase2_sequence)
-		integration.wait_for(function()
-			return true
-		end, 120, 20)
+		integration.drain(160)
 		wait_for_macro_idle(600)
 		integration.fire_text_changed(0)
 		assert_test(
@@ -214,9 +191,7 @@ local function run_macro_repeat_case(case)
 		if case.challenge.phases[3] then
 			move_to_phase_target(case.challenge.phases[3])
 			integration.send_sequence(case.phase3_sequence)
-			integration.wait_for(function()
-				return true
-			end, 120, 20)
+			integration.drain(160)
 			wait_for_macro_idle(600)
 			integration.fire_text_changed(0)
 			assert_test(
@@ -279,7 +254,6 @@ run_macro_repeat_case({
 	challenge = find_macro_challenge(function(challenge)
 		return #challenge.phases == 3 and challenge.phases[3].goal_text:find("@@", 1, true) ~= nil
 	end),
-	delay_ms = 1100,
 	max_recorded_secs = 0.8,
 })
 

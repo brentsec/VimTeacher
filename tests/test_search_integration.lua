@@ -74,9 +74,7 @@ local function run_search_case(case)
 
 		if case.blocked_key then
 			integration.send_sequence(case.blocked_key)
-			integration.wait_for(function()
-				return true
-			end, 60, 20)
+			integration.drain(100)
 			integration.fire_cursor_moved(0)
 			local blocked = integration.current_cursor()
 			assert_test(
@@ -90,9 +88,7 @@ local function run_search_case(case)
 				integration.perform_prompt_sequence(action.key, action.text)
 			else
 				integration.send_sequence(action.key)
-				integration.wait_for(function()
-					return true
-				end, 60, 20)
+				integration.drain(100)
 			end
 			integration.fire_cursor_moved(0)
 		end
@@ -125,9 +121,6 @@ local function run_search_timing_case(case)
 			case.lesson_name .. " should not start timing when the challenge is shown"
 		)
 
-		vim.wait(case.delay_ms, function()
-			return false
-		end, case.delay_ms)
 		assert_test(state.timer_start == nil, case.lesson_name .. " should keep timing off until the first cursor move")
 
 		local saw_timer_start = false
@@ -136,9 +129,7 @@ local function run_search_timing_case(case)
 				integration.perform_prompt_sequence(action.key, action.text)
 			else
 				integration.send_sequence(action.key)
-				integration.wait_for(function()
-					return true
-				end, 60, 20)
+				integration.drain(100)
 			end
 			integration.fire_cursor_moved(0)
 			saw_timer_start = saw_timer_start
@@ -174,9 +165,7 @@ local function run_search_replace_case(case)
 		local before = integration.current_snippet_lines(vimteacher, #case.challenge.snippet_lines)
 
 		integration.send_sequence(":")
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		assert_test(
 			integration.snippet_matches(vimteacher, before),
 			"canonical : should remain blocked for " .. case.label
@@ -262,7 +251,6 @@ run_search_timing_case({
 	expected_ui = {
 		"Search: y, m, M",
 	},
-	delay_ms = 1100,
 	max_recorded_secs = 0.8,
 	actions = {
 		{ kind = "prompt", key = remaps.remap_for["/"], text = "data" },

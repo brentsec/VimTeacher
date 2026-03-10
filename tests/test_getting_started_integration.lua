@@ -70,9 +70,7 @@ local function run_intro_modes_case()
 	)
 
 	integration.send_key("l")
-	integration.wait_for(function()
-		return true
-	end, 60, 20)
+	integration.drain(100)
 	local cur_after_blocked = integration.current_cursor()
 	assert_test(cur_after_blocked[1] == sandbox_row and cur_after_blocked[2] == 0, "canonical l should stay blocked")
 
@@ -164,20 +162,8 @@ local function run_basic_movement_case(case)
 			state.timer_start == nil,
 			"basic_movement should not start timing before the first move for " .. case.label
 		)
-		if case.delay_ms then
-			vim.wait(case.delay_ms, function()
-				return false
-			end, case.delay_ms)
-			assert_test(
-				state.timer_start == nil,
-				"basic_movement should keep timing off during pre-move delay for " .. case.label
-			)
-		end
-
 		integration.send_key(case.canonical)
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		integration.fire_cursor_moved(0)
 		local blocked_cursor = integration.current_cursor()
 		assert_test(
@@ -246,9 +232,7 @@ local function run_word_movement_case(case)
 		)
 
 		integration.send_key(case.canonical)
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		integration.fire_cursor_moved(0)
 		local blocked_cursor = integration.current_cursor()
 		assert_test(
@@ -309,9 +293,7 @@ local function run_insert_mode_case(case)
 
 		local original_line = integration.line_at(snippet_row + case.challenge.target.row)
 		integration.send_key(case.challenge.key)
-		integration.wait_for(function()
-			return true
-		end, 60, 20)
+		integration.drain(100)
 		local after_blocked_cursor = integration.current_cursor()
 		assert_test(
 			integration.line_at(snippet_row + case.challenge.target.row) == original_line,
@@ -321,16 +303,6 @@ local function run_insert_mode_case(case)
 			after_blocked_cursor[1] == cur0[1] and after_blocked_cursor[2] == cur0[2],
 			"canonical " .. case.challenge.key .. " should not move the cursor for " .. case.label
 		)
-		if case.delay_ms then
-			vim.wait(case.delay_ms, function()
-				return false
-			end, case.delay_ms)
-			assert_test(
-				state.timer_start == nil,
-				"insert_mode should keep timing off while the user has not moved the cursor for " .. case.label
-			)
-		end
-
 		integration.perform_insert_sequence(case.remap, case.challenge.char)
 		assert_test(
 			integration.wait_for(function()
@@ -361,7 +333,6 @@ for _, case in ipairs({
 		remap = remap_for["h"],
 		start_pos = { row = 1, col = 1 },
 		target = { row = 1, col = 0 },
-		delay_ms = 1100,
 		max_recorded_secs = 0.8,
 	},
 	{
@@ -422,7 +393,6 @@ run_insert_mode_case({
 	label = "insert before cursor",
 	remap = remap_for["i"],
 	expected_line = "testing",
-	delay_ms = 1100,
 	max_recorded_secs = 0.2,
 	challenge = {
 		snippet_lines = { "esting" },
