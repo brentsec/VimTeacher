@@ -42,6 +42,7 @@ logs/
 # Local metadata and assistant artifacts
 .meta/
 .agent/
+.githooks/
 AGENTS.md
 docs/reference/agent-context-contract.md
 .agents/
