@@ -1,34 +1,7 @@
 -- vimteacher/lessons/change_inside_brackets.lua
 -- Lesson: Change inside brackets with ci(, ci[, ci{
 
-local base = require("vimteacher.lessons.base")
-local pool = require("vimteacher.lessons.pool")
-
-local M = base.define({
-	title_template = "Change Inside: {{ci_paren}}, {{ci_bracket}}, {{ci_brace}}",
-	type = "insert",
-	allowed_keys = { "c" },
-	challenges_required = 10,
-	template_tokens = {
-		ci_paren = "ci(",
-		ci_bracket = "ci[",
-		ci_brace = "ci{",
-		Esc = "Esc",
-	},
-	description_template = {
-		"Change text inside brackets:",
-		"",
-		"  {{ci_paren}}  = change inside parentheses",
-		"  {{ci_bracket}}  = change inside square brackets",
-		"  {{ci_brace}}  = change inside curly braces",
-		"",
-		"Navigate to the target inside brackets and use the indicated key.",
-		"Brackets are kept; only the contents are replaced.",
-	},
-	hint_template = {
-		"[{{ci_paren}}] Change inside ()  [{{ci_bracket}}] Change inside []  [{{ci_brace}}] Change inside {}  [{{Esc}}] Return to normal mode",
-	},
-})
+local bracket_text_objects = require("vimteacher.lessons.bracket_text_objects")
 
 -- Pre-defined challenge pool.
 -- Each challenge has:
@@ -232,17 +205,33 @@ local CHALLENGES = {
 	},
 }
 
-local challenge_pool = pool.new(CHALLENGES)
-
---- Compute the minimum (optimal) moves between two positions.
---- Uses motion-aware shortest-path scoring on the current snippet.
---- @param start_pos table {row=number, col=number} 0-indexed
---- @param target table {row=number, col=number} 0-indexed
---- @return number Optimal move count
-function M.compute_optimal(start_pos, target)
-	return challenge_pool.nav_compute_optimal()(start_pos, target)
-end
-M.generate_challenge = challenge_pool.generate_challenge
-M._get_challenges = challenge_pool.get_challenges
+local M = bracket_text_objects.define({
+	lesson = {
+		title_template = "Change Inside: {{ci_paren}}, {{ci_bracket}}, {{ci_brace}}",
+		type = "insert",
+		allowed_keys = { "c" },
+		challenges_required = 10,
+		template_tokens = {
+			ci_paren = "ci(",
+			ci_bracket = "ci[",
+			ci_brace = "ci{",
+			Esc = "Esc",
+		},
+		description_template = {
+			"Change text inside brackets:",
+			"",
+			"  {{ci_paren}}  = change inside parentheses",
+			"  {{ci_bracket}}  = change inside square brackets",
+			"  {{ci_brace}}  = change inside curly braces",
+			"",
+			"Navigate to the target inside brackets and use the indicated key.",
+			"Brackets are kept; only the contents are replaced.",
+		},
+		hint_template = {
+			"[{{ci_paren}}] Change inside ()  [{{ci_bracket}}] Change inside []  [{{ci_brace}}] Change inside {}  [{{Esc}}] Return to normal mode",
+		},
+	},
+	challenges = CHALLENGES,
+})
 
 return M

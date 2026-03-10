@@ -1,33 +1,7 @@
 -- vimteacher/lessons/change_around_brackets.lua
 -- Lesson: Change around brackets with ca(, ca[, ca{
 
-local base = require("vimteacher.lessons.base")
-local pool = require("vimteacher.lessons.pool")
-
-local M = base.define({
-	title_template = "Change Around: {{ca_paren}}, {{ca_bracket}}, {{ca_brace}}",
-	type = "insert",
-	allowed_keys = { "c" },
-	challenges_required = 10,
-	template_tokens = {
-		ca_paren = "ca(",
-		ca_bracket = "ca[",
-		ca_brace = "ca{",
-		Esc = "Esc",
-	},
-	description_template = {
-		"Change around brackets deletes brackets and their contents:",
-		"",
-		"  {{ca_paren}} = delete parentheses and contents, enter insert mode",
-		"  {{ca_bracket}} = delete square brackets and contents, enter insert mode",
-		"  {{ca_brace}} = delete curly braces and contents, enter insert mode",
-		"",
-		"Navigate to the green target inside the brackets and use the indicated key.",
-	},
-	hint_template = {
-		"[{{ca_paren}}] Change around (  [{{ca_bracket}}] Change around [  [{{ca_brace}}] Change around {  [{{Esc}}] Return to normal mode",
-	},
-})
+local bracket_text_objects = require("vimteacher.lessons.bracket_text_objects")
 
 -- Pre-defined challenge pool.
 -- Each challenge has key (ca(, ca[, or ca{) and char (replacement text)
@@ -232,17 +206,32 @@ local CHALLENGES = {
 	},
 }
 
-local challenge_pool = pool.new(CHALLENGES)
-
---- Compute the minimum (optimal) moves between two positions.
---- Uses motion-aware shortest-path scoring on the current snippet.
---- @param start_pos table {row=number, col=number} 0-indexed
---- @param target table {row=number, col=number} 0-indexed
---- @return number Optimal move count
-function M.compute_optimal(start_pos, target)
-	return challenge_pool.nav_compute_optimal()(start_pos, target)
-end
-M.generate_challenge = challenge_pool.generate_challenge
-M._get_challenges = challenge_pool.get_challenges
+local M = bracket_text_objects.define({
+	lesson = {
+		title_template = "Change Around: {{ca_paren}}, {{ca_bracket}}, {{ca_brace}}",
+		type = "insert",
+		allowed_keys = { "c" },
+		challenges_required = 10,
+		template_tokens = {
+			ca_paren = "ca(",
+			ca_bracket = "ca[",
+			ca_brace = "ca{",
+			Esc = "Esc",
+		},
+		description_template = {
+			"Change around brackets deletes brackets and their contents:",
+			"",
+			"  {{ca_paren}} = delete parentheses and contents, enter insert mode",
+			"  {{ca_bracket}} = delete square brackets and contents, enter insert mode",
+			"  {{ca_brace}} = delete curly braces and contents, enter insert mode",
+			"",
+			"Navigate to the green target inside the brackets and use the indicated key.",
+		},
+		hint_template = {
+			"[{{ca_paren}}] Change around (  [{{ca_bracket}}] Change around [  [{{ca_brace}}] Change around {  [{{Esc}}] Return to normal mode",
+		},
+	},
+	challenges = CHALLENGES,
+})
 
 return M

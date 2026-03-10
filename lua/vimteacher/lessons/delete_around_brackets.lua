@@ -1,32 +1,7 @@
 -- vimteacher/lessons/delete_around_brackets.lua
 -- Lesson: Delete Around brackets with da(, da[, da{
 
-local base = require("vimteacher.lessons.base")
-local pool = require("vimteacher.lessons.pool")
-
-local M = base.define({
-	title_template = "Delete Around: {{da_paren}}, {{da_bracket}}, {{da_brace}}",
-	type = "insert",
-	allowed_modify_keys = { "d" },
-	challenges_required = 10,
-	template_tokens = {
-		da_paren = "da(",
-		da_bracket = "da[",
-		da_brace = "da{",
-	},
-	description_template = {
-		"Delete bracket pairs AND their contents with 'da' commands:",
-		"",
-		"  {{da_paren}} = delete around parentheses: removes () and everything inside",
-		"  {{da_bracket}} = delete around square brackets: removes [] and everything inside",
-		"  {{da_brace}} = delete around curly braces: removes {} and everything inside",
-		"",
-		"Navigate to the green target inside the brackets and use the indicated command.",
-	},
-	hint_template = {
-		"[{{da_paren}}] Delete around ()  [{{da_bracket}}] Delete around []  [{{da_brace}}] Delete around {}",
-	},
-})
+local bracket_text_objects = require("vimteacher.lessons.bracket_text_objects")
 
 -- Pre-defined challenge pool.
 -- da(, da[, da{ delete the bracket pair AND all contents between them
@@ -222,17 +197,31 @@ local CHALLENGES = {
 	},
 }
 
-local challenge_pool = pool.new(CHALLENGES)
-
---- Compute the minimum (optimal) moves between two positions.
---- Uses motion-aware shortest-path scoring on the current snippet.
---- @param start_pos table {row=number, col=number} 0-indexed
---- @param target table {row=number, col=number} 0-indexed
---- @return number Optimal move count
-function M.compute_optimal(start_pos, target)
-	return challenge_pool.nav_compute_optimal()(start_pos, target)
-end
-M.generate_challenge = challenge_pool.generate_challenge
-M._get_challenges = challenge_pool.get_challenges
+local M = bracket_text_objects.define({
+	lesson = {
+		title_template = "Delete Around: {{da_paren}}, {{da_bracket}}, {{da_brace}}",
+		type = "insert",
+		allowed_modify_keys = { "d" },
+		challenges_required = 10,
+		template_tokens = {
+			da_paren = "da(",
+			da_bracket = "da[",
+			da_brace = "da{",
+		},
+		description_template = {
+			"Delete bracket pairs AND their contents with 'da' commands:",
+			"",
+			"  {{da_paren}} = delete around parentheses: removes () and everything inside",
+			"  {{da_bracket}} = delete around square brackets: removes [] and everything inside",
+			"  {{da_brace}} = delete around curly braces: removes {} and everything inside",
+			"",
+			"Navigate to the green target inside the brackets and use the indicated command.",
+		},
+		hint_template = {
+			"[{{da_paren}}] Delete around ()  [{{da_bracket}}] Delete around []  [{{da_brace}}] Delete around {}",
+		},
+	},
+	challenges = CHALLENGES,
+})
 
 return M

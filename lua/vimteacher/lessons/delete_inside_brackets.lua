@@ -1,34 +1,7 @@
 -- vimteacher/lessons/delete_inside_brackets.lua
 -- Lesson: Delete inside brackets with di(, di[, di{
 
-local base = require("vimteacher.lessons.base")
-local pool = require("vimteacher.lessons.pool")
-
-local M = base.define({
-	title_template = "Delete Inside: {{di_paren}}, {{di_bracket}}, {{di_brace}}",
-	type = "insert",
-	allowed_keys = {},
-	allowed_modify_keys = { "d" },
-	challenges_required = 10,
-	template_tokens = {
-		di_paren = "di(",
-		di_bracket = "di[",
-		di_brace = "di{",
-	},
-	description_template = {
-		"Delete text inside brackets without removing the brackets:",
-		"",
-		"  {{di_paren}}  = delete inside parentheses",
-		"  {{di_bracket}}  = delete inside square brackets",
-		"  {{di_brace}}  = delete inside curly braces",
-		"",
-		"Place cursor anywhere inside the brackets and execute the command.",
-		"The brackets remain, but their contents are deleted.",
-	},
-	hint_template = {
-		"[{{di_paren}}] Delete inside ()  [{{di_bracket}}] Delete inside []  [{{di_brace}}] Delete inside {}",
-	},
-})
+local bracket_text_objects = require("vimteacher.lessons.bracket_text_objects")
 
 -- Pre-defined challenge pool.
 -- Each challenge targets a specific bracket pair on a line.
@@ -223,17 +196,34 @@ local CHALLENGES = {
 	},
 }
 
-local challenge_pool = pool.new(CHALLENGES)
-
---- Compute the minimum (optimal) moves between two positions.
---- Uses motion-aware shortest-path scoring on the current snippet.
---- @param start_pos table {row=number, col=number} 0-indexed
---- @param target table {row=number, col=number} 0-indexed
---- @return number Optimal move count
-function M.compute_optimal(start_pos, target)
-	return challenge_pool.nav_compute_optimal()(start_pos, target) + 1
-end
-M.generate_challenge = challenge_pool.generate_challenge
-M._get_challenges = challenge_pool.get_challenges
+local M = bracket_text_objects.define({
+	lesson = {
+		title_template = "Delete Inside: {{di_paren}}, {{di_bracket}}, {{di_brace}}",
+		type = "insert",
+		allowed_keys = {},
+		allowed_modify_keys = { "d" },
+		challenges_required = 10,
+		template_tokens = {
+			di_paren = "di(",
+			di_bracket = "di[",
+			di_brace = "di{",
+		},
+		description_template = {
+			"Delete text inside brackets without removing the brackets:",
+			"",
+			"  {{di_paren}}  = delete inside parentheses",
+			"  {{di_bracket}}  = delete inside square brackets",
+			"  {{di_brace}}  = delete inside curly braces",
+			"",
+			"Place cursor anywhere inside the brackets and execute the command.",
+			"The brackets remain, but their contents are deleted.",
+		},
+		hint_template = {
+			"[{{di_paren}}] Delete inside ()  [{{di_bracket}}] Delete inside []  [{{di_brace}}] Delete inside {}",
+		},
+	},
+	challenges = CHALLENGES,
+	optimal_offset = 1,
+})
 
 return M
