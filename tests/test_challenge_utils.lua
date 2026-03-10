@@ -30,6 +30,9 @@ local ok, err = pcall(function()
 	end, { max_attempts = 2 })
 end)
 assert_test(ok == false, "generate_with_retries should error after exhausting retries")
-assert_test(type(err) == "string" and err:find("failing_lesson", 1, true) ~= nil, "retry failure should name the lesson")
+assert_test(
+	type(err) == "string" and err:find("failing_lesson", 1, true) ~= nil,
+	"retry failure should name the lesson"
+)
 
 counter.finish("test_challenge_utils")

@@ -75,7 +75,7 @@ function M.render(buf, opts)
 		byte_pos = add_part(parts, goal_hl_regions, "  ", nil, byte_pos)
 
 		local display_width = vim.api.nvim_strwidth(table.concat(parts, ""))
-			local remaining = common.CONTENT_WIDTH + 2 - display_width
+		local remaining = common.CONTENT_WIDTH + 2 - display_width
 		if remaining > 0 then
 			add_part(parts, goal_hl_regions, string.rep("─", remaining), "VimTeacherSeparator", byte_pos)
 		end
@@ -96,7 +96,7 @@ function M.render(buf, opts)
 		byte_pos = add_part(parts, goal_text_hl_regions, " ", nil, byte_pos)
 
 		local display_width = vim.api.nvim_strwidth(table.concat(parts, ""))
-			local remaining = common.CONTENT_WIDTH + 2 - display_width
+		local remaining = common.CONTENT_WIDTH + 2 - display_width
 		if remaining > 0 then
 			add_part(parts, goal_text_hl_regions, string.rep("─", remaining), "VimTeacherSeparator", byte_pos)
 		end

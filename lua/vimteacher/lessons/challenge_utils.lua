@@ -40,9 +40,7 @@ function M.generate_with_retries(lesson_name, build, opts)
 		end
 	end
 
-	error(
-		string.format("VimTeacher: failed to generate challenge for %s after %d attempts", lesson_name, max_attempts)
-	)
+	error(string.format("VimTeacher: failed to generate challenge for %s after %d attempts", lesson_name, max_attempts))
 end
 
 return M

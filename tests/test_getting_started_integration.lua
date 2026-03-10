@@ -31,10 +31,7 @@ integration.configure_adaptive(vimteacher)
 
 local function assert_challenge_recorded(label, opts)
 	local state = integration.runtime_state(vimteacher)
-	assert_test(
-		#state.session_challenges >= 1,
-		label .. " should record challenge stats after advancing"
-	)
+	assert_test(#state.session_challenges >= 1, label .. " should record challenge stats after advancing")
 	if opts and opts.expect_zero_time then
 		assert_test(
 			state.session_challenges[1].time == 0,
