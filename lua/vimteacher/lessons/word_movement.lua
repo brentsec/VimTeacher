@@ -4,6 +4,7 @@
 local base = require("vimteacher.lessons.base")
 local snippets = require("vimteacher.snippets")
 local optimal = require("vimteacher.optimal")
+local text_class = require("vimteacher.text_class")
 
 local M = base.define({
 	title_template = "Moving by Words: {{next_word}}, {{end_word}}, {{back_word}}",
@@ -40,20 +41,6 @@ local M = base.define({
 -- Module-level snippet storage so compute_optimal can access the current snippet
 local current_snippet = nil
 
---- Classify a character as word-class, punctuation-class, or space.
---- Vim treats keyword chars ([%w_]) as one class, non-blank non-keyword as another.
---- @param char string Single character
---- @return string "word", "punct", or "space"
-local function char_class(char)
-	if char:match("%s") then
-		return "space"
-	elseif char:match("[%w_]") then
-		return "word"
-	else
-		return "punct"
-	end
-end
-
 --- Find all word-start positions in a snippet.
 --- A word start is the first character of a word-class or punct-class sequence,
 --- following whitespace or a different character class.
@@ -66,7 +53,7 @@ local function find_word_starts(lines)
 			local col = 1
 			while col <= #line do
 				local char = line:sub(col, col)
-				local cls = char_class(char)
+				local cls = text_class.char_class(char)
 				if cls == "space" then
 					col = col + 1
 				else
@@ -76,7 +63,7 @@ local function find_word_starts(lines)
 					col = col + 1
 					while col <= #line do
 						local c = line:sub(col, col)
-						local c_cls = char_class(c)
+						local c_cls = text_class.char_class(c)
 						if c_cls ~= cls then
 							break
 						end

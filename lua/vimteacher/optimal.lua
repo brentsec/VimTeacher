@@ -2,6 +2,7 @@
 -- Shared motion-aware shortest-path utilities for lesson optimal scoring.
 
 local M = {}
+local text_class = require("vimteacher.text_class")
 
 local function line_len(lines, row)
 	local line = lines[row + 1] or ""
@@ -22,28 +23,18 @@ local function clamp_col(lines, row, col)
 	return col
 end
 
-local function char_class(char)
-	if not char or char == "" or char:match("%s") then
-		return "space"
-	elseif char:match("[%w_]") then
-		return "word"
-	else
-		return "punct"
-	end
-end
-
 local function build_tokens(lines)
 	local tokens = {}
 	for row_idx, line in ipairs(lines) do
 		local col = 1
 		while col <= #line do
-			local cls = char_class(line:sub(col, col))
+			local cls = text_class.char_class(line:sub(col, col))
 			if cls == "space" then
 				col = col + 1
 			else
 				local start_col = col
 				col = col + 1
-				while col <= #line and char_class(line:sub(col, col)) == cls do
+				while col <= #line and text_class.char_class(line:sub(col, col)) == cls do
 					col = col + 1
 				end
 				tokens[#tokens + 1] = {

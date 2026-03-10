@@ -2,6 +2,8 @@
 -- Tests for the word movement lesson module
 
 local word = require("vimteacher.lessons.word_movement")
+local optimal = require("vimteacher.optimal")
+local text_class = require("vimteacher.text_class")
 
 local assertions = require("helpers.assertions")
 local counter = assertions.new_counter()
@@ -12,13 +14,32 @@ print("test_word_movement: running...")
 -- Seed RNG for reproducibility in tests
 math.randomseed(12345)
 
--- Test 1: Module has all required fields
+-- Test 1: shared char classification matches Vim-style word semantics
+assert_test(text_class.char_class(nil) == "space", "nil should classify as space")
+assert_test(text_class.char_class("") == "space", "empty string should classify as space")
+assert_test(text_class.char_class(" ") == "space", "space should classify as space")
+assert_test(text_class.char_class("\t") == "space", "tab should classify as space")
+assert_test(text_class.char_class("a") == "word", "letters should classify as word")
+assert_test(text_class.char_class("7") == "word", "digits should classify as word")
+assert_test(text_class.char_class("_") == "word", "underscore should classify as word")
+assert_test(text_class.char_class(".") == "punct", "punctuation should classify as punct")
+
+-- Test 2: Module has all required fields
 assert_test(word.title ~= nil, "Missing title")
 assert_test(type(word.description) == "table", "description must be table")
 assert_test(type(word.hint_lines) == "table", "hint_lines must be table")
 assert_test(type(word.generate_challenge) == "function", "generate_challenge must be function")
 
--- Test 2: find_word_starts on known strings
+-- Test 3: optimal tokenization respects the same word/punct boundaries
+local nav_lines = { "foo.bar baz" }
+local dot_target = optimal.nav_cost(nav_lines, { row = 0, col = 0 }, { row = 0, col = 3 }, { "w" })
+local bar_target = optimal.nav_cost(nav_lines, { row = 0, col = 0 }, { row = 0, col = 4 }, { "w" })
+local baz_target = optimal.nav_cost(nav_lines, { row = 0, col = 0 }, { row = 0, col = 8 }, { "w" })
+assert_test(dot_target == 1, "w should reach punctuation token in one hop, got " .. dot_target)
+assert_test(bar_target == 2, "w should reach the next word after punctuation in two hops, got " .. bar_target)
+assert_test(baz_target == 3, "w should reach the following word after punctuation in three hops, got " .. baz_target)
+
+-- Test 4: find_word_starts on known strings
 local ws1 = word._find_word_starts({ "hello world" })
 -- "hello" starts at col 0, "world" starts at col 6
 assert_test(#ws1 == 2, "Expected 2 word starts in 'hello world', got " .. #ws1)
@@ -31,7 +52,7 @@ assert_test(
 	"Second word start should be (0,6), got (" .. ws1[2].row .. "," .. ws1[2].col .. ")"
 )
 
--- Test 3: find_word_starts with punctuation class transitions
+-- Test 5: find_word_starts with punctuation class transitions
 -- "foo.bar" -> foo(0), .(3), bar(4) — three words in Vim
 local ws2 = word._find_word_starts({ "foo.bar" })
 assert_test(#ws2 == 3, "Expected 3 word starts in 'foo.bar', got " .. #ws2)
@@ -39,7 +60,7 @@ assert_test(ws2[1].col == 0, "foo starts at col 0, got " .. ws2[1].col)
 assert_test(ws2[2].col == 3, ". starts at col 3, got " .. ws2[2].col)
 assert_test(ws2[3].col == 4, "bar starts at col 4, got " .. ws2[3].col)
 
--- Test 4: find_word_starts with mixed content
+-- Test 6: find_word_starts with mixed content
 -- "x = 42" -> x(0), =(2), 42(4) — three words
 local ws3 = word._find_word_starts({ "x = 42" })
 assert_test(#ws3 == 3, "Expected 3 word starts in 'x = 42', got " .. #ws3)
@@ -47,13 +68,13 @@ assert_test(ws3[1].col == 0, "x at col 0, got " .. ws3[1].col)
 assert_test(ws3[2].col == 2, "= at col 2, got " .. ws3[2].col)
 assert_test(ws3[3].col == 4, "42 at col 4, got " .. ws3[3].col)
 
--- Test 5: find_word_starts with leading whitespace
+-- Test 7: find_word_starts with leading whitespace
 -- "    indented" -> indented(4) — one word
 local ws4 = word._find_word_starts({ "    indented" })
 assert_test(#ws4 == 1, "Expected 1 word start in '    indented', got " .. #ws4)
 assert_test(ws4[1].col == 4, "indented at col 4, got " .. ws4[1].col)
 
--- Test 6: find_word_starts multiline
+-- Test 8: find_word_starts multiline
 local ws5 = word._find_word_starts({ "foo bar", "baz" })
 assert_test(#ws5 == 3, "Expected 3 word starts across 2 lines, got " .. #ws5)
 assert_test(
@@ -61,11 +82,11 @@ assert_test(
 	"baz should be at (1,0), got (" .. ws5[3].row .. "," .. ws5[3].col .. ")"
 )
 
--- Test 7: find_word_starts with empty line
+-- Test 9: find_word_starts with empty line
 local ws6 = word._find_word_starts({ "foo", "", "bar" })
 assert_test(#ws6 == 2, "Expected 2 word starts (empty line skipped), got " .. #ws6)
 
--- Test 8: compute_optimal works
+-- Test 10: compute_optimal works
 -- Manually set up: if start and target are 3 word-hops apart, optimal = 3
 local buf = vim.api.nvim_create_buf(false, true)
 local ns = vim.api.nvim_create_namespace("test_word")
@@ -78,7 +99,7 @@ assert_test(challenge.start_pos ~= nil, "Missing start_pos")
 local opt = word.compute_optimal(challenge.start_pos, challenge.target)
 assert_test(opt >= 3, "Optimal moves should be >= 3, got " .. opt)
 
--- Test 9: Target is at a word start position
+-- Test 11: Target is at a word start position
 local all_ws = word._find_word_starts(challenge.snippet_lines)
 local target_is_word_start = false
 for _, ws in ipairs(all_ws) do
@@ -92,7 +113,7 @@ assert_test(
 	"Target (" .. challenge.target.row .. "," .. challenge.target.col .. ") must be a word start"
 )
 
--- Test 10: Start position is at a word start position
+-- Test 12: Start position is at a word start position
 local start_is_word_start = false
 for _, ws in ipairs(all_ws) do
 	if ws.row == challenge.start_pos.row and ws.col == challenge.start_pos.col then
@@ -105,7 +126,7 @@ assert_test(
 	"Start (" .. challenge.start_pos.row .. "," .. challenge.start_pos.col .. ") must be a word start"
 )
 
--- Test 11: Run 50 generations without crashes
+-- Test 13: Run 50 generations without crashes
 for i = 1, 50 do
 	local ch = word.generate_challenge(buf, ns)
 	assert_test(ch.snippet_lines ~= nil, "Generation " .. i .. " returned nil snippet_lines")
