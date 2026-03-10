@@ -9,6 +9,23 @@ local assert_test = counter.assert_test
 
 print("test_stats: running...")
 
+local function temp_stats_paths()
+	local dir = vim.fn.tempname()
+	local path = dir .. "/stats.json"
+	vim.fn.mkdir(dir, "p")
+	return dir, path
+end
+
+local function read_file(path)
+	local f = io.open(path, "r")
+	if not f then
+		return nil
+	end
+	local content = f:read("*a")
+	f:close()
+	return content
+end
+
 -- Test 1: calc_accuracy_pct — perfect path
 local acc = stats.calc_accuracy_pct(5, 5)
 assert_test(acc == 100, "Perfect path should be 100%, got " .. acc)
@@ -98,5 +115,72 @@ local norm3 = stats.normalize_optimal_moves(-5, -2)
 assert_test(norm3 == 0, "Negative values should clamp to 0, got " .. norm3)
 local norm4 = stats.normalize_optimal_moves("bad", 5)
 assert_test(norm4 == 0, "Non-number optimal should clamp to 0, got " .. norm4)
+
+-- Test 20: save/load round-trip uses atomic temp-file rename and normalized payloads
+local temp_dir, temp_path = temp_stats_paths()
+stats._set_test_paths({
+	data_dir = temp_dir,
+	stats_path = temp_path,
+})
+
+local persisted = {
+	basic_movement = {
+		best_time = 12.5,
+		avg_time = 15.0,
+		total_sessions = 2,
+		total_time = 30.0,
+		best_accuracy = 110,
+		extra_field = "drop me",
+	},
+}
+
+stats.save(persisted)
+local raw_saved = read_file(temp_path)
+assert_test(raw_saved ~= nil, "save should write the stats file at the overridden path")
+local saved_names = vim.fn.readdir(temp_dir)
+assert_test(#saved_names == 1 and saved_names[1] == "stats.json", "save should leave only the final stats file behind")
+
+local reloaded = stats.load()
+local saved_stats = reloaded.basic_movement
+assert_test(saved_stats ~= nil, "load should round-trip saved lesson stats")
+assert_test(saved_stats.best_time == 12.5, "round-trip should preserve best_time")
+assert_test(saved_stats.total_sessions == 2, "round-trip should preserve total_sessions")
+assert_test(saved_stats.total_time == 30.0, "round-trip should preserve total_time")
+assert_test(saved_stats.avg_time == 15.0, "round-trip should preserve avg_time")
+assert_test(saved_stats.best_accuracy == 100, "round-trip should clamp best_accuracy to 100")
+
+-- Test 21: load drops malformed records and normalizes partial legacy data
+local malformed = io.open(temp_path, "w")
+if malformed then
+	malformed:write(vim.fn.json_encode({
+		valid = {
+			best_time = 9.0,
+			total_sessions = 3,
+			total_time = 18.0,
+			best_accuracy = -5,
+		},
+		legacy = {
+			avg_time = 4.5,
+			total_sessions = 2,
+		},
+		bad_shape = "ignore me",
+		empty_name = {
+			best_time = "bad",
+		},
+	}))
+	malformed:close()
+end
+
+local normalized = stats.load()
+assert_test(normalized.valid ~= nil, "load should keep valid lesson entries")
+assert_test(normalized.valid.best_accuracy == 0, "load should clamp negative accuracy to 0")
+assert_test(normalized.valid.avg_time == 6.0, "load should recompute avg_time from total_time/session count")
+assert_test(normalized.legacy ~= nil, "load should keep partial legacy lesson entries")
+assert_test(normalized.legacy.total_time == 9.0, "load should reconstruct total_time from avg_time when possible")
+assert_test(normalized.legacy.avg_time == 4.5, "load should preserve reconstructed avg_time")
+assert_test(normalized.bad_shape == nil, "load should discard non-table lesson entries")
+
+stats._set_test_paths(nil)
+vim.fn.delete(temp_dir, "rf")
 
 counter.finish("test_stats")
