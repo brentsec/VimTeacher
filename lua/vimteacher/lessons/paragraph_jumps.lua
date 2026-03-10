@@ -2,6 +2,7 @@
 -- Lesson: Jumping between paragraphs with } and {
 
 local base = require("vimteacher.lessons.base")
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 
 local M = base.define({
 	title_template = "Paragraph Jumps: {{forward}}, {{backward}}",
@@ -215,66 +216,57 @@ end
 --- @param ns_id number Namespace ID (unused for this lesson)
 --- @return table challenge {snippet_lines, target, start_pos, highlight_rows}
 function M.generate_challenge()
-	local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
-
-	-- Find all blank line rows (0-indexed)
-	local blank_lines = {}
-	for row_idx, line in ipairs(snippet) do
-		if line == "" then
-			blank_lines[#blank_lines + 1] = row_idx - 1
+	return challenge_utils.generate_with_retries("paragraph_jumps", function()
+		local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
+		local blank_lines = {}
+		for row_idx, line in ipairs(snippet) do
+			if line == "" then
+				blank_lines[#blank_lines + 1] = row_idx - 1
+			end
 		end
-	end
 
-	-- Safety: if no blank lines, retry with different snippet
-	if #blank_lines == 0 then
-		return M.generate_challenge()
-	end
-
-	-- Pick a random blank line as target
-	local target_row = blank_lines[math.random(1, #blank_lines)]
-	local target = { row = target_row, col = 0 }
-
-	-- Build list of non-blank line positions for start candidates
-	local non_blank = {}
-	for row_idx, line in ipairs(snippet) do
-		if line ~= "" then
-			non_blank[#non_blank + 1] = row_idx - 1
+		if #blank_lines == 0 then
+			return nil
 		end
-	end
 
-	-- Pick a starting position at least 3 rows from target
-	local candidates = {}
-	for _, row in ipairs(non_blank) do
-		local row_dist = math.abs(row - target_row)
-		if row_dist >= 3 then
-			candidates[#candidates + 1] = { row = row, dist = row_dist }
+		local target_row = blank_lines[math.random(1, #blank_lines)]
+		local target = { row = target_row, col = 0 }
+		local non_blank = {}
+		for row_idx, line in ipairs(snippet) do
+			if line ~= "" then
+				non_blank[#non_blank + 1] = row_idx - 1
+			end
 		end
-	end
 
-	local start_pos
-	if #candidates == 0 then
-		-- Fallback: use first non-blank line
-		start_pos = { row = non_blank[1] or 0, col = 0 }
-	else
-		-- Prefer positions around 5-7 rows away for interesting paragraph jumps
-		table.sort(candidates, function(a, b)
-			return math.abs(a.dist - 6) < math.abs(b.dist - 6)
-		end)
-		local top_n = math.min(5, #candidates)
-		local chosen = candidates[math.random(1, top_n)]
-		start_pos = { row = chosen.row, col = 0 }
-	end
+		local candidates = {}
+		for _, row in ipairs(non_blank) do
+			local row_dist = math.abs(row - target_row)
+			if row_dist >= 3 then
+				candidates[#candidates + 1] = { row = row, dist = row_dist }
+			end
+		end
 
-	-- Store blank lines for compute_optimal
-	_current_blank_lines = blank_lines
+		local start_pos
+		if #candidates == 0 then
+			start_pos = { row = non_blank[1] or 0, col = 0 }
+		else
+			table.sort(candidates, function(a, b)
+				return math.abs(a.dist - 6) < math.abs(b.dist - 6)
+			end)
+			local top_n = math.min(5, #candidates)
+			local chosen = candidates[math.random(1, top_n)]
+			start_pos = { row = chosen.row, col = 0 }
+		end
 
-	return {
-		snippet_lines = snippet,
-		target = target,
-		start_pos = start_pos,
-		highlight_rows = { target_row },
-		goal_text = "Jump to the highlighted blank line",
-	}
+		_current_blank_lines = blank_lines
+		return {
+			snippet_lines = snippet,
+			target = target,
+			start_pos = start_pos,
+			highlight_rows = { target_row },
+			goal_text = "Jump to the highlighted blank line",
+		}
+	end)
 end
 
 return M

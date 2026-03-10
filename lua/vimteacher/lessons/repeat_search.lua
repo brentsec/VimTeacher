@@ -2,6 +2,7 @@
 -- Repeat Search: n, N
 
 local base = require("vimteacher.lessons.base")
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 
 local M = base.define({
 	title_template = "Repeat Search: {{n}}, {{N}}",
@@ -146,59 +147,51 @@ end
 --- @param ns_id number Namespace ID (unused for this lesson)
 --- @return table challenge {snippet_lines, target, start_pos}
 function M.generate_challenge()
-	-- Pick a random snippet from our custom pool
-	local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
-
-	-- Build list of all valid target positions (non-whitespace characters)
-	local valid_positions = {}
-	for row_idx, line in ipairs(snippet) do
-		for col_idx = 1, #line do
-			local char = line:sub(col_idx, col_idx)
-			if char ~= " " and char ~= "\t" then
-				valid_positions[#valid_positions + 1] = {
-					row = row_idx - 1, -- 0-indexed
-					col = col_idx - 1, -- 0-indexed
-				}
+	return challenge_utils.generate_with_retries("repeat_search", function()
+		local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
+		local valid_positions = {}
+		for row_idx, line in ipairs(snippet) do
+			for col_idx = 1, #line do
+				local char = line:sub(col_idx, col_idx)
+				if char ~= " " and char ~= "\t" then
+					valid_positions[#valid_positions + 1] = {
+						row = row_idx - 1,
+						col = col_idx - 1,
+					}
+				end
 			end
 		end
-	end
-
-	-- Safety: if no valid positions (should never happen), retry
-	if #valid_positions == 0 then
-		return M.generate_challenge()
-	end
-
-	-- Pick a random target
-	local target = valid_positions[math.random(1, #valid_positions)]
-
-	-- Pick a starting position at least 3 rows away from target
-	local candidates = {}
-	for _, pos in ipairs(valid_positions) do
-		local row_dist = math.abs(pos.row - target.row)
-		if row_dist >= 3 then
-			candidates[#candidates + 1] = pos
+		if #valid_positions == 0 then
+			return nil
 		end
-	end
 
-	local start_pos
-	if #candidates == 0 then
-		-- Fallback: use first char of first non-empty line
-		for i, line in ipairs(snippet) do
-			if #line > 0 then
-				start_pos = { row = i - 1, col = 0 }
-				break
+		local target = valid_positions[math.random(1, #valid_positions)]
+		local candidates = {}
+		for _, pos in ipairs(valid_positions) do
+			local row_dist = math.abs(pos.row - target.row)
+			if row_dist >= 3 then
+				candidates[#candidates + 1] = pos
 			end
 		end
-	else
-		-- Pick a random candidate
-		start_pos = candidates[math.random(1, #candidates)]
-	end
 
-	return {
-		snippet_lines = snippet,
-		target = target,
-		start_pos = start_pos,
-	}
+		local start_pos
+		if #candidates == 0 then
+			for i, line in ipairs(snippet) do
+				if #line > 0 then
+					start_pos = { row = i - 1, col = 0 }
+					break
+				end
+			end
+		else
+			start_pos = candidates[math.random(1, #candidates)]
+		end
+
+		return {
+			snippet_lines = snippet,
+			target = target,
+			start_pos = start_pos,
+		}
+	end)
 end
 
 return M

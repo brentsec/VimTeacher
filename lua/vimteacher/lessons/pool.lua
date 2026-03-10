@@ -17,6 +17,7 @@ function M.new(challenges, opts)
 	local max_recent = opts.max_recent or 5
 	local track_current_snippet = opts.track_current_snippet ~= false
 	local transform_challenge = opts.transform_challenge
+	local nav_compute_cache = {}
 
 	local function nav_cost(motions)
 		return function(lines, start_pos, target)
@@ -41,13 +42,20 @@ function M.new(challenges, opts)
 	end
 
 	local function nav_compute_optimal(motions)
+		local cache_key = motions or false
+		if nav_compute_cache[cache_key] then
+			return nav_compute_cache[cache_key]
+		end
+
 		local compute_nav = nav_cost(motions)
-		return function(start_pos, target)
+		local compute_optimal = function(start_pos, target)
 			if not current_snippet then
 				return optimal.manhattan(start_pos, target)
 			end
 			return compute_nav(current_snippet, start_pos, target)
 		end
+		nav_compute_cache[cache_key] = compute_optimal
+		return compute_optimal
 	end
 
 	return {

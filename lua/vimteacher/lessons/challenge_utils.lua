@@ -24,4 +24,25 @@ function M.find_nth(line, needle, occurrence)
 	return nil
 end
 
+--- Retry a challenge builder a bounded number of times before failing loudly.
+--- @param lesson_name string
+--- @param build fun(attempt:number, max_attempts:number):table|nil
+--- @param opts table|nil
+--- @return table
+function M.generate_with_retries(lesson_name, build, opts)
+	opts = opts or {}
+	local max_attempts = opts.max_attempts or 32
+
+	for attempt = 1, max_attempts do
+		local challenge = build(attempt, max_attempts)
+		if challenge ~= nil then
+			return challenge
+		end
+	end
+
+	error(
+		string.format("VimTeacher: failed to generate challenge for %s after %d attempts", lesson_name, max_attempts)
+	)
+end
+
 return M

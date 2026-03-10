@@ -2,6 +2,7 @@
 -- Lesson: Relative line jumps with count + j/k (e.g., 5j, 3k)
 
 local base = require("vimteacher.lessons.base")
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 local snippets = require("vimteacher.snippets")
 
 local M = base.define({
@@ -53,73 +54,66 @@ end
 --- @param ns_id number Namespace ID (unused for this lesson)
 --- @return table challenge {snippet_lines, target, start_pos}
 function M.generate_challenge()
-	local snippet
+	return challenge_utils.generate_with_retries("relative_line_jumps", function()
+		local snippet = snippets.get_random()
+		if #snippet < 8 then
+			return nil
+		end
 
-	-- Ensure snippet has at least 8 lines (for meaningful line jumps)
-	repeat
-		snippet = snippets.get_random()
-	until #snippet >= 8
+		local valid_positions = {}
+		for row_idx, line in ipairs(snippet) do
+			for col_idx = 1, #line do
+				local char = line:sub(col_idx, col_idx)
+				if char ~= " " and char ~= "\t" then
+					valid_positions[#valid_positions + 1] = {
+						row = row_idx - 1,
+						col = col_idx - 1,
+					}
+				end
+			end
+		end
 
-	-- Build list of all valid target positions (non-whitespace characters)
-	local valid_positions = {}
-	for row_idx, line in ipairs(snippet) do
-		for col_idx = 1, #line do
-			local char = line:sub(col_idx, col_idx)
-			if char ~= " " and char ~= "\t" then
-				valid_positions[#valid_positions + 1] = {
-					row = row_idx - 1, -- 0-indexed
-					col = col_idx - 1, -- 0-indexed
+		if #valid_positions == 0 then
+			return nil
+		end
+
+		local target = valid_positions[math.random(1, #valid_positions)]
+		local candidates = {}
+		for _, pos in ipairs(valid_positions) do
+			local row_dist = math.abs(pos.row - target.row)
+			if row_dist >= 3 then
+				candidates[#candidates + 1] = {
+					row = pos.row,
+					col = pos.col,
+					row_dist = row_dist,
 				}
 			end
 		end
-	end
 
-	-- Safety: if no valid positions (should never happen with our pool), retry
-	if #valid_positions == 0 then
-		return M.generate_challenge()
-	end
-
-	-- Pick a random target
-	local target = valid_positions[math.random(1, #valid_positions)]
-
-	-- Pick a starting position at least 3 rows away vertically from target
-	local candidates = {}
-	for _, pos in ipairs(valid_positions) do
-		local row_dist = math.abs(pos.row - target.row)
-		if row_dist >= 3 then
-			candidates[#candidates + 1] = {
-				row = pos.row,
-				col = pos.col,
-				row_dist = row_dist,
-			}
-		end
-	end
-
-	local start_pos
-	if #candidates == 0 then
-		-- Fallback: use first char of first non-empty line
-		for i, line in ipairs(snippet) do
-			if #line > 0 then
-				start_pos = { row = i - 1, col = 0 }
-				break
+		local start_pos
+		if #candidates == 0 then
+			for i, line in ipairs(snippet) do
+				if #line > 0 then
+					start_pos = { row = i - 1, col = 0 }
+					break
+				end
 			end
+		else
+			table.sort(candidates, function(a, b)
+				return math.abs(a.row_dist - 6) < math.abs(b.row_dist - 6)
+			end)
+			local top_n = math.min(5, #candidates)
+			local chosen = candidates[math.random(1, top_n)]
+			start_pos = { row = chosen.row, col = chosen.col }
 		end
-	else
-		-- Prefer positions around 5-7 rows away (interesting but not tedious)
-		table.sort(candidates, function(a, b)
-			return math.abs(a.row_dist - 6) < math.abs(b.row_dist - 6)
-		end)
-		local top_n = math.min(5, #candidates)
-		local chosen = candidates[math.random(1, top_n)]
-		start_pos = { row = chosen.row, col = chosen.col }
-	end
 
-	return {
-		snippet_lines = snippet,
-		target = target,
-		start_pos = start_pos,
-		goal_text = "Navigate to the green target",
-	}
+		return {
+			snippet_lines = snippet,
+			target = target,
+			start_pos = start_pos,
+			goal_text = "Navigate to the green target",
+		}
+	end)
 end
 
 return M

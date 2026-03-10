@@ -2,6 +2,7 @@
 -- Second lesson: Moving by words with w, e, b
 
 local base = require("vimteacher.lessons.base")
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 local snippets = require("vimteacher.snippets")
 local optimal = require("vimteacher.optimal")
 local text_class = require("vimteacher.text_class")
@@ -120,55 +121,56 @@ end
 --- @param ns_id number Namespace ID (unused for this lesson)
 --- @return table challenge {snippet_lines, target, start_pos}
 function M.generate_challenge()
-	local snippet = snippets.get_random()
-	current_snippet = snippet
+	return challenge_utils.generate_with_retries("word_movement", function()
+		local snippet = snippets.get_random()
+		local word_starts = find_word_starts(snippet)
 
-	local word_starts = find_word_starts(snippet)
-
-	-- Safety: need at least 2 word starts for a meaningful challenge
-	if #word_starts < 2 then
-		return M.generate_challenge()
-	end
-
-	-- Pick a random target
-	local target_idx = math.random(1, #word_starts)
-	local target = word_starts[target_idx]
-
-	-- Pick a starting position at least 3 word-hops from target
-	local candidates = {}
-	for i, ws in ipairs(word_starts) do
-		local dist = math.abs(i - target_idx)
-		if dist >= 3 then
-			candidates[#candidates + 1] = { row = ws.row, col = ws.col, dist = dist }
+		-- Safety: need at least 2 word starts for a meaningful challenge
+		if #word_starts < 2 then
+			return nil
 		end
-	end
 
-	local start_pos
-	if #candidates == 0 then
-		-- Fallback: pick the farthest word start from target
-		local best_dist = 0
+		-- Pick a random target
+		local target_idx = math.random(1, #word_starts)
+		local target = word_starts[target_idx]
+
+		-- Pick a starting position at least 3 word-hops from target
+		local candidates = {}
 		for i, ws in ipairs(word_starts) do
 			local dist = math.abs(i - target_idx)
-			if dist > best_dist then
-				best_dist = dist
-				start_pos = { row = ws.row, col = ws.col }
+			if dist >= 3 then
+				candidates[#candidates + 1] = { row = ws.row, col = ws.col, dist = dist }
 			end
 		end
-	else
-		-- Prefer positions around 5 word-hops away
-		table.sort(candidates, function(a, b)
-			return math.abs(a.dist - 5) < math.abs(b.dist - 5)
-		end)
-		local top_n = math.min(5, #candidates)
-		local chosen = candidates[math.random(1, top_n)]
-		start_pos = { row = chosen.row, col = chosen.col }
-	end
 
-	return {
-		snippet_lines = snippet,
-		target = target,
-		start_pos = start_pos,
-	}
+		local start_pos
+		if #candidates == 0 then
+			-- Fallback: pick the farthest word start from target
+			local best_dist = 0
+			for i, ws in ipairs(word_starts) do
+				local dist = math.abs(i - target_idx)
+				if dist > best_dist then
+					best_dist = dist
+					start_pos = { row = ws.row, col = ws.col }
+				end
+			end
+		else
+			-- Prefer positions around 5 word-hops away
+			table.sort(candidates, function(a, b)
+				return math.abs(a.dist - 5) < math.abs(b.dist - 5)
+			end)
+			local top_n = math.min(5, #candidates)
+			local chosen = candidates[math.random(1, top_n)]
+			start_pos = { row = chosen.row, col = chosen.col }
+		end
+
+		current_snippet = snippet
+		return {
+			snippet_lines = snippet,
+			target = target,
+			start_pos = start_pos,
+		}
+	end)
 end
 
 return M

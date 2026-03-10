@@ -2,6 +2,7 @@
 -- Tenth lesson: Finding characters with f, F, ;
 
 local base = require("vimteacher.lessons.base")
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 local snippets = require("vimteacher.snippets")
 
 local M = base.define({
@@ -46,71 +47,73 @@ end
 --- @param ns_id number Namespace ID (unused)
 --- @return table challenge {snippet_lines, target, start_pos}
 function M.generate_challenge()
-	local snippet = snippets.get_random()
+	return challenge_utils.generate_with_retries("find_char", function()
+		local snippet = snippets.get_random()
 
-	-- Build list of non-whitespace positions for each line
-	local line_positions = {} -- line_positions[row_idx] = list of {col, char}
-	for row_idx, line in ipairs(snippet) do
-		local positions = {}
-		for col = 1, #line do
-			local char = line:sub(col, col)
-			if char ~= " " and char ~= "\t" then
-				positions[#positions + 1] = { col = col - 1, char = char }
+		-- Build list of non-whitespace positions for each line
+		local line_positions = {} -- line_positions[row_idx] = list of {col, char}
+		for row_idx, line in ipairs(snippet) do
+			local positions = {}
+			for col = 1, #line do
+				local char = line:sub(col, col)
+				if char ~= " " and char ~= "\t" then
+					positions[#positions + 1] = { col = col - 1, char = char }
+				end
+			end
+			if #positions >= 3 then -- need at least 3 chars for meaningful f/F
+				line_positions[#line_positions + 1] = {
+					row = row_idx - 1,
+					positions = positions,
+				}
 			end
 		end
-		if #positions >= 3 then -- need at least 3 chars for meaningful f/F
-			line_positions[#line_positions + 1] = {
-				row = row_idx - 1,
-				positions = positions,
-			}
+
+		-- Safety: need at least 1 line with enough chars
+		if #line_positions == 0 then
+			return nil
 		end
-	end
 
-	-- Safety: need at least 1 line with enough chars
-	if #line_positions == 0 then
-		return M.generate_challenge()
-	end
+		-- Pick a random line
+		local line_entry = line_positions[math.random(1, #line_positions)]
+		local positions = line_entry.positions
 
-	-- Pick a random line
-	local line_entry = line_positions[math.random(1, #line_positions)]
-	local positions = line_entry.positions
-
-	-- Pick target: avoid first and last position for more interesting f/F usage
-	local target_idx
-	if #positions > 2 then
-		target_idx = math.random(2, #positions - 1)
-	else
-		target_idx = math.random(1, #positions)
-	end
-	local target = { row = line_entry.row, col = positions[target_idx].col }
-
-	-- Pick start position: on the same line, different column, at least 2 positions away
-	local start_candidates = {}
-	for i, pos in ipairs(positions) do
-		local dist = math.abs(i - target_idx)
-		if dist >= 2 then
-			start_candidates[#start_candidates + 1] = { col = pos.col, dist = dist }
-		end
-	end
-
-	local start_pos
-	if #start_candidates > 0 then
-		local chosen = start_candidates[math.random(1, #start_candidates)]
-		start_pos = { row = line_entry.row, col = chosen.col }
-	else
-		-- Fallback: pick first or last position on the line
-		if target_idx > 1 then
-			start_pos = { row = line_entry.row, col = positions[1].col }
+		-- Pick target: avoid first and last position for more interesting f/F usage
+		local target_idx
+		if #positions > 2 then
+			target_idx = math.random(2, #positions - 1)
 		else
-			start_pos = { row = line_entry.row, col = positions[#positions].col }
+			target_idx = math.random(1, #positions)
 		end
-	end
+		local target = { row = line_entry.row, col = positions[target_idx].col }
 
-	return {
-		snippet_lines = snippet,
-		target = target,
-		start_pos = start_pos,
-	}
+		-- Pick start position: on the same line, different column, at least 2 positions away
+		local start_candidates = {}
+		for i, pos in ipairs(positions) do
+			local dist = math.abs(i - target_idx)
+			if dist >= 2 then
+				start_candidates[#start_candidates + 1] = { col = pos.col, dist = dist }
+			end
+		end
+
+		local start_pos
+		if #start_candidates > 0 then
+			local chosen = start_candidates[math.random(1, #start_candidates)]
+			start_pos = { row = line_entry.row, col = chosen.col }
+		else
+			-- Fallback: pick first or last position on the line
+			if target_idx > 1 then
+				start_pos = { row = line_entry.row, col = positions[1].col }
+			else
+				start_pos = { row = line_entry.row, col = positions[#positions].col }
+			end
+		end
+
+		return {
+			snippet_lines = snippet,
+			target = target,
+			start_pos = start_pos,
+		}
+	end)
 end
 
 return M

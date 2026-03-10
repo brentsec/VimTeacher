@@ -2,6 +2,7 @@
 -- Lesson: Quick word search with * and #
 
 local base = require("vimteacher.lessons.base")
+local challenge_utils = require("vimteacher.lessons.challenge_utils")
 
 local M = base.define({
 	title_template = "Word Search: {{*}}, {{#}}",
@@ -186,100 +187,84 @@ end
 --- @param ns_id number Namespace ID (unused)
 --- @return table challenge {snippet_lines, target, target_end_col, start_pos, goal_text}
 function M.generate_challenge()
-	-- Pick a random snippet
-	local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
-
-	-- Build a map of words to their positions (only alphanumeric words)
-	local word_positions = {} -- word_positions[word] = list of {row, col}
-
-	for row_idx, line in ipairs(snippet) do
-		local col = 0
-		while col < #line do
-			local char = line:sub(col + 1, col + 1)
-			if char:match("[%w_]") then
-				local word = get_word_at_pos(line, col)
-				if word and #word > 0 then
-					if not word_positions[word] then
-						word_positions[word] = {}
+	return challenge_utils.generate_with_retries("quick_word_search", function()
+		local snippet = SNIPPETS[math.random(1, #SNIPPETS)]
+		local word_positions = {}
+		for row_idx, line in ipairs(snippet) do
+			local col = 0
+			while col < #line do
+				local char = line:sub(col + 1, col + 1)
+				if char:match("[%w_]") then
+					local word = get_word_at_pos(line, col)
+					if word and #word > 0 then
+						if not word_positions[word] then
+							word_positions[word] = {}
+						end
+						table.insert(word_positions[word], { row = row_idx - 1, col = col })
+						col = col + #word
+					else
+						col = col + 1
 					end
-					table.insert(word_positions[word], { row = row_idx - 1, col = col })
-					-- Skip to end of word
-					col = col + #word
 				else
 					col = col + 1
 				end
-			else
-				col = col + 1
 			end
 		end
-	end
 
-	-- Find words that appear 2+ times
-	local repeated_words = {}
-	for word, positions in pairs(word_positions) do
-		if #positions >= 2 then
-			table.insert(repeated_words, { word = word, positions = positions })
+		local repeated_words = {}
+		for word, positions in pairs(word_positions) do
+			if #positions >= 2 then
+				table.insert(repeated_words, { word = word, positions = positions })
+			end
 		end
-	end
+		if #repeated_words == 0 then
+			return nil
+		end
 
-	-- Safety: retry if no repeated words (shouldn't happen with our snippets)
-	if #repeated_words == 0 then
-		return M.generate_challenge()
-	end
-
-	-- Pick a random repeated word
-	local chosen = repeated_words[math.random(1, #repeated_words)]
-	local positions = chosen.positions
-
-	-- Find ALL pairs (both directions: i→j and j→i) at least 3 rows apart
-	local valid_pairs = {}
-	for i = 1, #positions do
-		for j = 1, #positions do
-			if i ~= j then
-				local row_dist = math.abs(positions[i].row - positions[j].row)
-				if row_dist >= 3 then
-					table.insert(valid_pairs, { start_idx = i, target_idx = j })
+		local chosen = repeated_words[math.random(1, #repeated_words)]
+		local positions = chosen.positions
+		local valid_pairs = {}
+		for i = 1, #positions do
+			for j = 1, #positions do
+				if i ~= j then
+					local row_dist = math.abs(positions[i].row - positions[j].row)
+					if row_dist >= 3 then
+						table.insert(valid_pairs, { start_idx = i, target_idx = j })
+					end
 				end
 			end
 		end
-	end
-
-	-- If no pairs 3+ rows apart, try a different word or retry
-	if #valid_pairs == 0 then
-		return M.generate_challenge()
-	end
-
-	-- Prefer non-adjacent pairs (target is NOT the immediately next/prev occurrence)
-	local non_adjacent = {}
-	for _, pair in ipairs(valid_pairs) do
-		local si, ti = pair.start_idx, pair.target_idx
-		if si < ti and ti > si + 1 then
-			non_adjacent[#non_adjacent + 1] = pair
-		elseif si > ti and ti < si - 1 then
-			non_adjacent[#non_adjacent + 1] = pair
+		if #valid_pairs == 0 then
+			return nil
 		end
-	end
 
-	local selected_pairs = #non_adjacent > 0 and non_adjacent or valid_pairs
+		local non_adjacent = {}
+		for _, pair in ipairs(valid_pairs) do
+			local si, ti = pair.start_idx, pair.target_idx
+			if si < ti and ti > si + 1 then
+				non_adjacent[#non_adjacent + 1] = pair
+			elseif si > ti and ti < si - 1 then
+				non_adjacent[#non_adjacent + 1] = pair
+			end
+		end
 
-	-- Pick a random valid pair
-	local pair = selected_pairs[math.random(1, #selected_pairs)]
-	local start_pos = positions[pair.start_idx]
-	local target_pos = positions[pair.target_idx]
+		local selected_pairs = #non_adjacent > 0 and non_adjacent or valid_pairs
+		local pair = selected_pairs[math.random(1, #selected_pairs)]
+		local start_pos = positions[pair.start_idx]
+		local target_pos = positions[pair.target_idx]
+		local target_line = snippet[target_pos.row + 1]
+		local target_word = get_word_at_pos(target_line, target_pos.col)
+		local target_end_col = target_pos.col + (target_word and #target_word or 1)
 
-	-- Compute word length for full-word highlight
-	local target_line = snippet[target_pos.row + 1]
-	local target_word = get_word_at_pos(target_line, target_pos.col)
-	local target_end_col = target_pos.col + (target_word and #target_word or 1)
-
-	return {
-		snippet_lines = snippet,
-		target = { row = target_pos.row, col = target_pos.col },
-		target_end_col = target_end_col,
-		start_pos = { row = start_pos.row, col = start_pos.col },
-		search_word = chosen.word,
-		goal_text = "Use * or # to search for the word under cursor",
-	}
+		return {
+			snippet_lines = snippet,
+			target = { row = target_pos.row, col = target_pos.col },
+			target_end_col = target_end_col,
+			start_pos = { row = start_pos.row, col = start_pos.col },
+			search_word = chosen.word,
+			goal_text = "Use * or # to search for the word under cursor",
+		}
+	end)
 end
 
 return M
