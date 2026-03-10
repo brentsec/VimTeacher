@@ -65,6 +65,7 @@ local observed = {
 	save_called = false,
 	restore_called = false,
 }
+local deferred_callbacks = {}
 
 buffer.create = function()
 	local buf = vim.api.nvim_create_buf(false, true)
@@ -156,8 +157,8 @@ stats.save = function()
 end
 
 vim.defer_fn = function(cb, _ms)
-	cb()
-	return 1
+	deferred_callbacks[#deferred_callbacks + 1] = cb
+	return #deferred_callbacks
 end
 
 local gameplay = {
@@ -230,8 +231,11 @@ state.move_count = 5
 state.timer_start = vim.loop.hrtime() - 1e9
 controller.advance_challenge()
 
-assert_test(state.mode == "complete", "advance_challenge should reach the completion screen at the lesson boundary")
+assert_test(state.mode == "stats", "advance_challenge should enter stats mode before the deferred transition")
 assert_test(#state.session_challenges == 1, "advance_challenge should record the completed challenge stats")
+assert_test(type(deferred_callbacks[1]) == "function", "advance_challenge should schedule a deferred transition")
+deferred_callbacks[1]()
+assert_test(state.mode == "complete", "advance_challenge should reach the completion screen at the lesson boundary")
 assert_test(
 	observed.record_session ~= nil and observed.record_session.lesson_name == "test_lesson",
 	"advance_challenge should record lesson session statistics"
@@ -239,6 +243,25 @@ assert_test(
 assert_test(observed.save_called == true, "advance_challenge should persist updated stats")
 assert_test(observed.render_completion ~= nil, "advance_challenge should render the completion screen")
 assert_test(observed.completion_keymaps == 1, "advance_challenge should install completion keymaps")
+
+observed.render_completion = nil
+controller.show_menu()
+controller.start("test_lesson")
+state.move_count = 3
+state.timer_start = vim.loop.hrtime() - 1e9
+controller.advance_challenge()
+assert_test(state.mode == "stats", "advance_challenge should still enter stats mode on a later run")
+assert_test(
+	type(deferred_callbacks[2]) == "function",
+	"later challenge transitions should also schedule deferred callbacks"
+)
+controller.show_menu()
+deferred_callbacks[2]()
+assert_test(state.mode == "menu", "stale deferred callbacks should not override a later mode change")
+assert_test(
+	observed.render_completion == nil,
+	"stale deferred callbacks should not render completion after leaving stats"
+)
 
 local old_buf = state.buf
 controller.stop()

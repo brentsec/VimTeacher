@@ -2,6 +2,8 @@
 -- Shared session state for the active VimTeacher instance.
 
 local M = {}
+local next_session_generation = 0
+local next_challenge_generation = 0
 
 local function initial_state()
 	return {
@@ -40,6 +42,9 @@ local function initial_state()
 		key_display = nil,
 		lesson_view = nil,
 		loading = nil,
+		session_generation = 0,
+		challenge_generation = 0,
+		dwell_generation = 0,
 	}
 end
 
@@ -57,6 +62,23 @@ function M.transition(from, to)
 	end
 	state.mode = to
 	return true
+end
+
+--- Advance the session generation to invalidate stale async callbacks.
+--- @return number
+function M.bump_session_generation()
+	next_session_generation = next_session_generation + 1
+	state.session_generation = next_session_generation
+	return state.session_generation
+end
+
+--- Advance the challenge generation to invalidate stale per-challenge callbacks.
+--- @return number
+function M.bump_challenge_generation()
+	next_challenge_generation = next_challenge_generation + 1
+	state.challenge_generation = next_challenge_generation
+	state.dwell_generation = 0
+	return state.challenge_generation
 end
 
 --- Reset the active session state back to defaults.

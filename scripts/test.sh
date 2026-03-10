@@ -16,6 +16,7 @@ TESTS=(
   "test_lessons_pool.lua"
   "test_recent.lua"
   "test_snippets.lua"
+  "test_lessons_registry.lua"
   "test_keymaps.lua"
   "test_key_display_direct.lua"
   "test_menu_ui.lua"

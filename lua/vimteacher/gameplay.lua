@@ -52,6 +52,10 @@ function M.new(deps)
 	local state = deps.state
 	local controller = {}
 
+	local function generations_match(session_generation, challenge_generation)
+		return state.session_generation == session_generation and state.challenge_generation == challenge_generation
+	end
+
 	local function build_lesson_view(lesson)
 		return key_display.build_lesson_view(lesson, state.key_display)
 	end
@@ -253,9 +257,14 @@ function M.new(deps)
 		if state.insert_validate_timer then
 			return
 		end
+		local session_generation = state.session_generation
+		local challenge_generation = state.challenge_generation
 		state.insert_validate_timer = vim.fn.timer_start(INSERT_VALIDATION_RETRY_MS, function()
 			state.insert_validate_timer = nil
 			vim.schedule(function()
+				if not generations_match(session_generation, challenge_generation) then
+					return
+				end
 				if state.mode ~= "playing" then
 					return
 				end
@@ -415,7 +424,17 @@ function M.new(deps)
 		if is_on_target() then
 			if not state.dwell_pending then
 				state.dwell_pending = true
+				state.dwell_generation = (state.dwell_generation or 0) + 1
+				local dwell_generation = state.dwell_generation
+				local session_generation = state.session_generation
+				local challenge_generation = state.challenge_generation
 				vim.defer_fn(function()
+					if not generations_match(session_generation, challenge_generation) then
+						return
+					end
+					if state.dwell_generation ~= dwell_generation then
+						return
+					end
 					state.dwell_pending = false
 					if state.mode ~= "playing" then
 						return
@@ -433,6 +452,7 @@ function M.new(deps)
 			end
 		else
 			state.dwell_pending = false
+			state.dwell_generation = (state.dwell_generation or 0) + 1
 		end
 	end
 

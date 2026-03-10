@@ -72,10 +72,18 @@ M.sections = {
 
 -- Derived flat order (for navigation: get_next, get_prev, get_all)
 M.order = {}
+local known_lessons = {}
+local hidden_lessons = {
+	"repeat_search",
+}
 for _, section in ipairs(M.sections) do
 	for _, name in ipairs(section.lessons) do
 		M.order[#M.order + 1] = name
+		known_lessons[name] = true
 	end
+end
+for _, name in ipairs(hidden_lessons) do
+	known_lessons[name] = true
 end
 
 -- Cache of loaded lesson modules
@@ -110,6 +118,9 @@ end
 --- @param name string Lesson name (e.g., "basic_movement")
 --- @return table|nil Lesson module or nil if invalid
 function M.get_lesson(name)
+	if type(name) ~= "string" or name == "" or not known_lessons[name] then
+		return nil
+	end
 	if loaded[name] then
 		return loaded[name]
 	end

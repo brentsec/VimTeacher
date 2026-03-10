@@ -71,7 +71,14 @@ function M.new(deps)
 		end
 	end
 
-	local function update_timer_display()
+	local function generations_match(session_generation, challenge_generation)
+		return state.session_generation == session_generation and state.challenge_generation == challenge_generation
+	end
+
+	local function update_timer_display(session_generation, challenge_generation)
+		if not generations_match(session_generation, challenge_generation) then
+			return
+		end
 		if not state.challenge_load_time then
 			return
 		end
@@ -85,8 +92,12 @@ function M.new(deps)
 	local function start_elapsed_timer(started_at)
 		stop_elapsed_timer()
 		state.challenge_load_time = started_at or vim.loop.hrtime()
+		local session_generation = state.session_generation
+		local challenge_generation = state.challenge_generation
 		state.elapsed_timer = vim.fn.timer_start(1000, function()
-			vim.schedule(update_timer_display)
+			vim.schedule(function()
+				update_timer_display(session_generation, challenge_generation)
+			end)
 		end, { ["repeat"] = -1 })
 	end
 
@@ -101,6 +112,7 @@ function M.new(deps)
 	end
 
 	function controller.stop()
+		state_mod.bump_session_generation()
 		stop_elapsed_timer()
 		if state.insert_validate_timer then
 			vim.fn.timer_stop(state.insert_validate_timer)
@@ -125,6 +137,7 @@ function M.new(deps)
 	end
 
 	function controller.show_menu()
+		state_mod.bump_session_generation()
 		stop_elapsed_timer()
 		state_mod.transition(nil, "menu")
 		state.target = nil
@@ -182,8 +195,16 @@ function M.new(deps)
 
 		state.target = nil
 		state_mod.transition("playing", "stats")
+		local session_generation = state.session_generation
+		local challenge_generation = state.challenge_generation
 
 		vim.defer_fn(function()
+			if not generations_match(session_generation, challenge_generation) then
+				return
+			end
+			if state.mode ~= "stats" then
+				return
+			end
 			if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
 				return
 			end
@@ -223,8 +244,10 @@ function M.new(deps)
 	function controller.load_challenge()
 		state.challenge_num = state.challenge_num + 1
 		state_mod.transition(nil, "playing")
+		state_mod.bump_challenge_generation()
 		state.move_count = 0
 		state.dwell_pending = false
+		state.dwell_generation = 0
 		apply_playing_window_options()
 
 		local challenge = state.lesson.generate_challenge(state.buf, highlight.ns_target)
@@ -259,6 +282,7 @@ function M.new(deps)
 			return
 		end
 
+		state_mod.bump_session_generation()
 		math.randomseed(os.time() + math.floor(os.clock() * 1000))
 		snippets.reset_recent()
 
