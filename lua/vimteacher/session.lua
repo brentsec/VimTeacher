@@ -343,6 +343,7 @@ function M.new(deps)
 		if lesson.type == "info" then
 			state_mod.transition(nil, "info")
 			apply_nonplaying_window_options()
+			local lesson_view = state.lesson_view or lesson
 			local info_exempt_keys = key_blocking.resolve_keys_for_lesson(lesson, state.key_display)
 			info_exempt_keys[#info_exempt_keys + 1] = "i"
 			local resolved_insert = (state.key_display and state.key_display["i"]) or nil
@@ -357,10 +358,10 @@ function M.new(deps)
 				end
 			end
 			buffer.render(state.buf, {
-				title = state.lesson_view.title,
-				description = state.lesson_view.description,
-				snippet_lines = state.lesson_view.sandbox_snippet or lesson.sandbox_snippet,
-				hint_lines = state.lesson_view.hint_lines,
+				title = lesson_view.title,
+				description = lesson_view.description,
+				snippet_lines = lesson_view.sandbox_snippet or lesson.sandbox_snippet,
+				hint_lines = lesson_view.hint_lines,
 			})
 			state.snippet_offset, state.snippet_end = buffer.get_snippet_bounds()
 			vim.bo[state.buf].modifiable = true

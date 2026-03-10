@@ -10,6 +10,7 @@ local M = {}
 --- @return table
 function M.new(deps)
 	local menu_input_timer = nil
+	local menu_input_generation = 0
 	local controller = {}
 
 	function controller.clear_menu_keymaps()
@@ -35,8 +36,22 @@ function M.new(deps)
 		local all_lessons = deps.lessons.get_all()
 		local total = #all_lessons
 		local input_buf = ""
+		menu_input_generation = menu_input_generation + 1
 
-		local function flush_input()
+		local function menu_input_is_active(expected_generation)
+			local state = deps.state
+			return menu_input_generation == expected_generation
+				and state.mode == "menu"
+				and state.buf == buf
+				and buf
+				and vim.api.nvim_buf_is_valid(buf)
+		end
+
+		local function flush_input(expected_generation)
+			if not menu_input_is_active(expected_generation or menu_input_generation) then
+				input_buf = ""
+				return
+			end
 			if menu_input_timer then
 				vim.fn.timer_stop(menu_input_timer)
 				menu_input_timer = nil
@@ -67,10 +82,13 @@ function M.new(deps)
 			end
 
 			if not could_extend then
-				flush_input()
+				flush_input(menu_input_generation)
 			else
+				local expected_generation = menu_input_generation
 				menu_input_timer = vim.fn.timer_start(800, function()
-					vim.schedule(flush_input)
+					vim.schedule(function()
+						flush_input(expected_generation)
+					end)
 				end)
 			end
 		end
@@ -92,6 +110,7 @@ function M.new(deps)
 				vim.fn.timer_stop(menu_input_timer)
 				menu_input_timer = nil
 			end
+			menu_input_generation = menu_input_generation + 1
 			input_buf = ""
 			stop_session()
 		end, opts)

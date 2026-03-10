@@ -33,8 +33,10 @@ state.preferred_lesson_line_numbers = {
 
 local original = {
 	buffer_create = buffer.create,
+	buffer_render = buffer.render,
 	buffer_render_menu = buffer.render_menu,
 	buffer_render_completion = buffer.render_completion,
+	buffer_get_snippet_bounds = buffer.get_snippet_bounds,
 	buffer_apply_playing = buffer.apply_playing_line_numbers,
 	buffer_apply_nonplaying = buffer.apply_nonplaying_line_numbers,
 	buffer_restore = buffer.restore_line_numbers,
@@ -57,6 +59,7 @@ local observed = {
 	completion_keymaps = 0,
 	render_menu = 0,
 	render_completion = nil,
+	render_info = nil,
 	render_current = 0,
 	setup_autocmds = 0,
 	block_insert = 0,
@@ -86,6 +89,18 @@ end
 
 buffer.render_completion = function(_bufnr, opts)
 	observed.render_completion = vim.deepcopy(opts)
+end
+
+buffer.render = function(bufnr, opts)
+	observed.render_info = vim.deepcopy(opts)
+	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+		opts.title or "",
+		(opts.snippet_lines and opts.snippet_lines[1]) or "",
+	})
+end
+
+buffer.get_snippet_bounds = function()
+	return 0, 1
 end
 
 buffer.apply_playing_line_numbers = function() end
@@ -122,9 +137,27 @@ local lesson = {
 	end,
 }
 
+local info_lesson = {
+	title = "Info Lesson",
+	description = { "info desc" },
+	hint_lines = { "info hint" },
+	type = "info",
+	sandbox_snippet = { "sandbox" },
+	generate_challenge = function()
+		return {
+			snippet_lines = { "sandbox" },
+			target = { row = 0, col = 0 },
+			start_pos = { row = 0, col = 0 },
+		}
+	end,
+}
+
 lessons.get_lesson = function(name)
 	if name == "test_lesson" then
 		return lesson
+	end
+	if name == "info_lesson" then
+		return info_lesson
 	end
 	return nil
 end
@@ -166,6 +199,9 @@ local gameplay = {
 		observed.setup_autocmds = observed.setup_autocmds + 1
 	end,
 	build_lesson_view = function(current_lesson)
+		if current_lesson == info_lesson then
+			return nil
+		end
 		return {
 			title = current_lesson.title,
 			description = current_lesson.description,
@@ -263,6 +299,19 @@ assert_test(
 	"stale deferred callbacks should not render completion after leaving stats"
 )
 
+controller.start("info_lesson")
+assert_test(state.mode == "info", "start should enter info mode for info lessons")
+assert_test(observed.render_info ~= nil, "info lessons should still render when lesson_view is unavailable")
+assert_test(observed.render_info.title == info_lesson.title, "info lesson fallback should use lesson title")
+assert_test(
+	observed.render_info.description[1] == info_lesson.description[1],
+	"info lesson fallback should use lesson description"
+)
+assert_test(
+	observed.render_info.snippet_lines[1] == info_lesson.sandbox_snippet[1],
+	"info lesson fallback should use lesson sandbox snippet"
+)
+
 local old_buf = state.buf
 controller.stop()
 assert_test(observed.restore_called == true, "stop should restore the source window line number settings")
@@ -270,8 +319,10 @@ assert_test(not vim.api.nvim_buf_is_valid(old_buf), "stop should delete the sess
 assert_test(state.buf == nil and state.mode == "menu", "stop should reset the shared session state")
 
 buffer.create = original.buffer_create
+buffer.render = original.buffer_render
 buffer.render_menu = original.buffer_render_menu
 buffer.render_completion = original.buffer_render_completion
+buffer.get_snippet_bounds = original.buffer_get_snippet_bounds
 buffer.apply_playing_line_numbers = original.buffer_apply_playing
 buffer.apply_nonplaying_line_numbers = original.buffer_apply_nonplaying
 buffer.restore_line_numbers = original.buffer_restore
