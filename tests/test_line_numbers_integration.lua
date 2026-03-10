@@ -319,6 +319,60 @@ local function run_local_over_global_case()
 	}, "cleanup should restore the active window-local values after a direct lesson start")
 end
 
+local function run_window_move_case()
+	configure_source_window({
+		global_number = false,
+		global_relativenumber = false,
+		local_number = true,
+		local_relativenumber = true,
+	})
+
+	assert_test(
+		launch_vimteacher("basic_movement"),
+		"window move case should initialize VimTeacher through the :VimTeacher command"
+	)
+	assert_test(
+		integration.wait_for(function()
+			local state = runtime_state()
+			return state.mode == "playing" and integration.buf_has_text("Challenge 1/10")
+		end, 1000),
+		"window move case should render the playing screen"
+	)
+
+	local state = runtime_state()
+	local original_win = state.win
+	local lesson_buf = state.buf
+
+	vim.cmd("vsplit")
+	local moved_win = vim.api.nvim_get_current_win()
+	vim.api.nvim_win_set_buf(moved_win, lesson_buf)
+
+	local replacement_buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_win_set_buf(original_win, replacement_buf)
+	vim.api.nvim_set_current_win(moved_win)
+
+	integration.fire_cursor_moved(lesson_buf)
+	assert_test(
+		integration.wait_for(function()
+			local refreshed = runtime_state()
+			return refreshed.win == moved_win and vim.api.nvim_win_is_valid(refreshed.win)
+		end, 400, 20),
+		"cursor handling should refresh state.win after the lesson buffer moves to another window"
+	)
+	assert_live_window_matches_state("moved lesson window")
+	assert_line_numbers({
+		number = true,
+		relativenumber = true,
+	}, "moved lesson window should keep playing line-number settings")
+	assert_statuscolumn_visible("moved lesson window should still render the playing gutter")
+
+	stop_from_current_screen()
+	if vim.api.nvim_win_is_valid(moved_win) and #vim.api.nvim_list_wins() > 1 then
+		vim.api.nvim_set_current_win(original_win)
+		pcall(vim.api.nvim_win_close, moved_win, true)
+	end
+end
+
 local function run_info_screen_case()
 	configure_source_window({
 		global_number = false,
@@ -410,6 +464,7 @@ end
 local ok, err = xpcall(function()
 	run_menu_to_playing_case()
 	run_local_over_global_case()
+	run_window_move_case()
 	run_info_screen_case()
 	run_dashboard_fallback_case("snacks_dashboard")
 	run_dashboard_fallback_case("nvdash")

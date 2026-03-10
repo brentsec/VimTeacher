@@ -33,12 +33,33 @@ function M.new(deps)
 	local menu = deps.menu or {}
 	local controller = {}
 
+	local function active_lesson_window()
+		local win = buffer.find_window_for_buf(state.buf, state.win)
+		if win then
+			state.win = win
+		end
+		return win
+	end
+
+	local function source_window()
+		if state.source_win and vim.api.nvim_win_is_valid(state.source_win) then
+			return state.source_win
+		end
+		return state.win
+	end
+
+	local function remember_source_window()
+		if not state.source_win and state.win and vim.api.nvim_win_is_valid(state.win) then
+			state.source_win = state.win
+		end
+	end
+
 	local function apply_playing_window_options()
-		buffer.apply_playing_line_numbers(state.win, state.preferred_lesson_line_numbers)
+		buffer.apply_playing_line_numbers(active_lesson_window(), state.preferred_lesson_line_numbers)
 	end
 
 	local function apply_nonplaying_window_options()
-		buffer.apply_nonplaying_line_numbers(state.win, state.source_window_line_numbers)
+		buffer.apply_nonplaying_line_numbers(active_lesson_window(), state.source_window_line_numbers)
 	end
 
 	local function first_menu_lesson_row(buf)
@@ -79,6 +100,7 @@ function M.new(deps)
 			vim.fn.timer_stop(state.elapsed_timer)
 			state.elapsed_timer = nil
 		end
+		buffer.clear_timer(state.buf)
 	end
 
 	local function generations_match(session_generation, challenge_generation)
@@ -134,7 +156,7 @@ function M.new(deps)
 			state.augroup = nil
 		end
 
-		buffer.restore_line_numbers(state.win, state.source_window_line_numbers)
+		buffer.restore_line_numbers(source_window(), state.source_window_line_numbers)
 
 		if state.buf and vim.api.nvim_buf_is_valid(state.buf) then
 			pcall(vim.api.nvim_buf_delete, state.buf, { force = true })
@@ -167,6 +189,7 @@ function M.new(deps)
 			key_blocking.block_insert_keys(state.buf)
 			apply_nonplaying_window_options()
 		end
+		remember_source_window()
 
 		local all_sections = lessons.get_sections()
 		local ok = errors.call(
@@ -180,10 +203,11 @@ function M.new(deps)
 		if not ok then
 			return
 		end
-		if state.win and vim.api.nvim_win_is_valid(state.win) then
+		local win = active_lesson_window()
+		if win and vim.api.nvim_win_is_valid(win) then
 			vim.fn.winrestview({ topline = 1, leftcol = 0 })
 			local row = first_menu_lesson_row(state.buf)
-			vim.api.nvim_win_set_cursor(state.win, { row, first_menu_lesson_col(state.buf, row) })
+			vim.api.nvim_win_set_cursor(win, { row, first_menu_lesson_col(state.buf, row) })
 		end
 		if menu.setup then
 			menu.setup()
@@ -319,6 +343,7 @@ function M.new(deps)
 				gameplay.setup_autocmds()
 			end
 		end
+		remember_source_window()
 
 		local nav_opts = { buffer = state.buf, noremap = true, silent = true }
 		local top_jump_key = (state.key_display and state.key_display["gg"]) or "gg"
@@ -330,13 +355,15 @@ function M.new(deps)
 			pcall(vim.keymap.del, "n", key, { buffer = state.buf })
 		end
 		vim.keymap.set("n", top_jump_key, function()
-			if state.snippet_offset and state.win and vim.api.nvim_win_is_valid(state.win) then
-				vim.api.nvim_win_set_cursor(state.win, { state.snippet_offset + 1, 0 })
+			local win = active_lesson_window()
+			if state.snippet_offset and win and vim.api.nvim_win_is_valid(win) then
+				vim.api.nvim_win_set_cursor(win, { state.snippet_offset + 1, 0 })
 			end
 		end, nav_opts)
 		vim.keymap.set("n", bottom_jump_key, function()
-			if state.snippet_end and state.win and vim.api.nvim_win_is_valid(state.win) then
-				vim.api.nvim_win_set_cursor(state.win, { state.snippet_end + 1, 0 })
+			local win = active_lesson_window()
+			if state.snippet_end and win and vim.api.nvim_win_is_valid(win) then
+				vim.api.nvim_win_set_cursor(win, { state.snippet_end + 1, 0 })
 			end
 		end, nav_opts)
 
@@ -367,7 +394,10 @@ function M.new(deps)
 			vim.bo[state.buf].modifiable = true
 			vim.bo[state.buf].undolevels = 1000
 			local info_start_row = math.min(vim.api.nvim_buf_line_count(state.buf), 3)
-			vim.api.nvim_win_set_cursor(state.win, { info_start_row, 0 })
+			local win = active_lesson_window()
+			if win and vim.api.nvim_win_is_valid(win) then
+				vim.api.nvim_win_set_cursor(win, { info_start_row, 0 })
+			end
 			vim.fn.winrestview({ topline = 1, leftcol = 0 })
 			local opts = { buffer = state.buf, noremap = true, silent = true }
 			vim.keymap.set("n", "n", function()

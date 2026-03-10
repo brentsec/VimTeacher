@@ -37,6 +37,7 @@ local original = {
 	buffer_render_menu = buffer.render_menu,
 	buffer_render_completion = buffer.render_completion,
 	buffer_get_snippet_bounds = buffer.get_snippet_bounds,
+	buffer_clear_timer = buffer.clear_timer,
 	buffer_apply_playing = buffer.apply_playing_line_numbers,
 	buffer_apply_nonplaying = buffer.apply_nonplaying_line_numbers,
 	buffer_restore = buffer.restore_line_numbers,
@@ -67,6 +68,7 @@ local observed = {
 	record_session = nil,
 	save_called = false,
 	restore_called = false,
+	clear_timer = 0,
 }
 local deferred_callbacks = {}
 local created_buffers = {}
@@ -77,6 +79,7 @@ local function cleanup()
 	buffer.render_menu = original.buffer_render_menu
 	buffer.render_completion = original.buffer_render_completion
 	buffer.get_snippet_bounds = original.buffer_get_snippet_bounds
+	buffer.clear_timer = original.buffer_clear_timer
 	buffer.apply_playing_line_numbers = original.buffer_apply_playing
 	buffer.apply_nonplaying_line_numbers = original.buffer_apply_nonplaying
 	buffer.restore_line_numbers = original.buffer_restore
@@ -130,6 +133,10 @@ end
 
 buffer.get_snippet_bounds = function()
 	return 0, 1
+end
+
+buffer.clear_timer = function()
+	observed.clear_timer = observed.clear_timer + 1
 end
 
 buffer.apply_playing_line_numbers = function() end
@@ -298,6 +305,7 @@ local ok, err = xpcall(function()
 	controller.advance_challenge()
 
 	assert_test(state.mode == "stats", "advance_challenge should enter stats mode before the deferred transition")
+	assert_test(observed.clear_timer >= 1, "advance_challenge should clear any stale timer overlay")
 	assert_test(#state.session_challenges == 1, "advance_challenge should record the completed challenge stats")
 	assert_test(type(deferred_callbacks[1]) == "function", "advance_challenge should schedule a deferred transition")
 	deferred_callbacks[1]()
@@ -345,6 +353,7 @@ local ok, err = xpcall(function()
 	local old_buf = state.buf
 	controller.stop()
 	assert_test(observed.restore_called == true, "stop should restore the source window line number settings")
+	assert_test(observed.clear_timer >= 2, "stop should clear any timer overlay before resetting state")
 	assert_test(not vim.api.nvim_buf_is_valid(old_buf), "stop should delete the session buffer")
 	assert_test(state.buf == nil and state.mode == "menu", "stop should reset the shared session state")
 end, debug.traceback)

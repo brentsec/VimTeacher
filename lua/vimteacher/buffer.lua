@@ -21,6 +21,26 @@ local function valid_win(win)
 	return win and vim.api.nvim_win_is_valid(win)
 end
 
+--- Find a live window currently displaying the given buffer.
+--- Prefers an existing known window when it still shows the buffer.
+--- @param buf number|nil Buffer handle
+--- @param preferred_win number|nil Preferred window handle
+--- @return number|nil
+function M.find_window_for_buf(buf, preferred_win)
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		return nil
+	end
+	if valid_win(preferred_win) and vim.api.nvim_win_get_buf(preferred_win) == buf then
+		return preferred_win
+	end
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		if valid_win(win) and vim.api.nvim_win_get_buf(win) == buf then
+			return win
+		end
+	end
+	return nil
+end
+
 local function set_line_numbers(win, opts)
 	if not valid_win(win) then
 		return
@@ -274,6 +294,7 @@ end
 --- @param all_stats table Stats data keyed by lesson name
 --- @param win number|nil Window handle (for responsive sizing)
 function M.render_menu(buf, sections, all_stats, win)
+	M.clear_timer(buf)
 	menu_ui.render_menu(buf, sections, all_stats, win)
 end
 
@@ -281,6 +302,7 @@ end
 --- @param buf number Buffer handle
 --- @param opts table Render options
 function M.render(buf, opts)
+	M.clear_timer(buf)
 	layout_meta = lesson_ui.render(buf, opts)
 end
 
@@ -288,6 +310,7 @@ end
 --- @param buf number Buffer handle
 --- @param opts table Stats options
 function M.render_challenge_stats(buf, opts)
+	M.clear_timer(buf)
 	stats_ui.render_challenge_stats(buf, opts)
 end
 
@@ -295,6 +318,7 @@ end
 --- @param buf number Buffer handle
 --- @param opts table Completion options
 function M.render_completion(buf, opts)
+	M.clear_timer(buf)
 	completion_ui.render_completion(buf, opts)
 end
 

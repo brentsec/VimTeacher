@@ -56,6 +56,14 @@ function M.new(deps)
 		return state.session_generation == session_generation and state.challenge_generation == challenge_generation
 	end
 
+	local function active_window()
+		local win = buffer.find_window_for_buf(state.buf, state.win)
+		if win then
+			state.win = win
+		end
+		return win
+	end
+
 	local function build_lesson_view(lesson)
 		return key_display.build_lesson_view(lesson, state.key_display)
 	end
@@ -108,8 +116,9 @@ function M.new(deps)
 		end
 
 		local rel_cursor = nil
-		if state.win and vim.api.nvim_win_is_valid(state.win) then
-			local cur = vim.api.nvim_win_get_cursor(state.win)
+		local win = active_window()
+		if win and vim.api.nvim_win_is_valid(win) then
+			local cur = vim.api.nvim_win_get_cursor(win)
 			rel_cursor = { row = cur[1] - 1 - state.snippet_offset, col = cur[2] }
 		end
 
@@ -179,7 +188,12 @@ function M.new(deps)
 		local row = math.max(0, math.min(desired.row or 0, max_row))
 		local line = challenge.snippet_lines[row + 1] or ""
 		local col = math.max(0, math.min(desired.col or 0, #line))
-		vim.api.nvim_win_set_cursor(state.win, { row + state.snippet_offset + 1, col })
+		local win = active_window()
+		if not win or not vim.api.nvim_win_is_valid(win) then
+			state.loading = nil
+			return
+		end
+		vim.api.nvim_win_set_cursor(win, { row + state.snippet_offset + 1, col })
 		state.pending_programmatic_cursor = { row = row + state.snippet_offset + 1, col = col }
 		state.last_cursor = { row + state.snippet_offset + 1, col }
 		if state.challenge_num == 1 and not cursor_rel then
@@ -214,7 +228,11 @@ function M.new(deps)
 			return false
 		end
 
-		local cursor = vim.api.nvim_win_get_cursor(state.win)
+		local win = active_window()
+		if not win or not vim.api.nvim_win_is_valid(win) then
+			return false
+		end
+		local cursor = vim.api.nvim_win_get_cursor(win)
 		local rel_cursor = { row = cursor[1] - 1 - state.snippet_offset, col = cursor[2] }
 		challenge.snippet_lines =
 			vim.api.nvim_buf_get_lines(state.buf, state.snippet_offset, state.snippet_end + 1, false)
@@ -358,20 +376,31 @@ function M.new(deps)
 
 	local function is_on_target()
 		local target_buf_row = state.target.row + state.snippet_offset
+		local win = active_window()
+		if not win or not vim.api.nvim_win_is_valid(win) then
+			return false
+		end
 		if state.current_challenge and state.current_challenge.row_only_check then
-			local cursor = vim.api.nvim_win_get_cursor(state.win)
+			local cursor = vim.api.nvim_win_get_cursor(win)
 			return (cursor[1] - 1) == target_buf_row
 		end
-		return validate.check_position(state.win, target_buf_row, state.target.col)
+		return validate.check_position(win, target_buf_row, state.target.col)
 	end
 
 	local function current_cursor()
-		return vim.api.nvim_win_get_cursor(state.win)
+		local win = active_window()
+		if not win or not vim.api.nvim_win_is_valid(win) then
+			return nil
+		end
+		return vim.api.nvim_win_get_cursor(win)
 	end
 
 	local function can_handle_cursor_move()
+		local win = active_window()
 		if state.mode == "info" then
-			validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
+			if win and vim.api.nvim_win_is_valid(win) then
+				validate.constrain_to_snippet(win, state.snippet_offset, state.snippet_end)
+			end
 			return false
 		end
 
@@ -387,7 +416,7 @@ function M.new(deps)
 		if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
 			return false
 		end
-		if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+		if not win or not vim.api.nvim_win_is_valid(win) then
 			return false
 		end
 		return true
@@ -416,6 +445,9 @@ function M.new(deps)
 
 	local function update_last_cursor()
 		local cur = current_cursor()
+		if not cur then
+			return nil
+		end
 		state.last_cursor = { cur[1], cur[2] }
 		return cur
 	end
@@ -455,7 +487,8 @@ function M.new(deps)
 			if not state.target then
 				return
 			end
-			if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+			local win = active_window()
+			if not win or not vim.api.nvim_win_is_valid(win) then
 				return
 			end
 			if is_on_target() then
@@ -482,6 +515,9 @@ function M.new(deps)
 		end
 
 		local cur = current_cursor()
+		if not cur then
+			return
+		end
 		if suppress_programmatic_cursor(cur) then
 			return
 		end
@@ -491,7 +527,11 @@ function M.new(deps)
 
 		begin_cursor_move_timing()
 
-		local was_constrained = validate.constrain_to_snippet(state.win, state.snippet_offset, state.snippet_end)
+		local win = active_window()
+		if not win or not vim.api.nvim_win_is_valid(win) then
+			return
+		end
+		local was_constrained = validate.constrain_to_snippet(win, state.snippet_offset, state.snippet_end)
 		update_last_cursor()
 		if was_constrained then
 			handle_constrained_cursor_move()
@@ -526,10 +566,21 @@ function M.new(deps)
 			group = state.augroup,
 			pattern = "[vV\x16]*:n*",
 			callback = function()
-				if vim.api.nvim_get_current_buf() ~= state.buf then
+				local buf = state.buf
+				local session_generation = state.session_generation
+				local challenge_generation = state.challenge_generation
+				if vim.api.nvim_get_current_buf() ~= buf then
 					return
 				end
-				vim.schedule(controller.on_text_changed)
+				vim.schedule(function()
+					if not generations_match(session_generation, challenge_generation) then
+						return
+					end
+					if state.buf ~= buf or vim.api.nvim_get_current_buf() ~= buf then
+						return
+					end
+					controller.on_text_changed()
+				end)
 			end,
 		})
 
