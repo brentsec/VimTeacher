@@ -42,10 +42,7 @@ integration.with_overridden_generate(small_edits, {
 	if #before ~= 1 then
 		return
 	end
-	assert_test(
-		before[1][4].virt_text[1][1] == "  00:00",
-		"challenge render should start with a visible 00:00 timer"
-	)
+	assert_test(before[1][4].virt_text[1][1] == "  00:00", "challenge render should start with a visible 00:00 timer")
 
 	integration.prime_pending_cursor_event()
 	integration.send_key("l")
