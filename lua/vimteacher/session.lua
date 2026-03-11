@@ -12,6 +12,7 @@ local stats_mod = require("vimteacher.stats")
 
 local M = {}
 local ADVANCE_DELAY_MS = 300
+local ELAPSED_TIMER_REFRESH_MS = 250
 
 local function seed_random_for_lesson()
 	local test_seed = vim.g.vimteacher_test_seed
@@ -131,7 +132,7 @@ function M.new(deps)
 		local session_generation = state.session_generation
 		local challenge_generation = state.challenge_generation
 		update_timer_display(session_generation, challenge_generation)
-		state.elapsed_timer = vim.fn.timer_start(1000, function()
+		state.elapsed_timer = vim.fn.timer_start(ELAPSED_TIMER_REFRESH_MS, function()
 			vim.schedule(function()
 				update_timer_display(session_generation, challenge_generation)
 			end)

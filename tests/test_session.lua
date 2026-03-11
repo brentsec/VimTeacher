@@ -71,6 +71,7 @@ local observed = {
 	save_called = false,
 	restore_called = false,
 	clear_timer = 0,
+	timer_start_calls = {},
 }
 local deferred_callbacks = {}
 local created_buffers = {}
@@ -235,8 +236,9 @@ vim.defer_fn = function(cb, _ms)
 	return #deferred_callbacks
 end
 
-vim.fn.timer_start = function(_ms, _cb, _opts)
+vim.fn.timer_start = function(ms, _cb, _opts)
 	next_timer_id = next_timer_id + 1
+	observed.timer_start_calls[#observed.timer_start_calls + 1] = ms
 	return next_timer_id
 end
 
@@ -316,6 +318,10 @@ local ok, err = xpcall(function()
 	assert_test(timing_started == true, "begin_challenge_timing should start timing on the first move")
 	assert_test(state.timer_start ~= nil, "begin_challenge_timing should store the challenge start time")
 	assert_test(state.challenge_load_time ~= nil, "begin_challenge_timing should store the timer display epoch")
+	assert_test(
+		observed.timer_start_calls[#observed.timer_start_calls] == 250,
+		"begin_challenge_timing should refresh the elapsed timer four times per second"
+	)
 
 	state.move_count = 5
 	state.timer_start = vim.loop.hrtime() - 1e9
