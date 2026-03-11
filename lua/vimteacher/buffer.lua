@@ -355,6 +355,15 @@ function M.update_timer(buf, elapsed_secs)
 	})
 end
 
+--- Hide the elapsed timer display without discarding challenge layout metadata.
+--- @param buf number Buffer handle
+function M.hide_timer(buf)
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		return
+	end
+	vim.api.nvim_buf_clear_namespace(buf, highlight.ns_timer, 0, -1)
+end
+
 --- Clear the elapsed timer display.
 --- @param buf number Buffer handle
 function M.clear_timer(buf)

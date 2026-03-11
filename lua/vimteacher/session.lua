@@ -119,13 +119,18 @@ function M.new(deps)
 		end
 		local elapsed = (vim.loop.hrtime() - state.challenge_load_time) / 1e9
 		buffer.update_timer(state.buf, elapsed)
+		pcall(vim.cmd, "redraw")
 	end
 
 	local function start_elapsed_timer(started_at)
-		stop_elapsed_timer()
+		if state.elapsed_timer then
+			vim.fn.timer_stop(state.elapsed_timer)
+			state.elapsed_timer = nil
+		end
 		state.challenge_load_time = started_at or vim.loop.hrtime()
 		local session_generation = state.session_generation
 		local challenge_generation = state.challenge_generation
+		update_timer_display(session_generation, challenge_generation)
 		state.elapsed_timer = vim.fn.timer_start(1000, function()
 			vim.schedule(function()
 				update_timer_display(session_generation, challenge_generation)

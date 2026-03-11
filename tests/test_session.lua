@@ -49,6 +49,8 @@ local original = {
 	stats_record_session = stats.record_session,
 	stats_save = stats.save,
 	vim_defer_fn = vim.defer_fn,
+	vim_timer_start = vim.fn.timer_start,
+	vim_timer_stop = vim.fn.timer_stop,
 }
 
 local observed = {
@@ -72,6 +74,7 @@ local observed = {
 }
 local deferred_callbacks = {}
 local created_buffers = {}
+local next_timer_id = 0
 
 local function cleanup()
 	buffer.create = original.buffer_create
@@ -91,6 +94,8 @@ local function cleanup()
 	stats.record_session = original.stats_record_session
 	stats.save = original.stats_save
 	vim.defer_fn = original.vim_defer_fn
+	vim.fn.timer_start = original.vim_timer_start
+	vim.fn.timer_stop = original.vim_timer_stop
 
 	for _, bufnr in ipairs(created_buffers) do
 		if vim.api.nvim_buf_is_valid(bufnr) then
@@ -230,6 +235,13 @@ vim.defer_fn = function(cb, _ms)
 	return #deferred_callbacks
 end
 
+vim.fn.timer_start = function(_ms, _cb, _opts)
+	next_timer_id = next_timer_id + 1
+	return next_timer_id
+end
+
+vim.fn.timer_stop = function(_id) end
+
 local gameplay = {
 	setup_autocmds = function()
 		observed.setup_autocmds = observed.setup_autocmds + 1
@@ -299,6 +311,11 @@ local ok, err = xpcall(function()
 	assert_test(state.optimal_moves == 7, "start should compute the lesson's optimal move count")
 	assert_test(observed.render_current == 1, "start should render the active challenge")
 	assert_test(observed.playing_keymaps == 1, "start should install playing-mode keymaps")
+
+	local timing_started = controller.begin_challenge_timing()
+	assert_test(timing_started == true, "begin_challenge_timing should start timing on the first move")
+	assert_test(state.timer_start ~= nil, "begin_challenge_timing should store the challenge start time")
+	assert_test(state.challenge_load_time ~= nil, "begin_challenge_timing should store the timer display epoch")
 
 	state.move_count = 5
 	state.timer_start = vim.loop.hrtime() - 1e9
