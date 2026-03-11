@@ -11,6 +11,11 @@ status: active
 
 Provide a predictable onboarding path for contributors.
 
+## Documentation Layout
+
+- `doc/` contains the Neovim help files that ship with the plugin and power `:help`.
+- `docs/` contains contributor-facing project documentation such as architecture, development workflow, and verification notes.
+
 ## Read Order
 
 1. `README.md`
