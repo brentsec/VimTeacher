@@ -146,7 +146,7 @@ function M.new(deps)
 			snippet_lines = challenge.snippet_lines,
 			hint_lines = view.hint_lines,
 			goal_text = goal_text,
-			goal = goal.build(challenge.key, challenge.char, goal_display_key),
+			goal = goal.build(challenge.key, challenge.char, goal_display_key, challenge),
 			nav_hint_line = string.format(
 				"[%s] Menu  [%s] Restart lesson",
 				state.play_menu_key or "q",
